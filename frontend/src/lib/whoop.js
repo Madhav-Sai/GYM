@@ -2,7 +2,7 @@
 // tested here and the components only draw. Strings returned here are English keys for t().
 // The one rule above all: a value Whoop did not send is a dash, never 0.
 
-export const DASH = '—'
+export const DASH = '–' // an en dash: openGym's rule for every empty value (lib/empty-placeholder.test.js)
 
 /** A number to `dp` places, or a dash. */
 export const numOrDash = (v, dp = 0) => (typeof v === 'number' && Number.isFinite(v) ? v.toFixed(dp) : DASH)
