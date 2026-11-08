@@ -44,12 +44,13 @@ export function syncMessage(res) {
 export function whoopReturn(hash = '', search = '') {
   const q = (hash.includes('?') ? hash.slice(hash.indexOf('?')) : '') || search
   const v = new URLSearchParams(q).get('whoop')
-  return ['ok', 'denied', 'signin', 'error'].includes(v) ? v : null
+  return ['ok', 'denied', 'signin', 'expired', 'error'].includes(v) ? v : null
 }
 
 export const RETURN_MESSAGE = {
   ok: 'Whoop connected. Your first sync is running.',
   denied: 'Whoop sign-in was cancelled.',
   signin: 'Sign in to myGym first, then connect Whoop.',
+  expired: 'That Whoop sign-in link expired. Tap Connect again.',
   error: 'Could not connect Whoop. Try again.',
 }

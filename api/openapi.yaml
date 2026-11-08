@@ -1025,6 +1025,44 @@ paths:
         '429': { $ref: '#/components/responses/TooManyRequests' }
         '503': { $ref: '#/components/responses/Busy' }
 
+  /api/login/device:
+    post:
+      tags: [password]
+      operationId: loginDevice
+      summary: Sign a phone in with a profile name and a password (this fork)
+      description: |
+        The same password check, throttling and lockout as `POST /api/login/password`, for the phone app. The
+        answer is a **bearer token** for the app to keep in its own secure storage, and **no cookie is set**,
+        so no web page can ride on it. For that reason it is CSRF-exempt, like `/api/pair/redeem`. Only
+        available while `PASSWORD_LOGIN` is on. Send the token as `Authorization: Bearer <token>`.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [password]
+              properties:
+                identifier: { type: string }
+                name: { type: string }
+                password: { type: string, maxLength: 256 }
+      responses:
+        '200':
+          description: Signed in.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user: { $ref: '#/components/schemas/SessionUser' }
+                  token: { type: string }
+        '400': { description: Name or password missing. }
+        '401': { description: Wrong name or password. Deliberately one answer for every cause. }
+        '403': { description: The right password for a disabled account. }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '503': { $ref: '#/components/responses/Busy' }
+
   /api/register/password:
     post:
       tags: [password]

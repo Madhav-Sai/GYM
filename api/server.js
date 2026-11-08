@@ -685,7 +685,7 @@ const clearCookie = COOKIE === LEGACY_COOKIE
 // any site sign a visitor into the attacker's account and collect what they log (login CSRF).
 // The watch relay's two routes for the watch are the same kind: the code in the body, or a watch
 // token in the Authorization header, which no browser attaches on its own.
-const CSRF_EXEMPT = new Set(['POST /api/pair/redeem', 'POST /api/watch/redeem', 'POST /api/watch/box']);
+const CSRF_EXEMPT = new Set(['POST /api/pair/redeem', 'POST /api/watch/redeem', 'POST /api/watch/box', 'POST /api/login/device']);
 // The routes that answer to the credential in the body and never to a Bearer. No Bearer is the
 // credential that acts there, so none buys the shortcut below: any valid token would do, the
 // attacker's own included.
@@ -696,7 +696,7 @@ const PASSKEY_ROUTES = new Set([
 // The other ways in are the same kind of route: the name and password, the reset code or the
 // device code in the body is the credential, never a Bearer.
 const SIGN_IN_ROUTES = new Set([
-  'POST /api/login/password', 'POST /api/register/password', 'POST /api/login/password-reset',
+  'POST /api/login/password', 'POST /api/login/device', 'POST /api/register/password', 'POST /api/login/password-reset',
   'POST /api/device-link/options', 'POST /api/device-link/verify'
 ]);
 // A verify error as the answer's body: a passkey made at an address that is not ORIGIN/RP_ID gets
@@ -1039,7 +1039,7 @@ setInterval(() => { AUTH_BURST.sweep(); ADDR_FAILS.sweep(); ACCOUNT_FAILS.sweep(
 // Route -> the kind of failure it can count. Every route listed here also spends the burst
 // budget; `null` spends only that.
 const THROTTLED = {
-  'POST /api/login/password': 'password', 'POST /api/login/password-reset': 'password',
+  'POST /api/login/password': 'password', 'POST /api/login/device': 'password', 'POST /api/login/password-reset': 'password',
   'POST /api/register/password': 'signup',
   'POST /api/account/password': 'password', 'DELETE /api/account/password': null,
   // Setting an e-mail only spends the budget and asks the address's e-mail pause; an address
@@ -1354,48 +1354,56 @@ function removeAccount(u) {
   saveDb();
 }
 
+/* Name + password sign-in. `device` false: a browser, answered with a session cookie. `device` true (POST
+   /api/login/device, this fork): the phone app, answered with a bearer token. Same checks, same lockout. */
+async function passwordLogin(req, res, device) {
+  const body = await readBody(req);
+  const target = loginTarget(body);
+  const pw = typeof body.password === 'string' ? body.password : '';
+  if (!target || !pw) return json(res, 400, { error: 'name and password required', code: 'missing' });
+  const check = passwordAttempt(req, res, target.key);
+  if (!check) return;
+  const { user } = target;
+  const rec = user?.pw;
+  if (!(await check.verify(pw, rec?.h))) {
+    check.failed(user, 'bad-password', target.email ? 'unknown-email' : 'unknown-name');
+    return json(res, 401, WRONG);
+  }
+  // Right for the password read before the await — which a change, an admin reset or a removal
+  // may have replaced since (each puts a new record in user.pw or none; only a rehash edits it
+  // in place). A session signed now would carry the account's *new* session version and outlive
+  // the "signed out everywhere" that came with it, so the old password gets nothing; it is not
+  // counted as a wrong one either.
+  const still = () => hasPassword(user) && user.pw === rec && target.resolve() === user;
+  if (!still()) {
+    check.void();
+    return json(res, 401, WRONG);
+  }
+  if (user.disabled) {
+    check.void();
+    audit(req, 'auth.password.fail', { ok: false, user, msg: 'account-disabled' });
+    return json(res, 403, { error: 'this account has been disabled', code: 'disabled' });
+  }
+  check.ok();
+  // A hash made with older parameters is replaced now, while the password is at hand.
+  if (needsRehash(rec.h)) {
+    try {
+      const h = await hashPassword(pw);
+      if (still()) { rec.h = h; saveDb(); }
+    } catch (e) { if (!(e instanceof BusyError)) throw e; }
+    // The same question again: the password may have changed while the new hash was made.
+    if (!still()) return json(res, 401, WRONG);
+  }
+  audit(req, 'auth.password.ok', { user, ...(device ? { msg: 'device' } : {}) });
+  // A phone (this fork): the same proof of the password, but the answer is a bearer token it keeps in its own
+  // storage and never a cookie, so a web page cannot use it, and the request needs no CSRF exemption's worth of trust.
+  if (device) return json(res, 200, { user: publicUser(user), token: makeSession(user) });
+  json(res, 200, { user: publicUser(user) }, { 'Set-Cookie': sessionCookie(user) });
+}
+
 const passwordRoutes = {
-  'POST /api/login/password': async (req, res) => {
-    const body = await readBody(req);
-    const target = loginTarget(body);
-    const pw = typeof body.password === 'string' ? body.password : '';
-    if (!target || !pw) return json(res, 400, { error: 'name and password required', code: 'missing' });
-    const check = passwordAttempt(req, res, target.key);
-    if (!check) return;
-    const { user } = target;
-    const rec = user?.pw;
-    if (!(await check.verify(pw, rec?.h))) {
-      check.failed(user, 'bad-password', target.email ? 'unknown-email' : 'unknown-name');
-      return json(res, 401, WRONG);
-    }
-    // Right for the password read before the await — which a change, an admin reset or a removal
-    // may have replaced since (each puts a new record in user.pw or none; only a rehash edits it
-    // in place). A session signed now would carry the account's *new* session version and outlive
-    // the "signed out everywhere" that came with it, so the old password gets nothing; it is not
-    // counted as a wrong one either.
-    const still = () => hasPassword(user) && user.pw === rec && target.resolve() === user;
-    if (!still()) {
-      check.void();
-      return json(res, 401, WRONG);
-    }
-    if (user.disabled) {
-      check.void();
-      audit(req, 'auth.password.fail', { ok: false, user, msg: 'account-disabled' });
-      return json(res, 403, { error: 'this account has been disabled', code: 'disabled' });
-    }
-    check.ok();
-    // A hash made with older parameters is replaced now, while the password is at hand.
-    if (needsRehash(rec.h)) {
-      try {
-        const h = await hashPassword(pw);
-        if (still()) { rec.h = h; saveDb(); }
-      } catch (e) { if (!(e instanceof BusyError)) throw e; }
-      // The same question again: the password may have changed while the new hash was made.
-      if (!still()) return json(res, 401, WRONG);
-    }
-    audit(req, 'auth.password.ok', { user });
-    json(res, 200, { user: publicUser(user) }, { 'Set-Cookie': sessionCookie(user) });
-  },
+  'POST /api/login/password': (req, res) => passwordLogin(req, res, false),
+  'POST /api/login/device': (req, res) => passwordLogin(req, res, true),
 
   // For browsers that cannot make a passkey at all: plain http on a LAN address, some Firefox
   // setups. Same invite rules as /api/register/*, checked again and burned after the hash.

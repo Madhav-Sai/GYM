@@ -97,6 +97,7 @@ const REASONS = {
   'invite-rejected': 'wrong or already-used invite code',
   'code-invalid': 'wrong or expired pairing code',
   'user-unavailable': 'the profile behind the code is disabled or gone',
+  'device': 'from the phone app',
   'bad-password': 'wrong password',
   'bad-current': 'wrong current password',
   'unknown-name': 'no profile with a password has that name',

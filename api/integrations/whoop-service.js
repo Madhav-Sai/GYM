@@ -55,6 +55,15 @@ export function createWhoop({ store, data, provider, now = Date.now, backfillDay
     return { url: provider.authorizeUrl(state) };
   }
 
+  /** Whose sign-in this state belongs to, or null: unknown, spent or expired. Does not use it up. The phone app starts a
+   *  sign-in with its token and finishes it in the phone's own browser, which has neither that token nor a cookie, so
+   *  the state (32 random characters, one use, ten minutes) is what says whose account is being connected. It can only
+   *  ever connect Whoop to the account that started the flow. */
+  function stateOwner(state) {
+    const e = typeof state === 'string' ? pending.get(state) : null
+    return e && e.exp >= now() ? e.uid : null
+  }
+
   /** The browser comes back from Whoop with ?code&state. State is one-use, expires, and belongs to this profile. */
   async function callback(uid, query) {
     const state = typeof query?.state === 'string' ? query.state : '';
@@ -210,5 +219,5 @@ export function createWhoop({ store, data, provider, now = Date.now, backfillDay
 
   function disconnect(uid) { const r = conn(uid); if (r) { mem.delete(r.id); backoff.delete(uid); } data.clear(uid); }
 
-  return { authorize, callback, sync, syncAll, summary: uid => data.summary(uid), disconnect, accessToken, _mem: mem, _pending: pending };
+  return { authorize, stateOwner, callback, sync, syncAll, summary: uid => data.summary(uid), disconnect, accessToken, _mem: mem, _pending: pending };
 }

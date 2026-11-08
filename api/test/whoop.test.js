@@ -168,6 +168,21 @@ test('no refresh token back (no offline scope) is a refusal, not a half connecti
   assert.equal(r.store.list('u1').length, 0);
 });
 
+test('stateOwner says whose sign-in a state is without using it up, and not for a spent, unknown or expired one', async () => {
+  let t = 1_000_000;
+  const r = rig({ now: () => t });
+  const state = new URL(r.svc.authorize('u1').url).searchParams.get('state');
+  assert.equal(r.svc.stateOwner(state), 'u1');
+  assert.equal(r.svc.stateOwner(state), 'u1', 'looking does not spend it');
+  assert.equal(r.svc.stateOwner('made-up'), null);
+  assert.equal(r.svc.stateOwner(undefined), null);
+  await r.svc.callback('u1', { code: 'GOODCODE', state });
+  assert.equal(r.svc.stateOwner(state), null, 'spent by the callback');
+  const s2 = new URL(r.svc.authorize('u1').url).searchParams.get('state');
+  t += 11 * 60_000;
+  assert.equal(r.svc.stateOwner(s2), null, 'expired');
+});
+
 /* ---------- token rotation: what kills integrations silently ---------- */
 
 test('refreshing stores the NEW refresh token and the old one is dead', async () => {

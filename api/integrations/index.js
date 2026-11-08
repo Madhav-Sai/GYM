@@ -244,8 +244,9 @@ export function createIntegrations({ dataDir, secret, env = process.env, now = D
       if (!active) return;
       outbox.start(everyMs);
       if (whoop) {
-        // First pull a minute after boot, then every 30 minutes: well inside Whoop's 100/min, 10 000/day.
-        const every = Math.max(5, Number(env.WHOOP_SYNC_MINUTES) || 30) * 60_000;
+        // First pull a minute after boot, then every 5 minutes (WHOOP_SYNC_MINUTES, never below 5). About 4 requests a
+        // pull is roughly 1,200 a day against Whoop's 10,000 a day and 100 a minute.
+        const every = Math.max(5, Number(env.WHOOP_SYNC_MINUTES) || 5) * 60_000;
         const run = () => whoop.syncAll().catch(e => console.error('whoop syncAll', e.message));
         whoopTimers = [setTimeout(run, 60_000), setInterval(run, every)];
         for (const t of whoopTimers) t.unref?.();

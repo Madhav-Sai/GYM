@@ -159,6 +159,24 @@ export function directory(ctx) {
   })).filter(cat => cat.cards.length)
 }
 
+// The cards this build shows (this fork). Everything else upstream ships stays in the code, switched off.
+// A real build shows Whoop only; add ids to bring cards back: VITE_SHOWN_CARDS=whoop,webhook, or * for all.
+// Under test every card shows, so upstream's tests of the others keep guarding them.
+// Answers the ids to show, or null for all of them.
+export function shownCards() {
+  const v = import.meta.env.VITE_SHOWN_CARDS
+  if (v != null && String(v).trim() !== '') return String(v).trim() === '*' ? null : String(v).split(',').map(x => x.trim()).filter(Boolean)
+  return import.meta.env.MODE === 'test' ? null : ['whoop']
+}
+
+/** directory(ctx) narrowed to shownCards(); categories left empty disappear. */
+export function shownDirectory(ctx) {
+  const only = shownCards()
+  const dir = directory(ctx)
+  if (!only) return dir
+  return dir.map(cat => ({ ...cat, cards: cat.cards.filter(c => only.includes(c.id)) })).filter(cat => cat.cards.length)
+}
+
 // Webhook events, in the order the form offers them.
 export const WEBHOOK_EVENTS = [
   { id: 'workout.finished', label: 'Workout finished' },

@@ -4,6 +4,7 @@ import { useUI } from '../store/useUI.js'
 import { t } from '../lib/i18n.js'
 import { api } from '../lib/api.js'
 import { DEMO } from '../lib/demo.js'
+import { MOBILE } from '../lib/mobile.js'
 import { fmtAgo } from '../lib/format.js'
 import { isOn } from '../lib/modules.js'
 import { DASH, numOrDash, fmtSleep, fmtSteps, zoneLine, syncMessage, BAND_INK } from '../lib/whoop.js'
@@ -29,6 +30,13 @@ export function useWhoopSummary(enabled) {
     return api('/api/whoop/summary').then(d => { setData(d); setError(false); return d }).catch(() => { setError(true); return null })
   }, [enabled])
   useEffect(() => { load() }, [load])
+  // Back from Whoop's page (or from the background): the numbers may be new, and a sign-in may have just finished.
+  useEffect(() => {
+    if (!enabled) return undefined
+    const again = () => { if (document.visibilityState === 'visible') load() }
+    document.addEventListener('visibilitychange', again)
+    return () => document.removeEventListener('visibilitychange', again)
+  }, [enabled, load])
   return { data, error, load }
 }
 
@@ -36,7 +44,9 @@ export function useWhoopSummary(enabled) {
 export async function connectWhoop(toast) {
   try {
     const r = await api('/api/integrations/whoop/authorize')
-    if (r?.url) window.location.assign(r.url)
+    // In the phone app the page must open in the phone's own browser (navigating the app's WebView away loses the
+    // app), and the server finishes the sign-in there; on the website the same tab goes and comes back.
+    if (r?.url) { if (MOBILE) window.open(r.url, '_blank', 'noopener'); else window.location.assign(r.url) }
   } catch (e) { toast?.(errText(e, t('Could not connect Whoop. Try again.'))) }
 }
 

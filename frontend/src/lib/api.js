@@ -341,6 +341,26 @@ export async function pairRedeem(serverBase, code, { probeMs = PROBE_MS } = {}) 
   return data
 }
 
+// Name + password for the phone app (this fork): POST /api/login/device, answered with a bearer token and never a
+// cookie. The failures a person can act on are worded here, in the UI language; the server says them in English.
+export async function deviceLogin(serverBase, name, password, { probeMs = PROBE_MS } = {}) {
+  let data
+  try {
+    data = await request(serverBase + '/api/login/device', {
+      method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, accessFor(serverBase)), body: JSON.stringify({ name, password })
+    }, TIMEOUT_GET_MS)
+  } catch (e) {
+    if (e && e.status === 401) throw failure(t('Wrong name or password.'), 'bad-credentials', 401)
+    if (e && e.status === 403) throw failure(t('This account has been disabled.'), 'disabled', 403)
+    if (e && e.status === 429) throw failure(t('Too many attempts. Wait a few minutes and try again.'), 'locked', 429)
+    if (e && e.status === 404) throw failure(t('This server does not allow password sign-in.'), 'password-off', 404)
+    if (e && (e.status != null || e.code)) throw e
+    throw await whyUnreachable(serverBase, probeMs)
+  }
+  if (!data.token || !data.user) throw failure(t('The server answered with something other than myGym data.'), 'bad-response', 200)
+  return data
+}
+
 const bufToB64u = buf => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
 const b64uToBuf = s => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0)).buffer
 

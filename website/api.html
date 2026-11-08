@@ -247,16 +247,16 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
   <p class="api-facts">
     <span>OpenAPI 3.1.0</span>
     <span>openGym v1.4.3</span>
-    <span>92 endpoints</span>
+    <span>97 endpoints</span>
     <span>AGPL-3.0-or-later</span>
   </p>
 
   <section class="api-sec" id="overview">
     <h2>Overview</h2>
-    <p class="sub">Passkey (WebAuthn) auth + per-user state storage for openGym. One Node file, no framework, JSON-file
+    <p class="sub">Passkey (WebAuthn) auth + per-user state storage for myGym. One Node file, no framework, JSON-file
        storage, HMAC-signed session cookies.</p>
     <div class="srv">
-  <div class="srv-row"><code>/</code><span>Same origin as the openGym web app (the normal deployment)</span></div>
+  <div class="srv-row"><code>/</code><span>Same origin as the myGym web app (the normal deployment)</span></div>
   <div class="srv-row"><code>https://opengym.example.com</code><span>Your self-hosted instance</span></div>
     </div>
     <div class="ov-grid">
@@ -735,7 +735,7 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
     <span class="ep-sum">A pairing code for a Zepp OS watch</span>
   </summary>
   <div class="ep-body">
-<p>A signed-in device asks for a code that the Zepp app's settings page for openGym redeems (<code>POST /api/watch/redeem</code>). 12 characters typed as <code>XXXX-XXXX-XXXX</code>, one per profile (a new one replaces the last), good for ten minutes, held only as a hash.</p>
+<p>A signed-in device asks for a code that the Zepp app's settings page for myGym redeems (<code>POST /api/watch/redeem</code>). 12 characters typed as <code>XXXX-XXXX-XXXX</code>, one per profile (a new one replaces the last), good for ten minutes, held only as a hash.</p>
     <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Requires a session: the cookie set at sign-in, or <code>Authorization: Bearer &lt;token&gt;</code> from mobile-app pairing.</span></p>
 
 
@@ -761,7 +761,7 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
     <span class="ep-sum">Redeem a watch pairing code for a watch token</span>
   </summary>
   <div class="ep-body">
-<p>Called by the openGym watch app's Side Service inside the Zepp phone app. The code is the credential (CSRF-exempt, throttled per address like a device link). The answer is a watch token (<code>ogw_…</code>) that opens <code>GET</code>/<code>POST /api/watch/box</code> and nothing else; it ends with &quot;sign out everywhere&quot;, a new password, a disabled account, an unlink, or 90 days without use.</p>
+<p>Called by the myGym watch app's Side Service inside the Zepp phone app. The code is the credential (CSRF-exempt, throttled per address like a device link). The answer is a watch token (<code>ogw_…</code>) that opens <code>GET</code>/<code>POST /api/watch/box</code> and nothing else; it ends with &quot;sign out everywhere&quot;, a new password, a disabled account, an unlink, or 90 days without use.</p>
     <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Public: no authentication required.</span></p>
 
 <p class="ep-h">Request body <span class="p-hint">(JSON)</span></p><div class="ptab">
@@ -1069,6 +1069,64 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
   <div class="prow rrow">
     <span class="r-code s4">403</span>
     <span class="p-desc">The right password for a disabled account.<span class="r-sig"><code>{&quot;error&quot;:&quot;this account has been disabled&quot;}</code></span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">429</span>
+    <span class="p-desc">Paused by the sign-in throttle (see <i>Throttling</i> in the description). The request was not looked at; try again after <code>Retry-After</code> seconds.<span class="r-sig"><code>{&quot;error&quot;:&quot;too many attempts, try again later&quot;}</code></span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s5">503</span>
+    <span class="p-desc">Every password check slot and the short queue behind them are taken.<span class="r-sig"><code>{&quot;error&quot;:&quot;the server is busy, try again in a moment&quot;}</code></span></span>
+  </div>
+    </div>
+  </div>
+</details>
+
+<details class="ep" id="op-loginDevice">
+  <summary>
+    <span class="m post">POST</span>
+    <span class="ep-path"><code>/api/login/device</code><span class="ep-chip public">public</span></span>
+    <span class="ep-chev" aria-hidden="true"></span>
+    <span class="ep-sum">Sign a phone in with a profile name and a password (this fork)</span>
+  </summary>
+  <div class="ep-body">
+<p>The same password check, throttling and lockout as <code>POST /api/login/password</code>, for the phone app. The answer is a <b>bearer token</b> for the app to keep in its own secure storage, and <b>no cookie is set</b>, so no web page can ride on it. For that reason it is CSRF-exempt, like <code>/api/pair/redeem</code>. Only available while <code>PASSWORD_LOGIN</code> is on. Send the token as <code>Authorization: Bearer &lt;token&gt;</code>.</p>
+    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Public: no authentication required.</span></p>
+
+<p class="ep-h">Request body <span class="p-hint">(JSON)</span></p><div class="ptab">
+  <div class="prow">
+    <span class="p-name">identifier</span>
+    <span class="p-type">string</span>
+    <span class="p-desc"></span>
+  </div>
+  <div class="prow">
+    <span class="p-name">name</span>
+    <span class="p-type">string</span>
+    <span class="p-desc"></span>
+  </div>
+  <div class="prow">
+    <span class="p-name">password<em class="p-req" title="required">required</em></span>
+    <span class="p-type">string <span class="p-hint">(&le; 256 chars)</span></span>
+    <span class="p-desc"></span>
+  </div>
+</div>
+    <p class="ep-h">Responses</p>
+    <div class="ptab">
+  <div class="prow rrow">
+    <span class="r-code s2">200</span>
+    <span class="p-desc">Signed in.<span class="r-sig">{ user: <a href="#schema-SessionUser">SessionUser</a>, token: string }</span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">400</span>
+    <span class="p-desc">Name or password missing.</span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">401</span>
+    <span class="p-desc">Wrong name or password. Deliberately one answer for every cause.</span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">403</span>
+    <span class="p-desc">The right password for a disabled account.</span>
   </div>
   <div class="prow rrow">
     <span class="r-code s4">429</span>
@@ -3006,7 +3064,7 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
 
 <section class="api-sec" id="integrations">
   <h2>Integrations</h2>
-  <p class="sub">Settings → Integrations: outbound webhooks now, more providers later. Off unless the server runs with <code>INTEGRATIONS</code> (e.g. <code>INTEGRATIONS=webhook</code>); then a profile can add its own connections. Secrets are sealed at rest and shown once. See docs/INTEGRATIONS.md.</p>
+  <p class="sub">Settings → Integrations: outbound webhooks, and Whoop (inbound, OAuth) added by this fork. Off unless the server runs with <code>INTEGRATIONS</code> (e.g. <code>INTEGRATIONS=webhook</code>); then a profile can add its own connections. Secrets are sealed at rest and shown once. See docs/INTEGRATIONS.md.</p>
   <div class="eps">
 
 <details class="ep" id="op-listIntegrations">
@@ -3030,6 +3088,138 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
   <div class="prow rrow">
     <span class="r-code s4">401</span>
     <span class="p-desc">No session, expired/revoked session, or a disabled account.<span class="r-sig"><code>{&quot;error&quot;:&quot;not signed in&quot;}</code></span></span>
+  </div>
+    </div>
+  </div>
+</details>
+
+<details class="ep" id="op-whoopAuthorize">
+  <summary>
+    <span class="m get">GET</span>
+    <span class="ep-path"><code>/api/integrations/whoop/authorize</code></span>
+    <span class="ep-chev" aria-hidden="true"></span>
+    <span class="ep-sum">The Whoop sign-in URL (OAuth 2.0 authorization code)</span>
+  </summary>
+  <div class="ep-body">
+<p>Whoop only (<code>INTEGRATIONS=webhook,whoop</code> plus <code>WHOOP_CLIENT_ID</code>, <code>WHOOP_CLIENT_SECRET</code>, <code>WHOOP_REDIRECT_URI</code>). The app navigates the browser to <code>url</code>; Whoop sends it back to <code>/api/integrations/oauth/callback</code>. The <code>state</code> inside is single-use, tied to the caller and valid for ten minutes. Scopes: offline (needed for a refresh token), read:recovery, read:cycles, read:sleep, read:workout, read:profile, read:body_measurement.</p>
+    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Requires a session: the cookie set at sign-in, or <code>Authorization: Bearer &lt;token&gt;</code> from mobile-app pairing.</span></p>
+
+
+    <p class="ep-h">Responses</p>
+    <div class="ptab">
+  <div class="prow rrow">
+    <span class="r-code s2">200</span>
+    <span class="p-desc">Where to send the browser.<span class="r-sig">{ url: string }</span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">401</span>
+    <span class="p-desc">No session, expired/revoked session, or a disabled account.<span class="r-sig"><code>{&quot;error&quot;:&quot;not signed in&quot;}</code></span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">404</span>
+    <span class="p-desc">Whoop is not switched on on this server.</span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">429</span>
+    <span class="p-desc">Too many sign-ins in progress.</span>
+  </div>
+    </div>
+  </div>
+</details>
+
+<details class="ep" id="op-whoopCallback">
+  <summary>
+    <span class="m get">GET</span>
+    <span class="ep-path"><code>/api/integrations/oauth/callback</code></span>
+    <span class="ep-chev" aria-hidden="true"></span>
+    <span class="ep-sum">Where Whoop sends the browser back to</span>
+  </summary>
+  <div class="ep-body">
+<p>A browser navigation, not an API call. Checks <code>state</code>, exchanges <code>code</code> for tokens, seals them, starts the first sync and answers <code>302</code> to the app's Integrations page with <code>?whoop=ok</code>, <code>denied</code>, <code>signin</code> or <code>error</code>.</p>
+    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Requires a session: the cookie set at sign-in, or <code>Authorization: Bearer &lt;token&gt;</code> from mobile-app pairing.</span></p>
+<p class="ep-h">Query parameters</p><div class="ptab">
+  <div class="prow">
+    <span class="p-name">code</span>
+    <span class="p-type">string</span>
+    <span class="p-desc"></span>
+  </div>
+  <div class="prow">
+    <span class="p-name">state</span>
+    <span class="p-type">string</span>
+    <span class="p-desc"></span>
+  </div>
+  <div class="prow">
+    <span class="p-name">error</span>
+    <span class="p-type">string</span>
+    <span class="p-desc"></span>
+  </div>
+</div>
+
+    <p class="ep-h">Responses</p>
+    <div class="ptab">
+  <div class="prow rrow">
+    <span class="r-code s3">302</span>
+    <span class="p-desc">Back to the app.</span>
+  </div>
+    </div>
+  </div>
+</details>
+
+<details class="ep" id="op-whoopSync">
+  <summary>
+    <span class="m post">POST</span>
+    <span class="ep-path"><code>/api/integrations/whoop/sync</code></span>
+    <span class="ep-chev" aria-hidden="true"></span>
+    <span class="ep-sum">Pull the latest Whoop data now</span>
+  </summary>
+  <div class="ep-body">
+<p>Also runs on its own every 30 minutes (<code>WHOOP_SYNC_MINUTES</code>). Whoop allows 100 requests a minute and 10 000 a day. <code>code</code> is <code>rate</code> when Whoop asked us to wait, <code>reauth</code> when the grant was refused and the person has to connect again.</p>
+    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Requires a session: the cookie set at sign-in, or <code>Authorization: Bearer &lt;token&gt;</code> from mobile-app pairing.</span></p>
+
+
+    <p class="ep-h">Responses</p>
+    <div class="ptab">
+  <div class="prow rrow">
+    <span class="r-code s2">200</span>
+    <span class="p-desc">What was pulled, or why not.<span class="r-sig">{ ok: boolean, cycles: integer, recovery: integer, sleep: integer, workouts: integer, code: &quot;rate&quot; | &quot;reauth&quot; | &quot;network&quot; | &quot;http&quot; | &quot;error&quot;, skipped: string }</span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">401</span>
+    <span class="p-desc">No session, expired/revoked session, or a disabled account.<span class="r-sig"><code>{&quot;error&quot;:&quot;not signed in&quot;}</code></span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">404</span>
+    <span class="p-desc">Whoop is off</span>
+  </div>
+    </div>
+  </div>
+</details>
+
+<details class="ep" id="op-whoopSummary">
+  <summary>
+    <span class="m get">GET</span>
+    <span class="ep-path"><code>/api/whoop/summary</code></span>
+    <span class="ep-chev" aria-hidden="true"></span>
+    <span class="ep-sum">Recovery, sleep, strain, steps and workouts from Whoop</span>
+  </summary>
+  <div class="ep-body">
+<p>Everything the Whoop screens and the Home card draw. A value Whoop did not send is <code>null</code> (draw a dash, never 0). <code>steps</code> is Whoop's own <code>step_count</code> when the device sends one. <code>today.guidance</code> is the recovery band (67+ green, 34-66 yellow, 33 and below red); <code>zone45</code> the week's zone 4-5 minutes against the 20-25 minute target (warn above 30); <code>hrFlags</code> the workouts that went above the 175 bpm ceiling in the last 14 days. <code>connected</code> / <code>status</code> / <code>connectionId</code> say whether the caller has a Whoop connection.</p>
+    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Requires a session: the cookie set at sign-in, or <code>Authorization: Bearer &lt;token&gt;</code> from mobile-app pairing.</span></p>
+
+
+    <p class="ep-h">Responses</p>
+    <div class="ptab">
+  <div class="prow rrow">
+    <span class="r-code s2">200</span>
+    <span class="p-desc">The summary (empty <code>days</code> until the first sync finishes).<span class="r-sig">object</span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">401</span>
+    <span class="p-desc">No session, expired/revoked session, or a disabled account.<span class="r-sig"><code>{&quot;error&quot;:&quot;not signed in&quot;}</code></span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">404</span>
+    <span class="p-desc">Whoop is not switched on on this server.</span>
   </div>
     </div>
   </div>

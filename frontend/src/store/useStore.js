@@ -8,6 +8,7 @@ import { DEMO, DEMO_SEEDED } from '../lib/demo.js'
 import { rememberDefaultLang } from '../lib/default-lang.js'
 import { guestAllowed } from '../lib/guest.js'
 import { stateJson } from '../lib/state-json.js'
+import { PRESET_SERVER } from '../lib/server-preset.js'
 import { MOBILE, initReminderSync, nativeLoad, nativeSave, onAppActive, readJsonFile, syncReminder, writeAutoBackup, writeJsonFile } from '../lib/mobile.js'
 import { initHealthSync, syncHealth, readHealth } from '../lib/health-sync.js'
 import { refillIfComplete } from '../lib/rotation.js'
@@ -21,7 +22,7 @@ import { countChanges, syncFingerprint } from '../lib/sync-changes.js'
 import { saveWorkoutEdit, deleteEditedWorkout } from '../lib/session-edit.js'
 import { appBase } from '../lib/app-base.js'
 import { linkTokenFromSearch, stripLinkFromUrl } from '../lib/device-link.js'
-import { loadRemote, chooseLocal, forgetRemote, connect, normalizeServerUrl, renewToken } from '../lib/remote.js'
+import { loadRemote, chooseLocal, forgetRemote, connect, connectPassword, normalizeServerUrl, renewToken } from '../lib/remote.js'
 import { loadCfAccess } from '../lib/cf-access.js'
 import { loadCoachDevice, saveCoachDevice, coachDeviceSettings } from '../lib/coach-device.js'
 import { initCoachSchedule } from '../lib/coach-schedule.js'
@@ -1943,7 +1944,13 @@ export const useStore = create((set, get) => {
     // switches this device over to that account, same as signing in on the web does — the same
     // account pairing again merges what the phone kept (adoptProfile).
     async connectToServer(url, code, ask) {
-      const user = await connect(url, code)   // throws on a bad URL/expired code — caller shows it
+      return get()._afterConnect(url, await connect(url, code), ask)   // throws on a bad URL/expired code — caller shows it
+    },
+    // Name + password (this fork, lib/server-preset.js): ends in the same place as a pairing.
+    async connectToServerPassword(url, name, password, ask) {
+      return get()._afterConnect(url, await connectPassword(url, name, password), ask)
+    },
+    async _afterConnect(url, user, ask) {
       // The account first, the address after: a copy another account still owed is kept aside
       // for it under the server it belongs to, not the one being paired.
       get().setUser(user, { adopt: true })
@@ -1966,7 +1973,7 @@ export const useStore = create((set, get) => {
       await forgetRemote()
       pairedBase = null
       setSync({ server: null })
-      get().setGuest(true)
+      if (!PRESET_SERVER) get().setGuest(true)   // a preset server has no local mode: back to the sign-in screen
       set({ ready: true })
       return r
     },
@@ -2008,7 +2015,7 @@ export const useStore = create((set, get) => {
         await forgetRemote()
         pairedBase = null
         setSync({ server: null })
-        get().setGuest(true)
+        if (!PRESET_SERVER) get().setGuest(true)
         set({ ready: true })
       }
     },
@@ -2092,12 +2099,12 @@ export const useStore = create((set, get) => {
           // again; the address is gone, so pairing asks for it.
           markOwed(true)
           failed({ status: 0, code: 'not-paired' }, { pending: true })
-        } else get().setGuest(true)
+        } else if (!PRESET_SERVER) get().setGuest(true)   // with a preset server there is no local mode: the sign-in screen shows (views/Login.jsx)
         syncReminder(get().S)
         // Only a genuinely first launch — nothing chosen yet and nothing to lose either — offers
         // the choice. Picking local (even with no data yet) persists that choice below and this
         // never asks again.
-        finishBoot({ needsMobileOnboarding: !remote && !hasData(get().S) })
+        finishBoot({ needsMobileOnboarding: !PRESET_SERVER && !remote && !hasData(get().S) })
         return
       }
       // Demo build (GitHub Pages): no backend at all — seed once, stay in guest mode.

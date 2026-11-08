@@ -11,7 +11,7 @@ import { copyText } from '../lib/clipboard.js'
 import { platformNow } from '../lib/platform-now.js'
 import { coachAvailable } from '../lib/coach.js'
 import { healthStatus, loadHealth, onHealthChange, disableHealth, disableRead } from '../lib/health-sync.js'
-import { directory, cardState, CARD, PILL, WORKS_WITH, WEBHOOK_EVENTS, webhookUrlProblem, normalizeWebhookUrl } from '../lib/integrations.js'
+import { directory, shownDirectory, shownCards, cardState, CARD, PILL, WORKS_WITH, WEBHOOK_EVENTS, webhookUrlProblem, normalizeWebhookUrl } from '../lib/integrations.js'
 import { importFromApp, importFromHevy, confirmSheet, menuSheet } from '../sheets.jsx'
 import { csvExportSheet } from '../components/CsvExportSheet.jsx'
 import Icon from '../components/Icon.jsx'
@@ -126,9 +126,16 @@ export default function IntegrationsPage({ android = false, ios = false }) {
     mod: id => isOn(S, id),
     coach: coachAvailable(config, user, { demo: DEMO }), coachMode: coachLocal?.mode === 'server' || coachLocal?.mode === 'byok' ? coachLocal.mode : null,
   }
-  const dir = directory(ctx)
+  const dir = shownDirectory(ctx)
 
-  // Back from Whoop's sign-in: the server redirects here with ?whoop=ok|denied|signin|error.
+  // Back from Whoop in the phone's browser: the connection exists now, so the card has to say so.
+  useEffect(() => {
+    const again = () => { if (document.visibilityState === 'visible') server.load() }
+    document.addEventListener('visibilitychange', again)
+    return () => document.removeEventListener('visibilitychange', again)
+  }, [server.load]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Back from Whoop's sign-in: the server redirects here with ?whoop=ok|denied|signin|expired|error.
   useEffect(() => {
     const r = whoopReturn(window.location.hash, window.location.search)
     if (!r) return
@@ -187,7 +194,7 @@ export default function IntegrationsPage({ android = false, ios = false }) {
       <Section title={t(cat.title)}>
         {cat.cards.map(card => <Card key={card.id} card={card} onOpen={() => open(card)} onAction={() => act(card)} />)}
       </Section>
-      {cat.id === 'health' && <WorksWith platform={platform} nav={nav} />}
+      {cat.id === 'health' && !shownCards() && <WorksWith platform={platform} nav={nav} />}
     </div>)}
     <input ref={fileRef} type="file" accept=".csv,.xml,text/csv,text/xml" style={{ display: 'none' }}
       onChange={ev => { const f = ev.target.files[0]; if (f) importFromApp(f); ev.target.value = '' }} />

@@ -9,7 +9,12 @@ import { useState, useRef, useEffect } from 'react'
 import Icon from '../components/Icon.jsx'
 import { Button, Segmented } from '../components/ui.jsx'
 import { askAddDeviceData } from '../sheets.jsx'
-import { passwordOn, PasswordRegisterForm, openPasswordSignIn } from '../components/PasswordAuth.jsx'
+import { passwordOn, PasswordRegisterForm, openPasswordSignIn, passwordError } from '../components/PasswordAuth.jsx'
+import Logo from '../components/Logo.jsx'
+import { PRESET_SERVER } from '../lib/server-preset.js'
+import { simpleLogin } from '../lib/fork-flags.js'
+import { MOBILE } from '../lib/mobile.js'
+import { passwordLogin } from '../lib/api.js'
 import { openDeviceLinkRedeem } from '../components/Passkeys.jsx'
 import { openLostAccess } from '../components/LostAccess.jsx'
 
@@ -66,7 +71,7 @@ function RegisterSheet({ close }) {
   </>
 }
 
-export default function Login() {
+function LegacyLogin() {
   const { setUser, adoptProfile, setGuest } = useStore()
   const config = useStore(s => s.config)
   const canGuest = guestAllowed(config)
@@ -131,4 +136,56 @@ export default function Login() {
       <div className="dim small" style={{ marginTop: 26, lineHeight: 1.5 }}>{pwOn ? t('Passkeys use {0}. A password works too, where passkeys do not.', bio()) : t('Passkeys use {0}. No passwords to remember.', bio())}<br />{t('Each profile keeps its own plan, workouts & body weight.')}</div>
     </div>
   )
+}
+
+/* The sign-in screen (this fork): a name, a password, one button. No passkeys, no "create a profile", no guest door:
+   an instance run for one person (INVITE_ONLY, ALLOW_GUEST=0) has none of those to offer, and offering them is noise.
+   The phone app with a preset server (lib/server-preset.js) signs in to it with a token; a browser uses the cookie
+   route. Anything else (an instance without password sign-in) keeps the original screen. */
+function SignIn({ preset }) {
+  const [name, setName] = useState('')
+  const [pw, setPw] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState('')
+  const submit = async ev => {
+    ev.preventDefault()
+    if (busy) return
+    const n = name.trim()
+    if (!n) { setErr(t('Enter your name.')); return }
+    if (!pw) { setErr(t('Enter your password.')); return }
+    setBusy(true); setErr('')
+    try {
+      const st = useStore.getState()
+      if (preset) await st.connectToServerPassword(PRESET_SERVER, n, pw, askAddDeviceData)
+      else { const u = await passwordLogin(n, pw); st.setUser(u, { adopt: true }); await st.adoptProfile(askAddDeviceData) }
+      useUI.getState().toast(t('Welcome back, {0}', n))
+    } catch (e) { setErr(preset ? (e?.message || t('Sign-in failed')) : passwordError(e)) }
+    finally { setBusy(false) }
+  }
+  const host = preset ? (() => { try { return new URL(PRESET_SERVER).host } catch { return '' } })() : ''
+  const field = { autoCapitalize: 'none', autoCorrect: 'off', spellCheck: false }
+  return (
+    <form className="narrow login-form" onSubmit={submit} noValidate
+      style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: '78vh', textAlign: 'center' }}>
+      <div style={{ display: 'flex', justifyContent: 'center' }}><Logo size={84} /></div>
+      <h1 className="t-large" style={{ fontWeight: 700, margin: '14px 0 4px' }}>myGym</h1>
+      <div className="muted" style={{ marginBottom: 28 }}>{t('Sign in to continue')}</div>
+      <input className="input" name="username" autoComplete="username" placeholder={t('Name')} aria-label={t('Name')} maxLength={254}
+        enterKeyHint="next" value={name} onChange={e => setName(e.target.value)} {...field} />
+      <div style={{ height: 10 }} />
+      <input className="input" type="password" name="password" autoComplete="current-password" placeholder={t('Password')} aria-label={t('Password')}
+        maxLength={256} enterKeyHint="go" value={pw} onChange={e => setPw(e.target.value)} {...field} />
+      {err && <div role="alert" className="small" style={{ color: 'var(--red)', marginTop: 12, lineHeight: 1.45, overflowWrap: 'anywhere' }}>{err}</div>}
+      <div style={{ height: 16 }} />
+      <Button variant="primary" type="submit" disabled={busy}>{busy ? t('Signing in…') : t('Sign in')}</Button>
+      {host && <div className="dim small" style={{ marginTop: 22 }}>{t('Server: {0}', host)}</div>}
+    </form>
+  )
+}
+
+export default function Login() {
+  const config = useStore(s => s.config)
+  const preset = MOBILE && PRESET_SERVER !== ''
+  if (!DEMO && simpleLogin() && (preset || passwordOn(config))) return <SignIn preset={preset} />
+  return <LegacyLogin />
 }

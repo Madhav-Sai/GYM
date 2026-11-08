@@ -54,6 +54,7 @@ import { durationSheet } from '../components/DurationWheel.jsx'
 import { showsConnection, showsLocalLine } from '../components/SyncBanner.jsx'
 import BackupFolderRow, { useBackupFolder, autoBackupSubtitle } from '../components/BackupFolderRow.jsx'
 import AppIconRow from '../components/AppIconRow.jsx'
+import { altAppIcons } from '../lib/fork-flags.js'
 import { AnimationQualityRow } from '../components/Animations.jsx'
 import { ServerSyncSection, KeptChangesRows, leaveServer, connectServer, passkeySignIn } from '../components/ServerSync.jsx'
 import { passwordOn, PasswordRow, openPasswordSignIn, openPasswordRegister } from '../components/PasswordAuth.jsx'
@@ -463,7 +464,7 @@ export default function Settings({ page = null, find = null, via = null, entryKe
   const nfcOK = useNfcSupported()
   const canVibrate = vibrateSupported()
   const ctx = {
-    user, mobile: MOBILE, android, ios: MOBILE && ios, appIcons: MOBILE && !!platformNow(), demo: DEMO, wakeOK, hasMedia, pwOn, webauthn: webauthnOK(),
+    user, mobile: MOBILE, android, ios: MOBILE && ios, appIcons: altAppIcons() && MOBILE && !!platformNow(), demo: DEMO, wakeOK, hasMedia, pwOn, webauthn: webauthnOK(),
     sound: !!S.sound, playOnSilent: playOnSilentSupported(), canVibrate, vibrate: S.vibrate !== false,
     profiles: (S.equipProfiles || []).length > 0, nameLang: EXERCISE_NAME_LANGS.includes(baseLang(lang)),
     pushOK: !MOBILE && pushSupported(), reminderOn: !!S.reminder?.on, nudge: !!S.reminder?.nudge,
@@ -961,7 +962,7 @@ export default function Settings({ page = null, find = null, via = null, entryKe
           <AccentSwatches S={S} update={update} />
         </div>
         {/* The home-screen icon: the phone's own, not synced; in the phone app only. */}
-        {MOBILE && platformNow() && <AppIconRow />}
+        {altAppIcons() && MOBILE && platformNow() && <AppIconRow />}
         {/* How the muscle map is drawn. The exercise drawings follow it until they are set below. */}
         <Row icon="figureStrength" iconTint="var(--teal)" title={t('Body diagram')}>
           <Segmented
@@ -1067,7 +1068,7 @@ export default function Settings({ page = null, find = null, via = null, entryKe
           onClick={() => openSeasonal('christmas', 'advent')} />
       </Section>}
       {/* While a theme with its own icon shows, a way to it in Look & Home (it is there all year). */}
-      {MOBILE && platformNow() && seasonWithIcon(S) && <Section>
+      {altAppIcons() && MOBILE && platformNow() && seasonWithIcon(S) && <Section>
         <Row icon={seasonWithIcon(S).icon} iconTint={seasonWithIcon(S).tint} title={t(seasonWithIcon(S).appIconTitle)} accessory="chevron"
           onClick={() => nav('/settings/look', { state: { find: 'App icon' } })} />
       </Section>}

@@ -2,21 +2,8 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyLists-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>com.apple.developer.associated-domains</key>
-	<array>
-		<string>applinks:opengym.ch</string>
-	</array>
-	<key>com.apple.developer.healthkit</key>
-	<true/>
-	<key>com.apple.developer.healthkit.access</key>
-	<array/>
-	<key>com.apple.developer.nfc.readersession.formats</key>
-	<array>
-		<string>TAG</string>
-	</array>
-	<key>com.apple.security.application-groups</key>
-	<array>
-		<string>group.ch.opengym.app</string>
-	</array>
+	<!-- myGym, first install with a free Apple ID: no capabilities. The original's associated domain
+	     (opengym.ch) belongs to someone else; HealthKit, NFC and App Groups are added back (with your own ids)
+	     when widgets and Health sync are wired up. -->
 </dict>
 </plist>

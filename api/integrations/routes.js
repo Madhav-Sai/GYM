@@ -25,6 +25,18 @@ export function integrationRoutes({ json, readBody, readSession, hub, audit = ()
     res.writeHead(302, { Location: `${origin}/#/settings/integrations?whoop=${result}`, 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' });
     res.end();
   };
+  const PAGE = {
+    ok: ['Whoop connected', 'Go back to the myGym app. Your first sync is already running.'],
+    denied: ['Whoop sign-in cancelled', 'Nothing was connected. Go back to the myGym app to try again.'],
+    expired: ['That sign-in link expired', 'Go back to the myGym app and tap Connect again.'],
+    error: ['Could not connect Whoop', 'Go back to the myGym app and try again.'],
+  };
+  const resultPage = (res, result) => {
+    const [h, p] = PAGE[result] || PAGE.error;
+    const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>myGym</title><style>body{font:17px/1.5 -apple-system,Helvetica,Arial,sans-serif;background:#0c0e12;color:#fafafa;text-align:center;padding:18vh 24px 0}h1{font-size:24px}p{color:#a1a1aa}a{display:inline-block;margin-top:20px;padding:14px 26px;border-radius:14px;background:#ff9f0a;color:#0c0e12;font-weight:700;text-decoration:none}</style></head><body><h1>${h}</h1><p>${p}</p><a href="opengym://home">Open myGym</a></body></html>`;
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' });
+    res.end(html);
+  };
   const idOf = body => (typeof body?.id === 'string' ? body.id.slice(0, 40) : null);
 
   return {
@@ -69,23 +81,28 @@ export function integrationRoutes({ json, readBody, readSession, hub, audit = ()
       json(res, 200, whoopOr404().authorize(user.id));
     }),
 
-    // A browser navigation, not a fetch: it answers with a redirect back into the app, never JSON.
+    // A browser navigation, not a fetch. With a session cookie (the website) it redirects back into the app. Without
+    // one (the phone app, whose sign-in is a token and whose Whoop page opened in the phone's own browser) the
+    // one-time state says whose account this is, and the answer is a small page with a button back into the app.
     'GET /api/integrations/oauth/callback': async (req, res) => {
-      const user = readSession(req);
-      if (!user) return back(res, 'signin');
+      const session = readSession(req);
+      const q = Object.fromEntries(new URL(req.url, 'http://x').searchParams);
+      const whoop = hub.whoop;
+      const owner = whoop ? whoop.stateOwner(q.state) : null;
+      const uid = session ? session.id : owner;
+      const reply = result => (session ? back(res, result) : resultPage(res, result));
+      if (!uid) return reply(whoop ? 'expired' : 'error');
       let result = 'error';
       try {
-        const whoop = whoopOr404();
-        const q = Object.fromEntries(new URL(req.url, 'http://x').searchParams);
-        await whoop.callback(user.id, { code: q.code, state: q.state, error: q.error });
-        audit(req, 'integration.connect', { user, msg: 'whoop' });
-        whoop.sync(user.id, { force: true }).catch(() => {}); // the first pull runs while the browser returns
+        await whoopOr404().callback(uid, { code: q.code, state: q.state, error: q.error });
+        audit(req, 'integration.connect', session ? { user: session, msg: 'whoop' } : { uid, msg: 'whoop' });
+        whoop.sync(uid, { force: true }).catch(() => {}); // the first pull runs while the browser returns
         result = 'ok';
       } catch (e) {
         if (!e?.status) console.error('whoop callback', e);
-        result = e?.code === 'denied' ? 'denied' : 'error';
+        result = e?.code === 'denied' ? 'denied' : e?.code === 'state' ? 'expired' : 'error';
       }
-      back(res, result);
+      reply(result);
     },
 
     'POST /api/integrations/whoop/sync': guard(async (req, res, user) => {

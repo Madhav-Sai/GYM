@@ -40,7 +40,8 @@ describe('sync answers and the return from Whoop', () => {
     expect(whoopReturn('', '?whoop=error')).toBe('error')
     expect(whoopReturn('#/settings/integrations?whoop=<script>')).toBeNull()
     expect(whoopReturn('#/settings/integrations')).toBeNull()
-    for (const k of ['ok', 'denied', 'signin', 'error']) expect(RETURN_MESSAGE[k]).toBeTruthy()
+    for (const k of ['ok', 'denied', 'signin', 'expired', 'error']) expect(RETURN_MESSAGE[k]).toBeTruthy()
+    expect(whoopReturn('#/settings/integrations?whoop=expired')).toBe('expired')
   })
 })
 
