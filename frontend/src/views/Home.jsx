@@ -28,6 +28,7 @@ import { programmeChip } from '../lib/programmes.js'
 import { SeasonDeco } from '../components/Seasonal.jsx'
 import { WrappedHomeCard } from '../components/WrappedEntry.jsx'
 import RecoveryHint from '../components/RecoveryHint.jsx'
+import { WhoopHomeCard } from './WhoopSheets.jsx'
 import { ChallengesCard } from '../components/Challenges.jsx'
 import { isOn } from '../lib/modules.js'
 
@@ -202,6 +203,9 @@ export default function Home() {
 
     {/* What has rested and what is still recovering, kindly (lib/recovery-hint.js). */}
     {on('health') && <RecoveryHint S={S} />}
+
+    {/* Whoop (our addition): recovery, sleep and steps, only once this profile connected it. */}
+    <WhoopHomeCard />
 
     {/* This month's three challenges and how far you are (lib/challenges.js). */}
     <ChallengesCard S={S} />

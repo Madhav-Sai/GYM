@@ -1,0 +1,9 @@
+/* Whoop (our addition). Only openGym's own variables, so it follows the theme, the accent and dark mode. */
+.wh-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 4px; }
+.wh-stat { min-width: 0; }
+.wh-stat .wh-n { font-size: var(--fs-title, 22px); font-weight: 700; line-height: 1.15; font-variant-numeric: tabular-nums; }
+.wh-stat .wh-n small { font-size: var(--fs-footnote, 13px); font-weight: 500; color: var(--label2, var(--grey)); margin-left: 2px; }
+.wh-stat .wh-l { font-size: var(--fs-caption, 12px); color: var(--label2, var(--grey)); margin-top: 2px; }
+.wh-guide { margin-top: 10px; font-size: var(--fs-footnote, 13px); font-weight: 600; }
+.wh-flag { margin-top: 6px; font-size: var(--fs-footnote, 13px); color: var(--red); }
+.wh-dim { color: var(--label2, var(--grey)); }

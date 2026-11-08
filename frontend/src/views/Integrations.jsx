@@ -18,6 +18,8 @@ import Icon from '../components/Icon.jsx'
 import EmptyState from '../components/EmptyState.jsx'
 import { Section, Row, Switch, Button, TextField } from '../components/ui.jsx'
 import { isOn } from '../lib/modules.js'
+import { whoopSheet, connectWhoop } from './WhoopSheets.jsx'
+import { whoopReturn, RETURN_MESSAGE } from '../lib/whoop.js'
 
 /* Settings → Integrations (v1.4.4): one directory of what openGym can talk to, grouped, each card
    with what it is, whether it is on, and the one thing to do next. The cards are thin on purpose:
@@ -126,6 +128,17 @@ export default function IntegrationsPage({ android = false, ios = false }) {
   }
   const dir = directory(ctx)
 
+  // Back from Whoop's sign-in: the server redirects here with ?whoop=ok|denied|signin|error.
+  useEffect(() => {
+    const r = whoopReturn(window.location.hash, window.location.search)
+    if (!r) return
+    toast?.(t(RETURN_MESSAGE[r]))
+    if (r === 'ok') server.load()
+    // Drop the marker so a reload does not repeat the message.
+    const h = window.location.hash.replace(/[?&]whoop=[^&]*/, '').replace(/\?$/, '')
+    window.history.replaceState(null, '', window.location.pathname + window.location.search + h)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
   const webhookCtx = { server, lan: !!config?.integrations?.lan, toast }
   const act = card => {
     const { action, status } = card.state
@@ -141,6 +154,14 @@ export default function IntegrationsPage({ android = false, ios = false }) {
         if (action === 'open') return infoSheet(card, t('Webhooks are off on this server. Add INTEGRATIONS=webhook to its .env and restart it.'), INTEGRATIONS_DOCS)
         if (action === 'connect') return addWebhookSheet(webhookCtx)
         return webhookListSheet(webhookCtx)
+      case 'whoop': {
+        // Our addition: Whoop is connected by signing in with it (OAuth), not by a form.
+        if (status === 'server') return infoSheet(card, t('Whoop is pulled by your own openGym server, so it needs one. Connect this device to it in Account.'))
+        if (action === 'open') return infoSheet(card, t('Whoop is off on this server. Add whoop to INTEGRATIONS and set WHOOP_CLIENT_ID, WHOOP_CLIENT_SECRET and WHOOP_REDIRECT_URI in its .env, then restart it.'), 'https://developer.whoop.com/docs/developing/getting-started')
+        if (action === 'connect') return connectWhoop(toast)
+        const conn = (server.data?.connections || []).find(c => c.provider === 'whoop')
+        return conn && whoopSheet({ conn, server, toast })
+      }
       case 'coach': return nav(MOBILE ? '/coach/setup' : '/coach')
       case 'mcp':
         if (status === 'server') return infoSheet(card, t('The MCP server runs next to your own openGym server and reads your data there.'), MCP_DOCS)
@@ -150,7 +171,8 @@ export default function IntegrationsPage({ android = false, ios = false }) {
   }
   const open = card => {
     // The health stores and the webhooks have more to say than a card holds.
-    if (card.state.status === 'device' || card.state.status === 'server' || card.state.action === 'open' && card.id === 'webhook') return act(card)
+    if (card.state.status === 'device' || card.state.status === 'server' || card.state.action === 'open' && (card.id === 'webhook' || card.id === 'whoop')) return act(card)
+    if (card.id === 'whoop' && card.state.action === 'manage') return act(card)
     if (card.id === 'webhook') return card.state.action === 'connect' ? detailSheet(card, { act: () => act(card) }) : webhookListSheet(webhookCtx)
     if (card.id === 'apple-health' || card.id === 'health-connect') {
       return detailSheet(card, { act: () => act(card), health, onDisconnect: healthOn(health) ? () => disconnectHealth(card, toast) : null, retry: () => nav('/settings/' + card.id) })

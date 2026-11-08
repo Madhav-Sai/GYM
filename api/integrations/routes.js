@@ -93,7 +93,9 @@ export function integrationRoutes({ json, readBody, readSession, hub, audit = ()
     }),
 
     'GET /api/whoop/summary': guard(async (req, res, user) => {
-      json(res, 200, whoopOr404().summary(user.id));
+      const conn = hub.describe(user.id).connections.find(c => c.provider === 'whoop');
+      // `connected` tells "never connected" from "connected, first sync still running".
+      json(res, 200, { ...whoopOr404().summary(user.id), connected: !!conn, status: conn?.status || null, connectionId: conn?.id || null });
     }),
 
     'GET /api/integrations/log': guard(async (req, res, user) => {

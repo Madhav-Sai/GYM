@@ -1,0 +1,32 @@
+# One-command HTTPS for a VPS (our addition to openGym). Adds Caddy, which gets and renews a
+# Let's Encrypt certificate for DOMAIN by itself, and closes the web container's public port so the
+# only way in is HTTPS.
+#
+#   docker compose -f docker-compose.yml -f deploy/docker-compose.https.yml up -d --build
+#
+# Needs in .env: DOMAIN=gym.example.com  RP_ID=gym.example.com  ORIGIN=https://gym.example.com
+# and ports 80 and 443 open (80 is only for the certificate challenge and redirects to 443).
+services:
+  web:
+    # Loopback only: reachable from the host itself (health checks), not from the internet.
+    ports: !override
+      - "127.0.0.1:${WEB_PORT:-8080}:${NGINX_PORT:-80}"
+  caddy:
+    image: caddy:2.10-alpine
+    restart: unless-stopped
+    depends_on:
+      - web
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      - DOMAIN=${DOMAIN:?set DOMAIN in .env, e.g. gym.example.com}
+      - NGINX_PORT=${NGINX_PORT:-80}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data      # the certificates: keep this volume, or you re-request one on every restart
+      - caddy_config:/config
+volumes:
+  caddy_data:
+  caddy_config:

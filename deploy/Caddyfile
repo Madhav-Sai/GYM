@@ -1,0 +1,8 @@
+{$DOMAIN} {
+	encode zstd gzip
+	# Large enough for the photos and videos of custom exercises (web's MEDIA_UPLOAD_MAX is the real limit).
+	request_body {
+		max_size 50MB
+	}
+	reverse_proxy web:{$NGINX_PORT:80}
+}

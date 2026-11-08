@@ -2601,6 +2601,7 @@ paths:
         `today.guidance` is the recovery band (67+ green, 34-66 yellow, 33 and below red);
         `zone45` the week's zone 4-5 minutes against the 20-25 minute target (warn above 30);
         `hrFlags` the workouts that went above the 175 bpm ceiling in the last 14 days.
+        `connected` / `status` / `connectionId` say whether the caller has a Whoop connection.
       responses:
         '200':
           description: The summary (empty `days` until the first sync finishes).

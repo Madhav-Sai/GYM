@@ -28,6 +28,11 @@ export const CARDS = [
     syncs: ['Finished workouts and weigh-ins go to Health Connect.', 'Heart rate from your watch fills in each set.', 'Weigh-ins from your smart scale land here.'],
   },
   {
+    id: 'whoop', cat: 'health', name: 'Whoop', icon: 'heart', tint: 'var(--red)',
+    desc: 'Recovery, sleep, strain, steps and workouts from your Whoop.',
+    syncs: ['Recovery, HRV, resting heart rate and sleep, pulled by your server every 30 minutes.', 'Day strain, workouts and the steps Whoop counts.', 'Warns when a workout goes above 175 bpm. Disconnect any time and your server forgets it.'],
+  },
+  {
     id: 'hevy', cat: 'training', name: 'Hevy', icon: 'key', tint: 'var(--teal)',
     desc: 'Bring your Hevy history over with a Pro API key.',
     syncs: ['Workouts, routines and weigh-ins, once.', 'The key is used for this import and then forgotten.'],
@@ -122,6 +127,15 @@ export function cardState(id, ctx) {
       if (mine.some(c => c.status === 'attention')) return { status: 'attention', action: 'manage' }
       return mine.every(c => c.paused) ? { status: 'off', action: 'manage' } : { status: 'connected', action: 'manage' }
     }
+    case 'whoop': {
+      // Our addition. A server job (OAuth + a pull every 30 minutes), so it needs your own server.
+      if (ctx.demo || !ctx.user) return { status: 'server', action: null }
+      if (!(ctx.offered || []).includes('whoop')) return ctx.admin ? { status: 'off', action: 'open' } : null
+      const mine = (ctx.server?.connections || []).filter(c => c.provider === 'whoop')
+      if (!mine.length) return { status: 'off', action: 'connect' }
+      if (mine.some(c => c.status === 'attention')) return { status: 'attention', action: 'manage' }
+      return mine.every(c => c.paused) ? { status: 'off', action: 'manage' } : { status: 'connected', action: 'manage' }
+    }
     case 'coach':
       if (ctx.mobile) return { status: ctx.coachMode ? 'connected' : 'off', action: ctx.coachMode ? 'manage' : 'connect' }
       return ctx.coach ? { status: 'connected', action: 'open' } : null
@@ -134,7 +148,7 @@ export function cardState(id, ctx) {
 }
 
 // The module (lib/modules.js) a card belongs to: with it off, the card is not in the directory.
-export const CARD_MODULE = { 'apple-health': 'health', 'health-connect': 'health', webhook: 'integrations', mcp: 'integrations', coach: 'coach' }
+export const CARD_MODULE = { 'apple-health': 'health', 'health-connect': 'health', whoop: 'integrations', webhook: 'integrations', mcp: 'integrations', coach: 'coach' }
 
 /** The directory for this device: categories with their visible cards, empty ones left out.
  *  `ctx.mod(id)` says whether a module is on (absent: all on). */
