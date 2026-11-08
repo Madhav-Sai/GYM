@@ -77,8 +77,7 @@ struct WidgetSnapshot: Codable {
     var challenges: Challenges?
 
     static func load() -> WidgetSnapshot? {
-        guard let url = OpenGymGroup.container?.appendingPathComponent("widget.json"),
-              let data = try? Data(contentsOf: url) else { return nil }
+        guard let data = SharedSnapshot.load() else { return nil }
         return try? JSONDecoder().decode(WidgetSnapshot.self, from: data)
     }
 }

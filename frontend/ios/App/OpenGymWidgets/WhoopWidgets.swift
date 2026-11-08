@@ -38,8 +38,7 @@ private struct WhoopFile: Decodable { let whoop: WhoopBlock? }
 
 extension WhoopBlock {
     static func load() -> WhoopBlock? {
-        guard let url = OpenGymGroup.container?.appendingPathComponent("widget.json"),
-              let data = try? Data(contentsOf: url) else { return nil }
+        guard let data = SharedSnapshot.load() else { return nil }
         return (try? JSONDecoder().decode(WhoopFile.self, from: data))?.whoop
     }
 }
@@ -64,14 +63,14 @@ struct WhoopProvider: TimelineProvider {
 // MARK: - looks
 
 enum WH {
-    static let green = Color(red: 0.063, green: 0.725, blue: 0.506)   // #10B981
-    static let yellow = Color(red: 0.961, green: 0.620, blue: 0.043)  // #F59E0B
-    static let red = Color(red: 0.937, green: 0.267, blue: 0.267)     // #EF4444
-    static let strain = Color(red: 0.055, green: 0.647, blue: 0.914)  // #0EA5E9
-    static let sleep = Color(red: 0.545, green: 0.486, blue: 0.965)   // #8B7CF6
-    static let steps = Color(red: 0.180, green: 0.835, blue: 0.451)
-    static let dim = Color.secondary
-    static let bg = Color(red: 0.039, green: 0.039, blue: 0.043)      // #0A0A0B
+    static let green = Color(red: 0.086, green: 0.925, blue: 0.024)   // #16EC06
+    static let yellow = Color(red: 1.0, green: 0.871, blue: 0.0)      // #FFDE00
+    static let red = Color(red: 1.0, green: 0.0, blue: 0.149)         // #FF0026
+    static let strain = Color(red: 0.0, green: 0.576, blue: 0.906)     // #0093E7
+    static let sleep = Color(red: 0.482, green: 0.631, blue: 0.733)   // #7BA1BB
+    static let steps = Color(red: 0.180, green: 0.902, blue: 0.659)    // #2EE6A8
+    static let dim = Color(red: 0.541, green: 0.600, blue: 0.651)     // #8A99A6
+    static let bg = LinearGradient(colors: [Color(red: 0.110, green: 0.145, blue: 0.169), Color(red: 0.043, green: 0.059, blue: 0.071)], startPoint: .topLeading, endPoint: .bottomTrailing)
     static let link = URL(string: "opengym://whoop")!
 
     static func band(_ score: Double?) -> Color {
@@ -118,15 +117,16 @@ struct WRing: View {
     var body: some View {
         VStack(spacing: 3) {
             ZStack {
-                Circle().stroke(Color.gray.opacity(0.22), lineWidth: line)
+                Circle().stroke(Color.white.opacity(0.08), lineWidth: line)
                 if let f = frac {
                     Circle().trim(from: 0, to: f)
-                        .stroke(color, style: StrokeStyle(lineWidth: line, lineCap: .round))
+                        .stroke(AngularGradient(colors: [color.opacity(0.55), color], center: .center, startAngle: .degrees(0), endAngle: .degrees(360 * f)), style: StrokeStyle(lineWidth: line, lineCap: .round))
                         .rotationEffect(.degrees(-90))
+                        .shadow(color: color.opacity(0.6), radius: 4)
                 }
                 HStack(alignment: .firstTextBaseline, spacing: 1) {
                     Text(value).font(.system(size: font, weight: .heavy, design: .rounded)).monospacedDigit()
-                        .foregroundColor(frac == nil ? .secondary : color)
+                        .foregroundColor(frac == nil ? WH.dim : .white)
                     if frac != nil && !unit.isEmpty { Text(unit).font(.system(size: font * 0.45, weight: .bold)).foregroundColor(color.opacity(0.85)) }
                 }
                 .minimumScaleFactor(0.5).lineLimit(1).padding(.horizontal, line + 2)

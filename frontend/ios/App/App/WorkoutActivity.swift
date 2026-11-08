@@ -1,3 +1,4 @@
+import Security
 import ActivityKit
 import AppIntents
 import Foundation
@@ -15,6 +16,42 @@ import UserNotifications
  */
 
 /// The App Group the app, the widget extension and the asset pack downloader share.
+/// myGym: the widget snapshot also lives in a keychain item both the app and the widget extension can read
+/// (keychain-access-groups, team prefix + com.madhavsais.mygym.shared). A free Apple ID cannot sign App Groups,
+/// a shared keychain group needs nothing registered with Apple. The App Group file stays the first choice.
+enum SharedSnapshot {
+    static let service = "com.madhavsais.mygym.widget"
+    static let account = "widget.json"
+    static var group: String? {
+        guard let prefix = Bundle.main.object(forInfoDictionaryKey: "AppIdentifierPrefix") as? String, !prefix.isEmpty, !prefix.hasPrefix("$(") else { return nil }
+        return prefix + "com.madhavsais.mygym.shared"
+    }
+    private static func base() -> [String: Any]? {
+        guard let g = group else { return nil }
+        return [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: service,
+                kSecAttrAccount as String: account, kSecAttrAccessGroup as String: g]
+    }
+    @discardableResult static func write(_ data: Data) -> Bool {
+        guard var q = base() else { return false }
+        SecItemDelete(q as CFDictionary)
+        q[kSecValueData as String] = data
+        q[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlock
+        return SecItemAdd(q as CFDictionary, nil) == errSecSuccess
+    }
+    static func read() -> Data? {
+        guard var q = base() else { return nil }
+        q[kSecReturnData as String] = true
+        q[kSecMatchLimit as String] = kSecMatchLimitOne
+        var out: CFTypeRef?
+        return SecItemCopyMatching(q as CFDictionary, &out) == errSecSuccess ? out as? Data : nil
+    }
+    /// The App Group file if there is one, else the keychain copy.
+    static func load() -> Data? {
+        if let url = OpenGymGroup.container?.appendingPathComponent("widget.json"), let d = try? Data(contentsOf: url) { return d }
+        return read()
+    }
+}
+
 enum OpenGymGroup {
     static let id = "group.com.madhavsais.mygym"
     static var defaults: UserDefaults { UserDefaults(suiteName: id) ?? .standard }

@@ -8,74 +8,81 @@
 .wh-flag { margin-top: 6px; font-size: var(--fs-footnote, 13px); color: var(--red); }
 .wh-dim { color: var(--label2, var(--grey)); }
 
-/* Whoop dashboard (views/WhoopDashboard.jsx) */
-:root { --whd-strain: #0EA5E9; --whd-sleep: #8B7CF6; --whd-deep: #6D5DF5; --whd-rem: #38BDF8; --whd-light: #A5B4FC; --whd-awake: #F59E0B; }
-.whd { display: flex; flex-direction: column; gap: 10px; padding-bottom: 8px; }
-.whd-card { background: var(--bg-el); border: 1px solid var(--hair); border-radius: 16px; padding: 14px; }
-.whd-hero { background: var(--bg-el); background: radial-gradient(120% 90% at 50% 0%, color-mix(in srgb, var(--green) 10%, transparent), transparent 70%), var(--bg-el); text-align: center; }
-.whd-day { font-size: var(--fs-caption); color: var(--label-2); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 8px; }
+/* Whoop dashboard (views/WhoopDashboard.jsx): the Whoop look in both themes. Near-black blue-grey panels,
+   white numbers, neon recovery colours. lib/whoop-view.js WH holds the same colours for the SVG. */
+.whd, .whoop-card {
+  --whd-bg: #0B0F12; --whd-panel: #151C21; --whd-panel-2: #1C252B; --whd-line: rgba(255,255,255,.07);
+  --whd-text: #FFFFFF; --whd-dim: #8A99A6; --whd-mute: #56636D;
+  --whd-g: #16EC06; --whd-y: #FFDE00; --whd-r: #FF0026; --whd-strain: #0093E7; --whd-sleep: #7BA1BB;
+}
+.whoop-card { background: #151C21; background: linear-gradient(160deg, #1C252B 0%, #10161A 100%); border: 1px solid rgba(255,255,255,.07); color: #fff; }
+.whoop-card .wh-dim, .whoop-card .ch-eyebrow { color: #8A99A6; }
+.whd { display: flex; flex-direction: column; gap: 10px; padding-bottom: 8px; color: var(--whd-text); }
+.whd-card { background: var(--whd-panel); background: linear-gradient(160deg, var(--whd-panel-2) 0%, var(--whd-panel) 100%); border: 1px solid var(--whd-line); border-radius: 18px; padding: 16px; }
+.whd-hero { text-align: center; background: #0B0F12; background: radial-gradient(130% 100% at 50% 0%, #22303A 0%, #0B0F12 75%); padding: 18px 12px 16px; }
+.whd-day { font-size: 11px; color: var(--whd-dim); text-transform: uppercase; letter-spacing: .14em; font-weight: 700; margin-bottom: 12px; }
 .whd-rings { display: flex; justify-content: space-around; gap: 6px; }
 .whd-ring { position: relative; display: flex; flex-direction: column; align-items: center; }
 .whd-ring svg { display: block; }
-.whd-arc { transition: stroke-dasharray .8s var(--ease, ease); }
+.whd-arc { transition: stroke-dasharray .9s cubic-bezier(.2,.8,.2,1); }
 .whd-ring-c { position: absolute; inset: 0 0 22px 0; display: grid; place-items: center; }
-.whd-ring-n { font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
-.whd-ring-n small { font-size: 11px; font-weight: 600; margin-left: 1px; opacity: .8; }
-.whd-ring-l { margin-top: 6px; font-size: var(--fs-caption); color: var(--label-2); font-weight: 600; }
-.whd-guide { margin-top: 10px; font-size: var(--fs-footnote); font-weight: 700; }
-.whd-guide.big { font-size: var(--fs-subhead); }
-.whd-note { margin-top: 6px; font-size: var(--fs-caption); color: var(--label-2); }
-.whd-h { margin: 10px 4px 0; font-size: var(--fs-footnote); font-weight: 700; color: var(--label-2); text-transform: uppercase; letter-spacing: .06em; }
+.whd-ring-n { font-size: 24px; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: -.03em; color: var(--whd-mute); }
+.whd-ring-n small { font-size: 11px; font-weight: 700; margin-left: 1px; }
+.whd-ring-l { margin-top: 8px; font-size: 10px; color: var(--whd-dim); font-weight: 800; text-transform: uppercase; letter-spacing: .12em; }
+.whd-guide { margin-top: 12px; font-size: 13px; font-weight: 700; }
+.whd-guide.big { font-size: 15px; }
+.whd-note { margin-top: 6px; font-size: 12px; color: var(--whd-dim); }
+.whd-h { margin: 14px 4px 2px; font-size: 11px; font-weight: 800; color: var(--whd-dim); text-transform: uppercase; letter-spacing: .14em; }
 .whd-h-row { display: flex; align-items: center; justify-content: space-between; }
 .whd-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
-.whd-tile { background: var(--bg-el); border: 1px solid var(--hair); border-radius: 14px; padding: 12px; min-width: 0; }
-.whd-tile-h { display: flex; align-items: center; gap: 6px; font-size: var(--fs-caption); color: var(--label-2); font-weight: 600; }
-.whd-tile-h svg { width: 15px; height: 15px; }
-.whd-tile-n { margin-top: 6px; font-size: 24px; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
-.whd-tile-n small, .whd-big small, .whd-tc-h small { font-size: 12px; font-weight: 600; color: var(--label-2); }
-.whd-tile-s { margin-top: 2px; font-size: var(--fs-caption); color: var(--red); font-weight: 600; }
-.whd-trend { display: inline-block; margin-top: 4px; font-size: var(--fs-caption); font-weight: 600; }
-.whd-trend.good { color: var(--green); } .whd-trend.bad { color: var(--red); } .whd-trend.flat { color: var(--label-2); }
+.whd-tile { background: var(--whd-panel); background: linear-gradient(160deg, var(--whd-panel-2) 0%, var(--whd-panel) 100%); border: 1px solid var(--whd-line); border-radius: 16px; padding: 12px 14px; min-width: 0; }
+.whd-tile-h { display: flex; align-items: center; gap: 6px; font-size: 10px; color: var(--whd-dim); font-weight: 800; text-transform: uppercase; letter-spacing: .1em; }
+.whd-tile-h svg { width: 14px; height: 14px; }
+.whd-tile-n { margin-top: 8px; font-size: 26px; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: -.03em; color: var(--whd-text); }
+.whd-tile-n small, .whd-big small, .whd-tc-h small { font-size: 12px; font-weight: 700; color: var(--whd-dim); }
+.whd-tile-s { margin-top: 2px; font-size: 11px; color: var(--whd-r); font-weight: 700; }
+.whd-trend { display: inline-block; margin-top: 4px; font-size: 11px; font-weight: 700; }
+.whd-trend.good { color: var(--whd-g); } .whd-trend.bad { color: var(--whd-r); } .whd-trend.flat { color: var(--whd-dim); }
 .whd-steps { display: flex; align-items: center; gap: 16px; }
 .whd-steps .whd-ring-n { font-size: 15px; }
 .whd-steps-r { flex: 1; min-width: 0; }
-.whd-src { margin-top: 6px; font-size: var(--fs-caption2, 11px); color: var(--label-3); }
-.whd-kv { display: flex; justify-content: space-between; gap: 8px; padding: 3px 0; font-size: var(--fs-footnote); }
-.whd-kv span { color: var(--label-2); } .whd-kv b { font-variant-numeric: tabular-nums; }
-.whd-kvs { display: grid; grid-template-columns: repeat(2, 1fr); column-gap: 18px; margin-top: 10px; }
+.whd-src { margin-top: 6px; font-size: 10px; color: var(--whd-mute); text-transform: uppercase; letter-spacing: .08em; }
+.whd-kv { display: flex; justify-content: space-between; gap: 8px; padding: 4px 0; font-size: 13px; }
+.whd-kv span { color: var(--whd-dim); } .whd-kv b { font-variant-numeric: tabular-nums; color: var(--whd-text); }
+.whd-kvs { display: grid; grid-template-columns: repeat(2, 1fr); column-gap: 18px; margin-top: 12px; }
 .whd-sleep-top { display: flex; justify-content: space-between; align-items: flex-end; gap: 8px; }
-.whd-big { font-size: 28px; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
-.whd-dim { font-size: var(--fs-caption); color: var(--label-2); margin-top: 2px; }
-.whd-times { font-size: var(--fs-footnote); color: var(--label-2); font-variant-numeric: tabular-nums; }
-.whd-stack { display: flex; height: 12px; border-radius: 6px; overflow: hidden; margin-top: 12px; gap: 2px; }
-.whd-stack.thin { height: 6px; margin-top: 8px; }
+.whd-big { font-size: 32px; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: -.03em; }
+.whd-dim { font-size: 12px; color: var(--whd-dim); margin-top: 2px; }
+.whd-times { font-size: 13px; color: var(--whd-dim); font-variant-numeric: tabular-nums; }
+.whd-stack { display: flex; height: 14px; border-radius: 7px; overflow: hidden; margin-top: 14px; gap: 2px; }
+.whd-stack.thin { height: 6px; margin-top: 10px; border-radius: 3px; }
 .whd-stack i { display: block; min-width: 2px; }
-.whd-legend { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 8px; font-size: var(--fs-caption); color: var(--label-2); }
-.whd-legend i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 4px; vertical-align: 0; }
-.whd-seg { display: inline-flex; background: var(--bg-el); border: 1px solid var(--hair); border-radius: 9px; padding: 2px; text-transform: none; letter-spacing: 0; }
-.whd-seg button { border: 0; background: none; color: var(--label-2); font: inherit; font-weight: 600; padding: 3px 10px; border-radius: 7px; }
-.whd-seg button.on { background: var(--acc); color: var(--on-acc, #000); }
-.whd-tc-h { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; font-size: var(--fs-footnote); color: var(--label-2); font-weight: 600; }
-.whd-tc-h b { color: var(--label); font-size: var(--fs-subhead); font-variant-numeric: tabular-nums; }
+.whd-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 10px; font-size: 11px; color: var(--whd-dim); }
+.whd-legend i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; }
+.whd-seg { display: inline-flex; background: var(--whd-panel); border: 1px solid var(--whd-line); border-radius: 10px; padding: 2px; text-transform: none; letter-spacing: 0; }
+.whd-seg button { border: 0; background: none; color: var(--whd-dim); font: inherit; font-size: 12px; font-weight: 700; padding: 4px 12px; border-radius: 8px; }
+.whd-seg button.on { background: #fff; color: #0B0F12; }
+.whd-tc-h { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px; font-size: 10px; color: var(--whd-dim); font-weight: 800; text-transform: uppercase; letter-spacing: .1em; }
+.whd-tc-h b { color: var(--whd-text); font-size: 18px; font-variant-numeric: tabular-nums; letter-spacing: -.02em; text-transform: none; }
 .whd-chart { display: block; width: 100%; }
-.whd-empty { color: var(--label-3); text-align: center; padding: 18px 0; }
-.whd-budget { position: relative; height: 12px; background: var(--hair); border-radius: 6px; margin: 12px 0 6px; overflow: hidden; }
-.whd-budget b { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 6px; transition: width .6s; }
-.whd-budget .tgt { position: absolute; top: 0; bottom: 0; background: rgba(16, 185, 129, .28); background: color-mix(in srgb, var(--green) 28%, transparent); }
-.whd-budget .warn { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--red); z-index: 1; }
-.whd-alarm { border-color: var(--red); border-color: color-mix(in srgb, var(--red) 50%, transparent); background: var(--bg-el); background: color-mix(in srgb, var(--red) 8%, var(--bg-el)); }
-.whd-alarm-h { color: var(--red); font-weight: 700; margin-bottom: 6px; display: flex; gap: 6px; align-items: center; }
+.whd-empty { color: var(--whd-mute); text-align: center; padding: 18px 0; }
+.whd-budget { position: relative; height: 10px; background: rgba(255,255,255,.07); border-radius: 5px; margin: 14px 0 8px; overflow: hidden; }
+.whd-budget b { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 5px; transition: width .6s; }
+.whd-budget .tgt { position: absolute; top: 0; bottom: 0; background: rgba(22, 236, 6, .22); }
+.whd-budget .warn { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--whd-r); z-index: 1; }
+.whd-alarm { border-color: rgba(255, 0, 38, .45); background: #2A0F14; background: linear-gradient(160deg, #3A1118 0%, #1C0B0E 100%); }
+.whd-alarm-h { color: #FF4D6A; font-weight: 800; margin-bottom: 6px; display: flex; gap: 6px; align-items: center; text-transform: uppercase; letter-spacing: .06em; font-size: 12px; }
 .whd-alarm-h svg, .whd-alert svg { width: 16px; height: 16px; }
-.whd-wos { display: flex; flex-direction: column; gap: 12px; }
-.whd-wo + .whd-wo { border-top: 1px solid var(--hair); padding-top: 12px; }
+.whd-wos { display: flex; flex-direction: column; gap: 14px; }
+.whd-wo + .whd-wo { border-top: 1px solid var(--whd-line); padding-top: 14px; }
 .whd-wo-top { display: flex; justify-content: space-between; gap: 8px; }
-.whd-cap { text-transform: capitalize; }
-.whd-wo-s { text-align: right; } .whd-wo-s b { font-size: 20px; font-weight: 800; display: block; } .whd-wo-s span { font-size: var(--fs-caption); color: var(--label-2); }
-.whd-wo-m { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 6px; font-size: var(--fs-footnote); color: var(--label-2); font-variant-numeric: tabular-nums; }
+.whd-cap { text-transform: capitalize; font-size: 15px; }
+.whd-wo-s { text-align: right; } .whd-wo-s b { font-size: 22px; font-weight: 800; display: block; letter-spacing: -.02em; } .whd-wo-s span { font-size: 10px; color: var(--whd-dim); text-transform: uppercase; letter-spacing: .1em; font-weight: 700; }
+.whd-wo-m { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 6px; font-size: 12px; color: var(--whd-dim); font-variant-numeric: tabular-nums; }
 .whd-home { cursor: pointer; }
-.whd-mini { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 12px; text-align: center; }
-.whd-mini b { display: block; font-size: var(--fs-subhead); font-weight: 800; font-variant-numeric: tabular-nums; }
-.whd-mini span { font-size: var(--fs-caption2, 11px); color: var(--label-2); }
-.whd-week { margin-top: 12px; }
-.whd-axis { display: flex; justify-content: space-around; font-size: 10px; color: var(--label-3); margin-top: 3px; font-variant-numeric: tabular-nums; }
-.whd-alert { margin-top: 10px; font-size: var(--fs-footnote); color: var(--red); font-weight: 600; display: flex; gap: 6px; align-items: center; }
+.whd-mini { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 16px; text-align: center; padding-top: 14px; border-top: 1px solid rgba(255,255,255,.07); }
+.whd-mini b { display: block; font-size: 17px; font-weight: 800; font-variant-numeric: tabular-nums; color: #fff; letter-spacing: -.02em; }
+.whd-mini span { font-size: 9px; color: #8A99A6; text-transform: uppercase; letter-spacing: .1em; font-weight: 700; }
+.whd-week { margin-top: 14px; }
+.whd-axis { display: flex; justify-content: space-around; font-size: 10px; color: #56636D; margin-top: 4px; font-variant-numeric: tabular-nums; }
+.whd-alert { margin-top: 12px; font-size: 12px; color: #FF4D6A; font-weight: 700; display: flex; gap: 6px; align-items: center; }

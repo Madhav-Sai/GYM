@@ -1,7 +1,9 @@
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import { t } from '../lib/i18n.js'
-import { DASH, numOrDash, fmtSleep, fmtSteps, zoneLine, BAND_INK } from '../lib/whoop.js'
-import { bandOf, pct, trendOf, clockOf, durMin, STEP_GOAL, STRAIN_MAX, ZONE_INK } from '../lib/whoop-view.js'
+import { DASH, numOrDash, fmtSleep, fmtSteps, zoneLine } from '../lib/whoop.js'
+import { bandOf, pct, trendOf, clockOf, durMin, STEP_GOAL, STRAIN_MAX, ZONE_INK, WH, BAND_COLOR } from '../lib/whoop-view.js'
+const BAND_INK = BAND_COLOR
+const ZINK = { 'var(--red)': WH.red, 'var(--yellow)': WH.yellow, 'var(--green)': WH.green, 'var(--grey)': WH.dim }
 import Icon from '../components/Icon.jsx'
 import './whoop.css'
 
@@ -9,35 +11,50 @@ import './whoop.css'
    and lines in plain SVG. Every missing value is a dash, never a 0 (lib/whoop.js). */
 
 export function Ring({ value, max = 100, ink, size = 96, stroke = 9, big, unit, label }) {
+  const id = useId().replace(/:/g, '')
   const r = (size - stroke) / 2, c = 2 * Math.PI * r
   const f = pct(value, max)
   return <div className="whd-ring" style={{ width: size }}>
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden="true">
-      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--hair)" strokeWidth={stroke} />
-      {f != null && <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={ink} strokeWidth={stroke} strokeLinecap="round"
-        strokeDasharray={`${c * f} ${c}`} transform={`rotate(-90 ${size / 2} ${size / 2})`} className="whd-arc" />}
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden="true" style={{ overflow: 'visible' }}>
+      <defs>
+        <linearGradient id={'g' + id} x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor={ink} stopOpacity="0.55" /><stop offset="1" stopColor={ink} /></linearGradient>
+        <filter id={'f' + id} x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="3" /></filter>
+      </defs>
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth={stroke} />
+      {f != null && <>
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={ink} strokeOpacity="0.45" strokeWidth={stroke} strokeLinecap="round"
+          strokeDasharray={`${c * f} ${c}`} transform={`rotate(-90 ${size / 2} ${size / 2})`} filter={`url(#f${id})`} />
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={`url(#g${id})`} strokeWidth={stroke} strokeLinecap="round"
+          strokeDasharray={`${c * f} ${c}`} transform={`rotate(-90 ${size / 2} ${size / 2})`} className="whd-arc" />
+      </>}
     </svg>
     <div className="whd-ring-c">
-      <div className="whd-ring-n" style={{ color: f != null ? ink : undefined }}>{big}{f != null && unit && <small>{unit}</small>}</div>
+      <div className="whd-ring-n" style={{ color: f != null ? '#fff' : undefined }}>{big}{f != null && unit && <small style={{ color: ink }}>{unit}</small>}</div>
     </div>
-    <div className="whd-ring-l">{label}</div>
+    <div className="whd-ring-l" style={{ color: f != null ? ink : undefined }}>{label}</div>
   </div>
 }
 
 /** Bars, oldest left. `ink(v)` colours each bar; `goal` draws a dashed line. */
 export function Bars({ values, ink, max, goal, height = 64 }) {
+  const id = useId().replace(/:/g, '')
   const n = values.length
   const top = max ?? Math.max(1, goal || 0, ...values.filter(v => v != null))
   const w = 100 / Math.max(n, 1)
+  const colorOf = v => (typeof ink === 'function' ? ink(v) : ink)
+  const inks = [...new Set(values.filter(v => v != null).map(colorOf))]
   return <svg className="whd-chart" viewBox={`0 0 100 ${height}`} preserveAspectRatio="none" style={{ height }} aria-hidden="true">
-    {values.map((v, i) => v == null ? null : <rect key={i} x={i * w + w * 0.15} width={w * 0.7}
-      y={height - Math.max(1.5, (v / top) * (height - 2))} height={Math.max(1.5, (v / top) * (height - 2))} rx={Math.min(1.5, w * 0.3)} fill={typeof ink === 'function' ? ink(v) : ink} />)}
-    {goal != null && <line x1="0" x2="100" y1={height - (goal / top) * (height - 2)} y2={height - (goal / top) * (height - 2)} stroke="var(--label-3)" strokeDasharray="2 2" strokeWidth="0.6" vectorEffect="non-scaling-stroke" />}
+    <defs>{inks.map((c, k) => <linearGradient key={k} id={`b${id}${k}`} x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor={c} /><stop offset="1" stopColor={c} stopOpacity="0.25" /></linearGradient>)}</defs>
+    {[0.25, 0.5, 0.75].map(g => <line key={g} x1="0" x2="100" y1={height * g} y2={height * g} stroke="rgba(255,255,255,0.05)" strokeWidth="1" vectorEffect="non-scaling-stroke" />)}
+    {values.map((v, i) => v == null ? null : <rect key={i} x={i * w + w * 0.18} width={w * 0.64}
+      y={height - Math.max(1.5, (v / top) * (height - 2))} height={Math.max(1.5, (v / top) * (height - 2))} fill={`url(#b${id}${inks.indexOf(colorOf(v))})`} />)}
+    {goal != null && <line x1="0" x2="100" y1={height - (goal / top) * (height - 2)} y2={height - (goal / top) * (height - 2)} stroke="rgba(255,255,255,0.45)" strokeDasharray="3 3" strokeWidth="1" vectorEffect="non-scaling-stroke" />}
   </svg>
 }
 
 /** A line with a soft area under it, gaps where Whoop sent nothing. */
 export function Line({ values, ink, height = 64 }) {
+  const id = useId().replace(/:/g, '')
   const pts = values.map((v, i) => [i, v]).filter(p => p[1] != null)
   if (pts.length < 2) return <div className="whd-empty">{DASH}</div>
   const lo = Math.min(...pts.map(p => p[1])), hi = Math.max(...pts.map(p => p[1]))
@@ -45,11 +62,11 @@ export function Line({ values, ink, height = 64 }) {
   const X = i => (i / n) * 100, Y = v => height - 4 - ((v - lo) / span) * (height - 10)
   const d = pts.map((p, k) => `${k ? 'L' : 'M'}${X(p[0]).toFixed(2)},${Y(p[1]).toFixed(2)}`).join(' ')
   const area = `${d} L${X(pts[pts.length - 1][0]).toFixed(2)},${height} L${X(pts[0][0]).toFixed(2)},${height} Z`
-  const last = pts[pts.length - 1]
   return <svg className="whd-chart" viewBox={`0 0 100 ${height}`} preserveAspectRatio="none" style={{ height }} aria-hidden="true">
-    <path d={area} fill={ink} opacity="0.14" />
-    <path d={d} fill="none" stroke={ink} strokeWidth="2" vectorEffect="non-scaling-stroke" strokeLinejoin="round" strokeLinecap="round" />
-    <circle cx={X(last[0])} cy={Y(last[1])} r="2.2" fill={ink} vectorEffect="non-scaling-stroke" />
+    <defs><linearGradient id={'a' + id} x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor={ink} stopOpacity="0.35" /><stop offset="1" stopColor={ink} stopOpacity="0" /></linearGradient></defs>
+    {[0.25, 0.5, 0.75].map(g => <line key={g} x1="0" x2="100" y1={height * g} y2={height * g} stroke="rgba(255,255,255,0.05)" strokeWidth="1" vectorEffect="non-scaling-stroke" />)}
+    <path d={area} fill={`url(#a${id})`} />
+    <path d={d} fill="none" stroke={ink} strokeWidth="2.2" vectorEffect="non-scaling-stroke" strokeLinejoin="round" strokeLinecap="round" />
   </svg>
 }
 
@@ -73,9 +90,9 @@ export function WhoopRings({ s, size = 96 }) {
   const rec = s?.today?.recovery, cyc = s?.today?.cycle, sl = s?.today?.sleep
   const band = bandOf(rec?.score)
   return <div className="whd-rings">
-    <Ring value={rec?.score} ink={band ? BAND_INK[band] : 'var(--grey)'} size={size} big={numOrDash(rec?.score)} unit="%" label={t('Recovery')} />
-    <Ring value={cyc?.strain} max={STRAIN_MAX} ink="var(--whd-strain)" size={size} big={numOrDash(cyc?.strain, 1)} label={t('Strain')} />
-    <Ring value={sl?.performance} ink="var(--whd-sleep)" size={size} big={numOrDash(sl?.performance)} unit="%" label={t('Sleep')} />
+    <Ring value={rec?.score} ink={band ? BAND_INK[band] : WH.dim} size={size} big={numOrDash(rec?.score)} unit="%" label={t('Recovery')} />
+    <Ring value={cyc?.strain} max={STRAIN_MAX} ink={WH.strain} size={size} big={numOrDash(cyc?.strain, 1)} label={t('Strain')} />
+    <Ring value={sl?.performance} ink={WH.sleep} size={size} big={numOrDash(sl?.performance)} unit="%" label={t('Sleep')} />
   </div>
 }
 
@@ -110,10 +127,10 @@ export function WhoopDashboard({ s }) {
   const days = (s.days || []).slice(-range)
   const z = zoneLine(s.zone45)
   const stages = [
-    { k: 'deepMin', label: t('Deep'), ink: 'var(--whd-deep)' },
-    { k: 'remMin', label: t('REM'), ink: 'var(--whd-rem)' },
-    { k: 'lightMin', label: t('Light'), ink: 'var(--whd-light)' },
-    { k: 'awakeMin', label: t('Awake'), ink: 'var(--whd-awake)' },
+    { k: 'deepMin', label: t('Deep'), ink: '#C86BFA' },
+    { k: 'remMin', label: t('REM'), ink: '#5AC8FA' },
+    { k: 'lightMin', label: t('Light'), ink: WH.sleep },
+    { k: 'awakeMin', label: t('Awake'), ink: '#E8EDF0' },
   ]
   const stageTotal = stages.reduce((a, x) => a + (sl[x.k] || 0), 0)
   const zMax = Math.max(s.zone45?.warnAbove || 30, (s.zone45?.minutes || 0)) * 1.15
@@ -128,18 +145,18 @@ export function WhoopDashboard({ s }) {
 
     <div className="whd-h">{t('Vitals')}</div>
     <div className="whd-grid">
-      <Tile icon="heart" ink="var(--green)" label={t('HRV')} value={numOrDash(rec.hrv)} unit=" ms"><Trend now={rec.hrv} avg={avg.hrv?.d30} /></Tile>
-      <Tile icon="heart" ink="var(--red)" label={t('Resting HR')} value={numOrDash(rec.rhr)} unit=" bpm"><Trend now={rec.rhr} avg={avg.rhr?.d30} good="down" /></Tile>
-      <Tile icon="target" ink="var(--blue)" label={t('Blood oxygen')} value={numOrDash(rec.spo2, 1)} unit="%" />
-      <Tile icon="sun" ink="var(--orange)" label={t('Skin temp')} value={numOrDash(rec.skinTemp, 1)} unit=" °C" />
-      <Tile icon="repeat" ink="var(--teal)" label={t('Respiratory rate')} value={numOrDash(sl.respRate, 1)} unit=" /min" />
-      <Tile icon="flame" ink="var(--orange)" label={t('Calories')} value={cyc.kcal != null ? fmtSteps(cyc.kcal) : DASH} unit=" kcal" />
-      <Tile icon="gauge" ink="var(--whd-strain)" label={t('Average HR')} value={numOrDash(cyc.avgHr)} unit=" bpm" />
-      <Tile icon="bolt" ink={cyc.maxHr > 175 ? 'var(--red)' : 'var(--pink)'} label={t('Max HR')} value={numOrDash(cyc.maxHr)} unit=" bpm" sub={cyc.maxHr > 175 ? t('Above the 175 bpm ceiling') : null} />
+      <Tile icon="heart" ink={WH.hrv} label={t('HRV')} value={numOrDash(rec.hrv)} unit=" ms"><Trend now={rec.hrv} avg={avg.hrv?.d30} /></Tile>
+      <Tile icon="heart" ink={WH.rhr} label={t('Resting HR')} value={numOrDash(rec.rhr)} unit=" bpm"><Trend now={rec.rhr} avg={avg.rhr?.d30} good="down" /></Tile>
+      <Tile icon="target" ink="#5AC8FA" label={t('Blood oxygen')} value={numOrDash(rec.spo2, 1)} unit="%" />
+      <Tile icon="sun" ink="#FF9F0A" label={t('Skin temp')} value={numOrDash(rec.skinTemp, 1)} unit=" °C" />
+      <Tile icon="repeat" ink={WH.sleep} label={t('Respiratory rate')} value={numOrDash(sl.respRate, 1)} unit=" /min" />
+      <Tile icon="flame" ink="#FF9F0A" label={t('Calories')} value={cyc.kcal != null ? fmtSteps(cyc.kcal) : DASH} unit=" kcal" />
+      <Tile icon="gauge" ink={WH.strain} label={t('Average HR')} value={numOrDash(cyc.avgHr)} unit=" bpm" />
+      <Tile icon="bolt" ink={cyc.maxHr > 175 ? WH.red : WH.rhr} label={t('Max HR')} value={numOrDash(cyc.maxHr)} unit=" bpm" sub={cyc.maxHr > 175 ? t('Above the 175 bpm ceiling') : null} />
     </div>
 
     <div className="whd-card whd-steps">
-      <Ring value={s.steps?.value} max={STEP_GOAL} ink="var(--green)" size={84} stroke={8} big={fmtSteps(s.steps?.value)} label={t('Steps')} />
+      <Ring value={s.steps?.value} max={STEP_GOAL} ink={WH.steps} size={84} stroke={8} big={fmtSteps(s.steps?.value)} label={t('Steps')} />
       <div className="whd-steps-r">
         <div className="whd-kv"><span>{t('Goal')}</span><b>{fmtSteps(STEP_GOAL)}</b></div>
         <div className="whd-kv"><span>{t('7-day average')}</span><b>{fmtSteps(avg.steps?.d7)}</b></div>
@@ -175,23 +192,23 @@ export function WhoopDashboard({ s }) {
     <TrendCard title={t('Recovery')} now={numOrDash(avg.recovery?.[range === 7 ? 'd7' : 'd30'])} unit="% avg">
       <Bars values={days.map(d => d.recovery)} max={100} ink={v => BAND_INK[bandOf(v)]} />
     </TrendCard>
-    <TrendCard title={t('HRV')} now={numOrDash(avg.hrv?.[range === 7 ? 'd7' : 'd30'])} unit=" ms avg"><Line values={days.map(d => d.hrv)} ink="var(--green)" /></TrendCard>
-    <TrendCard title={t('Resting heart rate')} now={numOrDash(avg.rhr?.[range === 7 ? 'd7' : 'd30'])} unit=" bpm avg"><Line values={days.map(d => d.rhr)} ink="var(--red)" /></TrendCard>
-    <TrendCard title={t('Day strain')} now={numOrDash(avg.strain?.[range === 7 ? 'd7' : 'd30'], 1)} unit=" avg"><Bars values={days.map(d => d.strain)} max={STRAIN_MAX} ink="var(--whd-strain)" /></TrendCard>
+    <TrendCard title={t('HRV')} now={numOrDash(avg.hrv?.[range === 7 ? 'd7' : 'd30'])} unit=" ms avg"><Line values={days.map(d => d.hrv)} ink={WH.hrv} /></TrendCard>
+    <TrendCard title={t('Resting heart rate')} now={numOrDash(avg.rhr?.[range === 7 ? 'd7' : 'd30'])} unit=" bpm avg"><Line values={days.map(d => d.rhr)} ink={WH.rhr} /></TrendCard>
+    <TrendCard title={t('Day strain')} now={numOrDash(avg.strain?.[range === 7 ? 'd7' : 'd30'], 1)} unit=" avg"><Bars values={days.map(d => d.strain)} max={STRAIN_MAX} ink={WH.strain} /></TrendCard>
     <TrendCard title={t('Hours asleep')} now={fmtSleep(avg.sleepMin?.[range === 7 ? 'd7' : 'd30'] != null ? Math.round(avg.sleepMin[range === 7 ? 'd7' : 'd30']) : null)} unit=" avg">
-      <Bars values={days.map(d => d.sleepMin)} goal={days.map(d => d.neededMin).filter(v => v != null).slice(-1)[0] ?? null} ink="var(--whd-sleep)" />
+      <Bars values={days.map(d => d.sleepMin)} goal={days.map(d => d.neededMin).filter(v => v != null).slice(-1)[0] ?? null} ink={WH.sleep} />
     </TrendCard>
-    <TrendCard title={t('Steps')} now={fmtSteps(avg.steps?.[range === 7 ? 'd7' : 'd30'])} unit=" avg"><Bars values={days.map(d => d.steps)} goal={STEP_GOAL} ink={v => (v >= STEP_GOAL ? 'var(--green)' : 'var(--teal)')} /></TrendCard>
+    <TrendCard title={t('Steps')} now={fmtSteps(avg.steps?.[range === 7 ? 'd7' : 'd30'])} unit=" avg"><Bars values={days.map(d => d.steps)} goal={STEP_GOAL} ink={v => (v >= STEP_GOAL ? WH.steps : '#3FA9F5')} /></TrendCard>
 
     <div className="whd-h">{t('Heart-rate zones this week')}</div>
     <div className="whd-card">
-      <div className="whd-sleep-top"><div><div className="whd-big" style={{ color: z?.ink }}>{s.zone45?.minutes ?? DASH}<small> min</small></div><div className="whd-dim">{t('Zone 4-5 · target {0}-{1} min, never over {2}', s.zone45?.target?.[0], s.zone45?.target?.[1], s.zone45?.warnAbove)}</div></div></div>
+      <div className="whd-sleep-top"><div><div className="whd-big" style={{ color: ZINK[z?.ink] || '#fff' }}>{s.zone45?.minutes ?? DASH}<small> min</small></div><div className="whd-dim">{t('Zone 4-5 · target {0}-{1} min, never over {2}', s.zone45?.target?.[0], s.zone45?.target?.[1], s.zone45?.warnAbove)}</div></div></div>
       <div className="whd-budget">
         <i className="tgt" style={{ left: pctStr(s.zone45?.target?.[0], zMax), width: pctStr((s.zone45?.target?.[1] || 0) - (s.zone45?.target?.[0] || 0), zMax) }} />
         <i className="warn" style={{ left: pctStr(s.zone45?.warnAbove, zMax) }} />
-        <b style={{ width: pctStr(s.zone45?.minutes, zMax), background: z?.ink }} />
+        <b style={{ width: pctStr(s.zone45?.minutes, zMax), background: ZINK[z?.ink] || WH.dim }} />
       </div>
-      {z && <div className="whd-dim" style={{ color: z.ink }}>{t(z.key, ...z.args)}</div>}
+      {z && <div className="whd-dim" style={{ color: ZINK[z.ink] }}>{t(z.key, ...z.args)}</div>}
     </div>
 
     {(s.hrFlags || []).length > 0 && <div className="whd-card whd-alarm">
@@ -207,11 +224,11 @@ export function WhoopDashboard({ s }) {
           return <div key={w.id} className="whd-wo">
             <div className="whd-wo-top">
               <div><b className="whd-cap">{w.sport || t('Workout')}</b><div className="whd-dim">{w.day} · {clockOf(w.start)} · {durMin(w.start, w.end) != null ? durMin(w.start, w.end) + ' min' : DASH}</div></div>
-              <div className="whd-wo-s"><b style={{ color: 'var(--whd-strain)' }}>{numOrDash(w.strain, 1)}</b><span>{t('strain')}</span></div>
+              <div className="whd-wo-s"><b style={{ color: WH.strain }}>{numOrDash(w.strain, 1)}</b><span>{t('strain')}</span></div>
             </div>
             <div className="whd-wo-m">
               <span>{t('avg')} {numOrDash(w.avgHr)}</span>
-              <span style={w.maxHr > 175 ? { color: 'var(--red)', fontWeight: 700 } : undefined}>{t('max')} {numOrDash(w.maxHr)} bpm</span>
+              <span style={w.maxHr > 175 ? { color: WH.red, fontWeight: 700 } : undefined}>{t('max')} {numOrDash(w.maxHr)} bpm</span>
               <span>{w.kj != null ? Math.round(w.kj / 4.184) + ' kcal' : DASH}</span>
               {w.distanceM != null && <span>{(w.distanceM / 1000).toFixed(2)} km</span>}
             </div>
@@ -225,9 +242,9 @@ export function WhoopDashboard({ s }) {
     {s.body && <>
       <div className="whd-h">{t('Body (from Whoop)')}</div>
       <div className="whd-grid">
-        <Tile icon="ruler" ink="var(--teal)" label={t('Height')} value={s.body.heightM != null ? Math.round(s.body.heightM * 100) : DASH} unit=" cm" />
-        <Tile icon="scale" ink="var(--blue)" label={t('Weight')} value={numOrDash(s.body.weightKg, 1)} unit=" kg" />
-        <Tile icon="heart" ink="var(--red)" label={t('Max heart rate')} value={numOrDash(s.body.maxHr)} unit=" bpm" />
+        <Tile icon="ruler" ink="#22D3EE" label={t('Height')} value={s.body.heightM != null ? Math.round(s.body.heightM * 100) : DASH} unit=" cm" />
+        <Tile icon="scale" ink="#3FA9F5" label={t('Weight')} value={numOrDash(s.body.weightKg, 1)} unit=" kg" />
+        <Tile icon="heart" ink={WH.rhr} label={t('Max heart rate')} value={numOrDash(s.body.maxHr)} unit=" bpm" />
       </div>
     </>}
   </div>

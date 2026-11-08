@@ -4,7 +4,10 @@
 export const STEP_GOAL = 8000
 export const STRAIN_MAX = 21
 // Zone 0 to 5, cool to hot.
-export const ZONE_INK = ['var(--label-4)', 'var(--blue)', 'var(--teal)', 'var(--green)', 'var(--orange)', 'var(--red)']
+export const ZONE_INK = ['#4B5A66', '#3FA9F5', '#22D3EE', '#16EC06', '#FF9F0A', '#FF0026']
+// The Whoop look: recovery green / yellow / red, strain blue, sleep blue-grey (views/whoop.css has the same as variables).
+export const WH = { green: '#16EC06', yellow: '#FFDE00', red: '#FF0026', strain: '#0093E7', sleep: '#7BA1BB', hrv: '#16EC06', rhr: '#FF4D6A', steps: '#2EE6A8', dim: '#8A99A6' }
+export const BAND_COLOR = { green: WH.green, yellow: WH.yellow, red: WH.red }
 
 const isNum = v => typeof v === 'number' && Number.isFinite(v)
 

@@ -22,15 +22,16 @@ public class WidgetBridgePlugin: CAPPlugin, CAPBridgedPlugin {
             call.reject("json is required")
             return
         }
-        guard let dir = OpenGymGroup.container else {
-            call.reject("no App Group")
-            return
+        // myGym: the App Group when the signing allows one, and always the shared keychain item (SharedSnapshot).
+        var saved = SharedSnapshot.write(data)
+        if let dir = OpenGymGroup.container,
+           (try? data.write(to: dir.appendingPathComponent(WidgetBridgePlugin.fileName), options: .atomic)) != nil {
+            saved = true
         }
-        do {
-            try data.write(to: dir.appendingPathComponent(WidgetBridgePlugin.fileName), options: .atomic)
+        if saved {
             WidgetCenter.shared.reloadAllTimelines()
             call.resolve()
-        } catch {
+        } else {
             call.reject("could not write the widget data")
         }
     }

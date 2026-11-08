@@ -125,5 +125,7 @@
 	<string>Used to write myGym links onto your own NFC stickers, so a tap can start your workout or open an exercise.</string>
 	<key>NSFaceIDUsageDescription</key>
 	<string>Used to make sure it’s really you before your account is deleted.</string>
+	<key>AppIdentifierPrefix</key>
+	<string>$(AppIdentifierPrefix)</string>
 </dict>
 </plist>
