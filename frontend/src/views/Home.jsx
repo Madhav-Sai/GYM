@@ -223,7 +223,8 @@ export default function Home() {
           sub={here ? t('It counts towards your streak.') : t('One tap. It counts towards your streak.')}
           action={<Button size="sm" icon={here ? 'undo' : 'check'}
             onClick={() => useStore.getState().update(st => { st.gymVisits = withVisit(st.gymVisits, day, !here) })}>{here ? t('Undo') : t('Check in')}</Button>} />
-        <Button size="sm" icon="qr" onClick={() => nav('/checkin')}>{t('Membership codes')}</Button>
+        {/* Only with a saved code: a gym without a turnstile code (Cult, for one) has nothing to show here. */}
+        {(S.gymCards || []).length > 0 && <Button size="sm" icon="qr" onClick={() => nav('/checkin')}>{t('Membership codes')}</Button>}
       </div>
     })()}
 

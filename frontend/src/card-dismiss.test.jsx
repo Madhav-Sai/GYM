@@ -103,22 +103,28 @@ describe('Home: the streak card and check-in', () => {
     act(() => card.querySelector('.tap-main').click())
     expect(calendarSheet).toHaveBeenCalledTimes(1)
   })
-  // This fork: the check-in card is no longer one big button to the QR codes. It holds two plain
-  // buttons side by side, nothing nested: "Check in" records today (counts towards the streak), and
-  // "Membership codes" opens the page the whole card used to open.
-  it('check-in is two real buttons: one checks in today (and takes it back), one opens the codes', () => {
+  // This fork: the check-in card is no longer one big button to the QR codes. "Check in" records today
+  // (counts towards the streak). "Membership codes" opens the page the whole card used to open, and is
+  // only there when a code is saved: a gym with no turnstile code (Cult) has nothing to show on it.
+  it('check-in is a real button that checks in today and takes it back; no codes saved, no codes button', () => {
     const host = mount()
     const card = host.querySelector('.checkin-card')
     expect(card.classList.contains('tap-host')).toBe(false)
-    expect([...card.querySelectorAll('button')].map(nameOf)).toEqual(['Check in', 'Membership codes'])
+    expect([...card.querySelectorAll('button')].map(nameOf)).toEqual(['Check in'])
     act(() => card.querySelectorAll('button')[0].click())
     expect(visitOn(useStore.getState().S, todayISO())).toBe(true)
     expect(navSpy).not.toHaveBeenCalled()
     const again = [...host.querySelectorAll('.checkin-card button')]
-    expect(again.map(nameOf)).toEqual(['Undo', 'Membership codes'])
+    expect(again.map(nameOf)).toEqual(['Undo'])
     act(() => again[0].click())
     expect(visitOn(useStore.getState().S, todayISO())).toBe(false)
-    act(() => again[1].click())
+  })
+  it('with a saved membership code, a second button opens the codes page', () => {
+    useStore.setState(s => ({ S: { ...s.S, gymCards: [{ id: 'c1', name: 'Gym', value: '123', fmt: 'qr' }] } }))
+    const host = mount()
+    const card = host.querySelector('.checkin-card')
+    expect([...card.querySelectorAll('button')].map(nameOf)).toEqual(['Check in', 'Membership codes'])
+    act(() => [...card.querySelectorAll('button')].find(b => nameOf(b) === 'Membership codes').click())
     expect(navSpy).toHaveBeenCalledWith('/checkin')
   })
   it('nothing on Home is a control inside a control', () => {
