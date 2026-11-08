@@ -91,17 +91,17 @@ const mount = async () => {
   await act(async () => { root.render(<Settings page="about" />) })
   await act(async () => { for (let i = 0; i < 4; i++) await Promise.resolve() })
 }
-const updateRow = () => [...host.querySelectorAll('.lrow')].find(r => r.textContent.includes('Update to openGym v9.9.9'))
+const updateRow = () => [...host.querySelectorAll('.lrow')].find(r => r.textContent.includes('Update to myGym v9.9.9'))
 const checkRow = () => [...host.querySelectorAll('.lrow')].find(r => r.textContent.includes('Check for updates'))
 const webRow = () => [...host.querySelectorAll('.lrow')].find(r => r.textContent.includes('Get the Android app'))
 
 describe('Settings — in-app update check', () => {
-  it('web build: never asks for releases; the Updates section points at the APK instead', async () => {
+  it('web build: never asks for releases, and (this fork) does not promote the upstream APK either', async () => {
     await mount()
     expect(mocks.checkForUpdate).not.toHaveBeenCalled()
     expect(updateRow()).toBeUndefined()
     expect(checkRow()).toBeUndefined()
-    expect(webRow()).toBeTruthy()
+    expect(webRow()).toBeUndefined()
   })
 
   it('mobile build on iOS: no check, no row, no section', async () => {
@@ -196,31 +196,14 @@ describe('Settings → About: which APK this is', () => {
 
 // Google Play's payments policy: no links to pay outside Play billing for anything but a
 // registered charity, so the Play build has no coffee links, only its own rating row.
-describe('Settings: support links', () => {
+describe('Settings: no donation or store-promo rows (this fork)', () => {
   const row = text => [...host.querySelectorAll('.lrow')].find(r => r.textContent.includes(text))
-  it('the APK keeps the donation links and has no Play rating row', async () => {
-    mocks.MOBILE = true
-    mocks.android = true
-    await mount()
-    expect(row('Buy me a coffee')).toBeTruthy()
-    expect(row('Ko-fi')).toBeTruthy()
-    expect(row('GitHub Sponsors')).toBeTruthy()
-    expect(row('Rate openGym on Google Play')).toBeUndefined()
-  })
-  it('the Google Play build shows only the rating row', async () => {
-    mocks.MOBILE = true
-    mocks.android = true
-    mocks.channel = 'play'
-    await mount()
-    expect(row('Buy me a coffee')).toBeUndefined()
-    expect(row('Ko-fi')).toBeUndefined()
-    expect(row('GitHub Sponsors')).toBeUndefined()
-    expect(row('Rate openGym on Google Play')).toBeTruthy()
+  const gone = () => {
+    for (const text of ['Buy me a coffee', 'Ko-fi', 'GitHub Sponsors', 'Rate myGym on Google Play', 'Rate myGym on the App Store']) expect(row(text), text).toBeUndefined()
     expect(host.textContent).not.toContain('A coffee keeps it that way')
-  })
-  it('the web keeps the donation links', async () => {
-    await mount()
-    expect(row('Buy me a coffee')).toBeTruthy()
-    expect(row('Rate openGym on Google Play')).toBeUndefined()
-  })
+    expect(host.textContent).not.toContain('Support myGym')
+  }
+  it('the APK has none', async () => { mocks.MOBILE = true; mocks.android = true; await mount(); gone() })
+  it('the Google Play build has none', async () => { mocks.MOBILE = true; mocks.android = true; mocks.channel = 'play'; await mount(); gone() })
+  it('the web has none', async () => { await mount(); gone() })
 })

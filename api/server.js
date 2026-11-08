@@ -1,4 +1,4 @@
-/* opengym-api — passkey (WebAuthn) auth + per-user state storage for openGym
+/* opengym-api — passkey (WebAuthn) auth + per-user state storage for myGym
    No framework, JSON-file storage, signed session cookies.               */
 import http from 'node:http';
 import crypto from 'node:crypto';
@@ -48,7 +48,7 @@ const PORT = +(process.env.PORT || 3000);
 const DATA = process.env.DATA_DIR || '/data';
 const RP_ID = process.env.RP_ID || 'localhost';
 const ORIGIN = process.env.ORIGIN || 'http://localhost:8080';
-const RP_NAME = process.env.RP_NAME || 'openGym';
+const RP_NAME = process.env.RP_NAME || 'myGym';
 // Admin dashboard (issue): admins are matched by uid (or the admin flag FIRST_USER_ADMIN sets);
 // INVITE_ONLY gates new signups behind a code the admin generates. Off by default, so a fresh
 // self-hosted instance stays open.
@@ -487,7 +487,7 @@ function stateSummary(uid) {
   stateSummaries.set(uid, sum);
   return sum;
 }
-// "Your year in openGym" (wrapped.js): once per user and year, on Dec 1 from 18:00 server time.
+// "Your year in myGym" (wrapped.js): once per user and year, on Dec 1 from 18:00 server time.
 // The year it went out for is written to db.json before the send, so a crash after it, a restart
 // or the next tick cannot send it twice. Read from the summary only: no state is parsed for it.
 function wrappedTick(user, sum, year) {
@@ -2385,7 +2385,7 @@ const routes = {
   },
 
   // The watch relay (watch-relay.js, docs/ZEPP_OS.md). A signed-in device asks for a code, the
-  // Zepp app's settings page for openGym redeems it for a watch token, and from then on the page
+  // Zepp app's settings page for myGym redeems it for a watch token, and from then on the page
   // and the watch's Side Service meet in this profile's mailbox. A watch token opens the two
   // /api/watch/box routes and nothing else, so a session is all that minting one asks; "sign out
   // everywhere" and a new password end every watch link with the sessions (their version).

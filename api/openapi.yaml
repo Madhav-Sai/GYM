@@ -1,15 +1,15 @@
-# openGym HTTP API: hand-written OpenAPI 3.1 spec.
+# myGym HTTP API: hand-written OpenAPI 3.1 spec.
 # Source of truth: api/server.js (a single framework-free Node file). Every route the
 # server registers is documented here; if you add a route there, add it here too.
 # Browsable version: https://opengym.ch/api.html
 openapi: 3.1.0
 
 info:
-  title: openGym API
+  title: myGym API
   version: 1.4.3
-  summary: Passkey (WebAuthn) auth + per-user state storage for openGym
+  summary: Passkey (WebAuthn) auth + per-user state storage for myGym
   description: |
-    The backend of [openGym](https://opengym.ch), a free, open-source
+    The backend of [myGym](https://opengym.ch), a free, open-source
     gym & body-weight tracker. A plain Node server, no framework, JSON-file storage,
     HMAC-signed session cookies.
 
@@ -132,12 +132,12 @@ info:
     name: AGPL-3.0-or-later
     identifier: AGPL-3.0-or-later
   contact:
-    name: openGym
+    name: myGym
     url: https://gitlab.com/DuarteSantos8/opengym
 
 servers:
   - url: /
-    description: Same origin as the openGym web app (the normal deployment)
+    description: Same origin as the myGym web app (the normal deployment)
   - url: https://opengym.example.com
     description: Your self-hosted instance
 
@@ -744,7 +744,7 @@ paths:
       operationId: watchPair
       summary: A pairing code for a Zepp OS watch
       description: |
-        A signed-in device asks for a code that the Zepp app's settings page for openGym
+        A signed-in device asks for a code that the Zepp app's settings page for myGym
         redeems (`POST /api/watch/redeem`). 12 characters typed as `XXXX-XXXX-XXXX`, one per
         profile (a new one replaces the last), good for ten minutes, held only as a hash.
       responses:
@@ -765,7 +765,7 @@ paths:
       operationId: watchRedeem
       summary: Redeem a watch pairing code for a watch token
       description: |
-        Called by the openGym watch app's Side Service inside the Zepp phone app. The code is
+        Called by the myGym watch app's Side Service inside the Zepp phone app. The code is
         the credential (CSRF-exempt, throttled per address like a device link). The answer is a
         watch token (`ogw_…`) that opens `GET`/`POST /api/watch/box` and nothing else; it ends
         with "sign out everywhere", a new password, a disabled account, an unlink, or 90 days

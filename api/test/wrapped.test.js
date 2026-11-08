@@ -1,4 +1,4 @@
-// "Your year in openGym" on the server (wrapped.js): when the December push is due, who is owed
+// "Your year in myGym" on the server (wrapped.js): when the December push is due, who is owed
 // it, and what it says. The rules only; server-wrapped-push.test.js runs them in a real server.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -50,7 +50,7 @@ test('owed once per user and year, with a workout that year, not switched off, n
 });
 
 test('the push is fixed words and the year: nothing from the profile rides along', () => {
-  assert.deepEqual(wrappedPush('en', 2026), { title: 'Your 2026 in openGym is ready 🎉', body: 'Workouts, records and one very honest personality test. Tap to see your year.', tag: 'wrapped' });
+  assert.deepEqual(wrappedPush('en', 2026), { title: 'Your 2026 in myGym is ready 🎉', body: 'Workouts, records and one very honest personality test. Tap to see your year.', tag: 'wrapped' });
   const de = wrappedPush('de', 2026);
   assert.match(de.title, /2026/);
   assert.notEqual(de.title, wrappedPush('en', 2026).title);

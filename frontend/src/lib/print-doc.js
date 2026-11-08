@@ -1,8 +1,8 @@
-// The paper side of openGym: one page shell every printout shares (the weekly plan, one routine,
+// The paper side of myGym: one page shell every printout shares (the weekly plan, one routine,
 // one workout, the performance report), and the one way to send it to a printer or a PDF.
 //
 // What every printout gets from here:
-//  - the openGym logo top left, the title, a line of facts, and who it is for and when;
+//  - the myGym logo top left, the title, a line of facts, and who it is for and when;
 //  - page numbers and opengym.ch in the bottom margin (CSS @page margin boxes: Chrome, Android's
 //    WebView, desktop Chrome/Edge; the iOS app draws the same line natively, PrintPlugin.swift).
 //    Desktop Firefox (checked with 158) and Safari drop margin boxes, so there the line is left
@@ -70,7 +70,7 @@ export const PRINT_CSS = `
   @page {
     size: auto;
     margin: 15mm 14mm 17mm;
-    @bottom-left { content: "opengym.ch"; font: 7.5pt/1 -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: #9aa0ad; }
+    @bottom-left { content: "myGym"; font: 7.5pt/1 -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: #9aa0ad; }
     @bottom-right { font: 7.5pt/1 -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: #9aa0ad; }
   }
   :root {
@@ -151,13 +151,13 @@ export function printShell({ title, kicker = '', facts = [], owner = '', date, b
 ${css}</style></head>
 <body><div class="doc">
   <header class="mast keep">
-    <div class="mast-top"><div class="brand">${LOGO_SVG}<span>openGym</span></div><div class="mast-meta">${meta}</div></div>
+    <div class="mast-top"><div class="brand">${LOGO_SVG}<span>myGym</span></div><div class="mast-meta">${meta}</div></div>
     ${kicker ? `<div class="kicker">${esc(kicker)}</div>` : ''}
     <h1>${esc(title)}</h1>
     ${factLine ? `<div class="facts">${factLine}</div>` : ''}
   </header>
   ${body}
-  <div class="end keep">${esc(t('Made with openGym'))} · opengym.ch${credit ? `<div class="credit" lang="en" dir="ltr">${esc(credit)}</div>` : ''}</div>
+  <div class="end keep">${esc(t('Made with myGym'))}${credit ? `<div class="credit" lang="en" dir="ltr">${esc(credit)}</div>` : ''}</div>
 </div></body></html>`
 }
 
@@ -174,7 +174,7 @@ export function paperFor(locale) {
 export function printOptions() {
   let locale = ''
   try { locale = navigator.language || '' } catch (e) { /* */ }
-  return { paper: paperFor(locale), footer: { left: 'opengym.ch', page: t('Page {0} of {1}') } }
+  return { paper: paperFor(locale), footer: { left: 'myGym', page: t('Page {0} of {1}') } }
 }
 
 // The web: a hidden iframe and the browser's own print dialog (→ Save as PDF), so we never
@@ -212,7 +212,7 @@ function printInFrame(html) {
  * suggested PDF file; Android refuses a job without one.
  */
 export function printDocument(html, name) {
-  if (MOBILE) return printHtml(html, name || 'openGym', printOptions()).catch(() => { /* dismissed */ })
+  if (MOBILE) return printHtml(html, name || 'myGym', printOptions()).catch(() => { /* dismissed */ })
   printInFrame(html)
   return Promise.resolve()
 }

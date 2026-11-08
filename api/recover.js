@@ -43,7 +43,7 @@ try {
   process.exit(1);
 } catch (e) {
   if (e.code === 'ENOENT' || e.code === 'ECONNREFUSED') {
-    console.error(`The openGym server is not running here (no ${socketPath()}). Start it first (docker compose up -d), then run this again inside it.`);
+    console.error(`The myGym server is not running here (no ${socketPath()}). Start it first (docker compose up -d), then run this again inside it.`);
   } else {
     console.error('Could not ask the server:', e.message);
   }

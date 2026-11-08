@@ -606,7 +606,7 @@ function ImportSummary({ parsed, close }) {
     </div>}
     {/* A Liftosaur plan's progression is a script; it arrives as a note on each exercise. */}
     {plans?.scripted > 0 && <div className="small dim" style={{ marginBottom: 10 }}>
-      {t('Liftoscript progressions come along as notes on the exercises. openGym doesn’t run them.')}
+      {t('Liftoscript progressions come along as notes on the exercises. myGym doesn’t run them.')}
     </div>}
     {plans && newPlans < plans.routines.length && <div className="small dim" style={{ marginBottom: 10 }}>
       {tn('{0} routine is already here and will be left alone.', '{0} routines are already here and will be left alone.', plans.routines.length - newPlans)}
@@ -637,7 +637,7 @@ export function importFromApp(file, onDone) {
     if (parsed.error === 'empty') { toast(t('That file is empty')); return }
     // It looks like that app's export but does not read as one: say so rather than guess.
     if (parsed.error === 'format') { toast(t('This looks like a {0} export, but we couldn’t read it. Nothing was imported.', parsed.app)); return }
-    if (parsed.error === 'opengym') { toast(t('That’s an openGym backup or plan file. Use Import backup, or import it on the Plan screen.')); return }
+    if (parsed.error === 'opengym') { toast(t('That’s an myGym backup or plan file. Use Import backup, or import it on the Plan screen.')); return }
     if (parsed.error) { toast(t("We don't recognise that file's columns. Check the docs for supported apps.")); return }
     if (parsed.kind === 'bodyweight' ? !parsed.bodyweight.length && !parsed.measurements?.length : !parsed.workouts.length && !parsed.routines?.routines?.length) {
       toast(t('Nothing to import from that file')); return
@@ -1364,11 +1364,6 @@ function ExerciseDetail({ ex, close }) {
     {/* A YouTube search for the exercise, opened after the tap and only then (lib/youtube.js). A
         video link of the exercise's own stays first, in the media above. */}
     {youtubeSearchUrl(ex) && <Button variant="ghost" icon="play" style={{ marginTop: 6 }} onClick={() => openExternal(youtubeSearchUrl(ex))}>{t('Watch on YouTube')}</Button>}
-    {/* The catalogue is community-edited (catalogue/README.md): a wrong muscle, a clumsy step or a
-        missing translation is one tap from an issue that already names the exercise. */}
-    {!isCustomEx(ex) && !ex.missing && <a className="small dim exfix-link" target="_blank" rel="noopener"
-      href={'https://github.com/DuarteSantos8/openGym/issues/new?template=exercise.yml&exercise=' + encodeURIComponent(ex.id + ', ' + ex.n)}>
-      <Icon name="pencil" /> {t('Suggest a fix for this exercise')}</a>}
     {/* The end of the sheet: what makes this exercise go away. Merge into… (#656,
         lib/exercise-merge.js) moves its history and plans onto another and then deletes or hides
         it, so it sits here with Delete, above it, rather than between History and the settings
@@ -3320,7 +3315,7 @@ function ShareWorkoutImage({ w, close }) {
   const day = workoutDay(w) || todayISO()
   const model = useMemo(() => workoutCardModel(w, { unit: st.unit, nameOf: shareNameOf, warmups, streak: streakInfo(st, day).current }), [w, st.unit, warmups, st.workouts, st.weekStart, day]) // eslint-disable-line react-hooks/exhaustive-deps
   return <ShareCardSheet title={t('Share workout')} close={close} toast={toast}
-    name={'opengym-workout-' + day + '.png'} shareTitle={w.name || 'openGym'}
+    name={'opengym-workout-' + day + '.png'} shareTitle={w.name || 'myGym'}
     deps={[model, withMap, st.body]}
     render={pref => workoutCardImage(model, { ...pref, map: withMap, body: st.body })}>
     {model.levels && <div className="sect-b" style={{ marginBottom: 12 }}>

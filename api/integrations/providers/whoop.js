@@ -1,4 +1,4 @@
-/* Whoop (our addition, not upstream openGym): an inbound OAuth 2.0 provider. Unlike the webhook it
+/* Whoop (our addition, not upstream myGym): an inbound OAuth 2.0 provider. Unlike the webhook it
  * never sends anything out; the server pulls the profile's own recovery, sleep, cycles (strain,
  * and `step_count`) and workouts and keeps them in DATA_DIR/whoop/ (whoop-data.js).
  *

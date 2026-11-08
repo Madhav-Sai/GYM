@@ -1,6 +1,6 @@
 /* The outbound webhook: one HTTPS POST per event to a URL of the user's choosing, signed with a
- * secret only they and openGym know. It is what makes Home Assistant, n8n, Node-RED, ntfy and
- * Zapier-style tools work without openGym knowing any of them.
+ * secret only they and myGym know. It is what makes Home Assistant, n8n, Node-RED, ntfy and
+ * Zapier-style tools work without myGym knowing any of them.
  *
  * The URL is a request this server makes on the user's behalf, so it gets the push endpoint's
  * rules (net-guard.js): https only, no private addresses, judged in the connection's own lookup
@@ -67,7 +67,7 @@ export function makeTransport({ allowLan }) {
 /** A transport result (or error) in the outbox's words. */
 export function judge(r, err, now = Date.now()) {
   if (err) {
-    if (err.code === 'EBLOCKED') return { ok: false, retry: false, code: 'blocked', msg: 'That address is not one openGym calls.' };
+    if (err.code === 'EBLOCKED') return { ok: false, retry: false, code: 'blocked', msg: 'That address is not one myGym calls.' };
     if (err.code === 'ETIMEDOUT') return { ok: false, retry: true, code: 'timeout', msg: 'No answer within 10 seconds.' };
     if (err.code === 'ENOTFOUND' || err.code === 'EAI_AGAIN') return { ok: false, retry: true, code: 'dns', msg: 'The address could not be found.' };
     if (err.code === 'ECONNREFUSED') return { ok: false, retry: true, code: 'refused', msg: 'The receiver refused the connection.' };

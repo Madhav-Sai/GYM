@@ -1,5 +1,5 @@
-// "Your year in openGym" (frontend lib/wrapped.js): the one December web push for people who use
-// openGym in a browser against this server. The phones plan a local notification of their own
+// "Your year in myGym" (frontend lib/wrapped.js): the one December web push for people who use
+// myGym in a browser against this server. The phones plan a local notification of their own
 // (frontend lib/wrapped-notify.js) and say so in the profile (S.wrapped.phone), so nobody gets both.
 //
 // THE RULE. On Dec 1, from 18:00 to the end of the day on the server's clock, every user who

@@ -41,7 +41,9 @@ describe('Brazilian Portuguese locale', () => {
     // has to be taught is a number nobody reads. What the numbers stood for is asserted above.
     // If the hash fails, review the changed keys and wording before accepting a new one. From
     // frontend/: node scripts/pt-br-inheritance-fingerprint.mjs --list
-    expect(fingerprint, 'pt-PT inheritance changed; review the inherited pt-BR wording').toBe('1411e38b117391a3fa231b06def31df1dacbaff59e37264e9d2f5658ae6d9ca7')
+    expect(fingerprint, 'pt-PT inheritance changed; review the inherited pt-BR wording').toBe('4c5a1cf7436465427d5d975da14fb890c37ee9effa2d8144fd3ec1ba4e0f9b80')
+    // Re-pinned for the openGym -> myGym brand rename (this fork). Verified before accepting: reversing the brand word
+    // in the new text and re-sorting by key reproduces the previous value, 1411e38b…, exactly: no wording changed.
   })
 
   // pt-PT labelled Unpair 'Desfazer': Undo, in Portuguese (it is pt-BR's Undo), on the button that

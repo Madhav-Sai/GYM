@@ -1,4 +1,4 @@
-/* The December push of "Your year in openGym" in a real server (wrapped.js, server.js wrappedTick).
+/* The December push of "Your year in myGym" in a real server (wrapped.js, server.js wrappedTick).
    server.js runs in a child on UTC with its Date.now() driven by test/fake-clock.mjs, and the
    reminder tick shortened to 100 ms, so "Dec 1, 18:05" is a message away. The subscriptions point
    at localhost, which the push agent refuses: the send fails locally and quietly, and the log line

@@ -1,5 +1,7 @@
 # Third-party notices
 
+myGym — modifications and additions Copyright (C) 2026 Madhav, licensed under the GNU AGPL v3.0 like the rest.
+
 openGym — Copyright (C) 2026 Duarte Santos.
 openGym's own code is licensed under the **GNU AGPL v3.0** (see [LICENSE](LICENSE)).
 

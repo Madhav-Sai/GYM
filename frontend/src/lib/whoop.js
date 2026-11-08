@@ -2,7 +2,7 @@
 // tested here and the components only draw. Strings returned here are English keys for t().
 // The one rule above all: a value Whoop did not send is a dash, never 0.
 
-export const DASH = '–' // an en dash: openGym's rule for every empty value (lib/empty-placeholder.test.js)
+export const DASH = '–' // an en dash: myGym's rule for every empty value (lib/empty-placeholder.test.js)
 
 /** A number to `dp` places, or a dash. */
 export const numOrDash = (v, dp = 0) => (typeof v === 'number' && Number.isFinite(v) ? v.toFixed(dp) : DASH)
@@ -50,6 +50,6 @@ export function whoopReturn(hash = '', search = '') {
 export const RETURN_MESSAGE = {
   ok: 'Whoop connected. Your first sync is running.',
   denied: 'Whoop sign-in was cancelled.',
-  signin: 'Sign in to openGym first, then connect Whoop.',
+  signin: 'Sign in to myGym first, then connect Whoop.',
   error: 'Could not connect Whoop. Try again.',
 }

@@ -1,9 +1,9 @@
 /* The watch relay: a mailbox on the user's own server for watches whose phone app cannot be
- * openGym's (docs/ZEPP_OS.md). A Zepp OS watch talks to the phone through a "Side Service" that runs
- * inside the Zepp app, not inside openGym, so the two meet here instead of on the phone:
+ * myGym's (docs/ZEPP_OS.md). A Zepp OS watch talks to the phone through a "Side Service" that runs
+ * inside the Zepp app, not inside myGym, so the two meet here instead of on the phone:
  *
- *   openGym (phone or web)  --PUT snapshot-->  [ this mailbox ]  <--GET snapshot--  Side Service
- *   openGym (phone or web)  <--GET events---   [ this mailbox ]  <--POST events---  Side Service
+ *   myGym (phone or web)  --PUT snapshot-->  [ this mailbox ]  <--GET snapshot--  Side Service
+ *   myGym (phone or web)  <--GET events---   [ this mailbox ]  <--POST events---  Side Service
  *
  * The messages are exactly the Apple Watch's (frontend/src/lib/watch-sync.js): the snapshot as the
  * page builds it, the events as the page applies them. Nothing here reads either one beyond what

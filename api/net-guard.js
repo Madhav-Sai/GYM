@@ -123,7 +123,7 @@ export function pushEndpointError(raw) {
    lookup the request itself uses (DNS rebinding) and, for a literal address, before every send.
 
    One door the push sender does not have: Home Assistant, Node-RED and n8n usually live on the
-   same home network as openGym. INTEGRATIONS_ALLOW_LAN=1 opens exactly that, a home network's
+   same home network as myGym. INTEGRATIONS_ALLOW_LAN=1 opens exactly that, a home network's
    addresses (below) and plain http:// to them, never anything else: loopback, link-local (cloud
    metadata sits at 169.254.169.254), multicast and the reserved blocks stay shut whatever the
    setting. Plain http:// is only ever allowed towards such an address, so a webhook cannot send
@@ -187,7 +187,7 @@ export function outboundUrlError(raw, { allowLan = false } = {}) {
   if (net.isIP(host) || /^[0-9.]+$/.test(host)) {
     if (!net.isIP(host)) return 'url is not valid';
     if (!outboundAddrOk(host, { allowLan, plain })) {
-      return allowLan ? 'url points at an address openGym never calls' : 'url points at a private address (your admin can allow the home network)';
+      return allowLan ? 'url points at an address myGym never calls' : 'url points at a private address (your admin can allow the home network)';
     }
   }
   return null;

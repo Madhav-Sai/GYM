@@ -29,5 +29,5 @@ export function originHint(key, origin, expected, site) {
   let u = null;
   try { u = new URL(String(origin)); } catch { /* not an address, nothing to suggest */ }
   if (!u || !/^https?:$/.test(u.protocol) || u.origin !== String(origin).replace(/\/+$/, '')) return head;
-  return `${head}. If ${u.origin} is where you open openGym, set ORIGIN=${u.origin} and RP_ID=${u.hostname} on the api service and restart it (docs/SELF_HOSTING.md)`;
+  return `${head}. If ${u.origin} is where you open myGym, set ORIGIN=${u.origin} and RP_ID=${u.hostname} on the api service and restart it (docs/SELF_HOSTING.md)`;
 }

@@ -4,6 +4,7 @@
 // subscription hook `useLang`.
 
 import { useSyncExternalStore } from 'react'
+import { englishOnly } from './english-only.js'
 import {
   LANGS, INSTR_LANGS, EXERCISE_NAME_LANGS, DATE_LOCALES, DERIVED_LOCALES, RTL_LANGS,
   getLang, dateLocale, t, tn, instrFor, exerciseNameFor, exerciseNameSearchText, getVersion,
@@ -53,7 +54,11 @@ let lastShowEn = undefined
 let lastEnOnly = undefined
 
 export async function setLang(l, showEn, enOnly) {
-  if (!LANGS[l]) l = 'en'
+  if (!LANGS[l] || englishOnly()) l = 'en'   // English only (lib/english-only.js)
+  // index.html's first-paint script sets lang and dir from the browser's language before the app starts. With
+  // the lock on that must not survive (an Arabic browser would keep a right-to-left page of English text), and
+  // the early exit below would otherwise leave it.
+  if (englishOnly() && typeof document !== 'undefined') { document.documentElement.lang = 'en'; document.documentElement.dir = 'ltr' }
   const show = showEn !== false
   const only = enOnly === true
   // Both display switches participate in the early-exit, so toggling the parens or the

@@ -2,7 +2,7 @@
 // the latest release on GitHub and optionally downloads + installs the APK.
 //
 // The GitHub releases API is public, so no token is needed (60 requests an hour per address,
-// and the check runs once per app session). GitHub is openGym's home since v1.4.0; the GitLab
+// and the check runs once per app session). GitHub is myGym's home since v1.4.0; the GitLab
 // mirror stopped getting releases, so a phone that asked it saw no update.
 // On Android (Capacitor) the APK is downloaded natively into the cache directory (an APK with
 // the animations is ~300 MB: read into the WebView's memory it ran phones out of it, and
@@ -122,7 +122,7 @@ export async function sha256(buffer) {
 const UPDATE_FILE = 'opengym-update.apk'
 
 /**
- * Resolves once openGym is the app in front. The package installer is an activity, and Android
+ * Resolves once myGym is the app in front. The package installer is an activity, and Android
  * (10 and later) does not let an app start one from the background: it refuses without a word.
  * The APK is 300 to 760 MB, plenty of time to switch to another app while it comes down, and then
  * the download finished, the installer never opened and the progress sheet just closed. So the

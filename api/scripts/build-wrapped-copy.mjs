@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Writes api/wrapped-copy.js — the server's copy of the December "Your year in openGym" push — from
+// Writes api/wrapped-copy.js — the server's copy of the December "Your year in myGym" push — from
 // the source of truth in the frontend: the English words in frontend/src/lib/wrapped-copy.js and
 // their translations in frontend/src/locales. The api image carries no frontend, so the text has to
 // live here too, the way the nudge's does (build-nudge-copy.mjs); test/wrapped.test.js fails when

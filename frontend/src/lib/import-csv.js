@@ -10,7 +10,7 @@
 //   FitNotes 2 (iOS)   Date,Exercise,Category,Weight (kg),Weight (lbs),Reps,Distance,Distance Unit,Time,Notes,Kind
 //   Strong             Date,Workout Name,Duration,Exercise Name,Set Order,Weight,Reps,Distance,Seconds,Notes,Workout Notes,RPE
 //   Hevy               title,start_time,end_time,description,exercise_title,superset_id,exercise_notes,set_index,set_type,weight_kg,reps,distance_km,duration_seconds,rpe
-//   openGym            our own CSV export, lib/export-csv.js WORKOUT_COLUMNS (#647)
+//   myGym            our own CSV export, lib/export-csv.js WORKOUT_COLUMNS (#647)
 // Read from the header GymMane documents in its code (not from a real file yet, #647):
 //   GymMane            date,exercise,muscle,set,reps,weight_kg,volume_kg,est_1rm_kg,distance_km,duration_s,rpe
 // Anything else falls through to loose header matching, which covers Lyfta and the
@@ -576,7 +576,7 @@ const toKm = (v, unit) => num(v) * (KM[String(unit || 'km').toLowerCase().trim()
 /* --------------------------------------------------------------- parse ---- */
 
 /**
- * Read an export into workouts openGym understands, WITHOUT touching state — the caller
+ * Read an export into workouts myGym understands, WITHOUT touching state — the caller
  * shows the summary for confirmation first. Nothing here throws on a bad row: a history
  * of several thousand sets will contain oddities, and losing the file over one of them
  * helps nobody. Bad rows are counted and reported instead.
