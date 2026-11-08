@@ -1,0 +1,23 @@
+#!/bin/sh
+# Opt-in (RESOLVER_AUTO=1): take nginx's DNS resolver from /etc/resolv.conf instead of $RESOLVER.
+#
+# nginx resolves the API's name at request time, so it needs a resolver address. Under Docker
+# Compose that is Docker's embedded DNS (127.0.0.11, the default). On Railway and other platforms
+# it is something else, so a fixed default is wrong there. This is our addition to openGym.
+#
+# *.envsh files are sourced by nginx's entrypoint BEFORE the config template is rendered (20-),
+# so what is exported here reaches `resolver ${RESOLVER}`. Do not `exit` in a sourced file.
+if [ "${RESOLVER_AUTO:-}" = "1" ]; then
+  _ns=""
+  for _a in $(awk '/^nameserver[ \t]+/ { print $2 }' "${RESOLV_CONF:-/etc/resolv.conf}" 2>/dev/null); do
+    case "$_a" in *:*) _a="[$_a]" ;; esac   # an IPv6 address needs brackets in nginx
+    _ns="${_ns:+$_ns }$_a"
+  done
+  if [ -n "$_ns" ]; then
+    RESOLVER="$_ns"; export RESOLVER
+    echo "10-resolver-auto.envsh: resolver is now $RESOLVER (from resolv.conf)" >&2
+  else
+    echo "10-resolver-auto.envsh: RESOLVER_AUTO=1 but resolv.conf has no nameserver; keeping RESOLVER=${RESOLVER:-}" >&2
+  fi
+  unset _ns _a
+fi
