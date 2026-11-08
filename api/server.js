@@ -3121,6 +3121,49 @@ const server = http.createServer(async (req, res) => {
 // uplink. Half an hour covers that; a stalled upload is cut much sooner by its own 60 s idle
 // timer in media.js, a client that never finishes its headers still meets headersTimeout, and
 // every other route's body still has to arrive within five minutes (bodyDeadline above).
+/* ---------- the admin, from the environment (this fork's addition) ----------
+   ADMIN_NAME + ADMIN_PASSWORD (and PASSWORD_LOGIN=1): at every start the server makes sure that
+   profile exists, is an admin and signs in with exactly that password. The environment is the
+   source of truth, so changing ADMIN_PASSWORD and restarting rotates it (which, like any password
+   change, signs the account out everywhere). It is how an instance gets its first admin without
+   anyone having to win a race to register, and without a passkey.
+   - Skipped, with a line in the log and never a crash, when only one of the two is set,
+     PASSWORD_LOGIN is off, or the password fails the usual policy (10+ characters, not the name).
+   - An existing profile of that name that already signs in with a password is adopted: made an
+     admin, its password set to this one. A passkey-only profile that happens to share the name
+     is left strictly alone (it holds no sign-in name) and the admin is created beside it.
+   - It does not open registration: pair it with INVITE_ONLY=1 and ALLOW_GUEST=0.
+   The password sits in the host's variables in clear, so use a long random one and keep the
+   people who can read those variables few. */
+async function bootstrapEnvAdmin() {
+  const name = String(process.env.ADMIN_NAME || '').trim().slice(0, 40);
+  const pw = process.env.ADMIN_PASSWORD;
+  if (!name && !pw) return;
+  if (!name || !pw) return console.warn('ADMIN_NAME and ADMIN_PASSWORD must both be set: the admin from the environment was skipped');
+  if (!PASSWORD_LOGIN) return console.warn('ADMIN_NAME / ADMIN_PASSWORD need PASSWORD_LOGIN=1: the admin from the environment was skipped');
+  const problem = passwordProblem(pw, name);
+  if (problem) return console.error(`ADMIN_PASSWORD was refused (${problem}): the admin from the environment was skipped`);
+
+  const key = nameKey(name);
+  let u = db.users.find(x => holdsName(x) && nameKey(x.name) === key);
+  if (!u) {
+    if (nameTaken(name)) return console.error(`ADMIN_NAME "${name}" collides with another profile's sign-in name: skipped`);
+    const now = new Date().toISOString();
+    u = { id: crypto.randomBytes(12).toString('base64url'), name, created: now, pw: { h: await hashPassword(pw), set: now }, admin: true };
+    if (!db.users.some(x => x.owner)) u.owner = true;
+    db.users.push(u);
+    saveDb();
+    return console.log(`admin "${name}" created from the environment`);
+  }
+  let changed = false;
+  if (u.admin !== true) { u.admin = true; changed = true; }
+  let same = false;
+  try { same = hasPassword(u) && await verifyPassword(pw, u.pw.h); } catch { same = false; }
+  if (!same) { setPassword(u, await hashPassword(pw)); changed = true; }
+  if (changed) { saveDb(); console.log(`admin "${name}" updated from the environment`); }
+}
+await bootstrapEnvAdmin();
+
 server.requestTimeout = 30 * 60000;
 server.headersTimeout = 60000;
 // The port is read back off the listener rather than echoed from PORT, so the line states the

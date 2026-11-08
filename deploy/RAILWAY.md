@@ -4,7 +4,7 @@ Two Railway services from this one repo, plus a volume. **No Vercel, no database
 
 | Service | What it is | Public? |
 |---|---|---|
-| `api` | openGym's Node API. Keeps everything in a **volume** mounted at `/data`. | No (private only) |
+| `api` (yours may be named `gym`) | openGym's Node API. Keeps everything in a **volume** mounted at `/data`. | No (private only) |
 | `web` | nginx: the app, the exercise media, and `/api` proxied to `api`. | **Yes**, on your domain |
 
 > **Why not Vercel?** Vercel is serverless with no persistent disk, and openGym's API is a long-running
@@ -25,7 +25,9 @@ Decide `gym.YOURDOMAIN` now. Everything below uses it.
 ## Step 2. Create the `api` service
 1. Railway → **New Project → Deploy from GitHub repo → `Madhav-Sai/GYM`**.
 2. Service **Settings**:
-   - **Service name:** `api` (exactly: the web service reaches it as `api.railway.internal`).
+   - **Service name:** whatever you like, but note it: the private address is `<name>.railway.internal`. It is shown in
+     the service's **Settings → Networking → Private Networking**. (On the first real deployment the service was named
+     `gym`, so `web` used `BACKEND=gym.railway.internal`.)
    - **Source → Branch:** `claude/pensive-tesla-tl5xxk` (or `main` once this is merged).
    - **Root Directory:** `/api`. Railway then finds `api/Dockerfile` (its last stage, `default`, is the one built).
 3. **Variables** (Raw editor is easiest):
@@ -36,9 +38,15 @@ Decide `gym.YOURDOMAIN` now. Everything below uses it.
    RP_ID=gym.YOURDOMAIN
    RP_NAME=openGym
    TRUST_PROXY=1
-   FIRST_USER_ADMIN=1
    INTEGRATIONS=webhook,whoop
+   PASSWORD_LOGIN=1
+   ADMIN_NAME=madhav
+   ADMIN_PASSWORD=<a long random password: letters and digits, 20+ characters>
+   INVITE_ONLY=1
+   ALLOW_GUEST=0
    ```
+   The admin is created from `ADMIN_NAME` + `ADMIN_PASSWORD` when `api` starts (no passkey needed). To change the
+   password later, change the variable and redeploy. Keep it free of `$` and quotes.
    Whoop's three values (`WHOOP_CLIENT_ID`, `WHOOP_CLIENT_SECRET`, `WHOOP_REDIRECT_URI=https://gym.YOURDOMAIN/api/integrations/oauth/callback`)
    come later (step 8). Leaving `whoop` in `INTEGRATIONS` without them is harmless: it stays off.
 4. **Add the volume:** in the project canvas **+ New → Volume**, attach it to `api`, **mount path `/data`**.
@@ -49,12 +57,12 @@ Decide `gym.YOURDOMAIN` now. Everything below uses it.
 ## Step 3. Create the `web` service
 1. In the same project: **+ New → GitHub Repo → `Madhav-Sai/GYM`** (same repo again).
 2. **Settings:** name it `web`, same branch as `api`, **Root Directory: `/`** (leave empty; this Dockerfile
-   needs the whole repo), and add the variable `RAILWAY_DOCKERFILE_PATH=web/Dockerfile`.
+   needs the whole repo), and add the variable `RAILWAY_DOCKERFILE_PATH=/web/Dockerfile` (the leading slash is the form that worked).
 3. **Variables:**
    ```
    NGINX_PORT=3000
    PORT=3000
-   BACKEND=api.railway.internal
+   BACKEND=<the api service's private name, e.g. gym.railway.internal>
    RESOLVER_AUTO=1
    ```
    `PORT` here is the **API's** port (openGym's nginx template calls it that), `NGINX_PORT` is the port nginx
@@ -80,8 +88,8 @@ Decide `gym.YOURDOMAIN` now. Everything below uses it.
 Hobby allows 2 custom domains per service, so this uses one.
 
 ## Step 6. First visit
-`https://gym.YOURDOMAIN` → **create your profile first** (a passkey). `FIRST_USER_ADMIN=1` makes the first
-profile the admin. Then on `api` add `INVITE_ONLY=1` and `ALLOW_GUEST=0` so nobody else can sign up.
+`https://gym.YOURDOMAIN` → sign in with **name + password** (`ADMIN_NAME` / `ADMIN_PASSWORD`). The admin already
+exists; nobody has to register, and `INVITE_ONLY=1` + `ALLOW_GUEST=0` keep strangers out.
 
 ## Step 7. Check what works
 Log a workout, then reload and confirm it's still there. **Redeploy `api` once** and confirm it's *still* there.
@@ -108,7 +116,7 @@ fails with a resolver error in `web`'s logs, set `RESOLVER` on `web` to the name
 `/etc/resolv.conf` (bracketed if IPv6) and remove `RESOLVER_AUTO`.
 
 ## Troubleshooting
-- **502 on the domain:** target port ≠ 3000, or `web` can't reach `api` (service must be named `api`; `BACKEND=api.railway.internal`).
+- **502 on the domain:** target port ≠ 3000, or `web` can't reach `api` (`BACKEND` must be the api service's private name from its Settings → Networking).
 - **404 on the custom domain:** the TXT record is missing or hasn't verified.
 - **`EACCES` writing `/data`:** Railway mounts volumes as root; if `api` runs as a non-root user, set `RAILWAY_RUN_UID=0` on `api`
   (Railway's documented variable for this).
