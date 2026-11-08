@@ -100,6 +100,7 @@ import { streakInfo } from './lib/streak.js'
 import { copyText } from './lib/clipboard.js'
 import { queueRemaining, pinState } from './lib/queue.js'
 import { DAY_NOTE_TAGS, DAY_NOTE_LABEL, DAY_NOTE_ICON, dayNoteOf, dayNoteLine, canNoteDay, withDayNote } from './lib/day-notes.js'
+import { visitOn, visitDays } from './lib/gym-visits.js'
 import { isOn } from './lib/modules.js'
 
 const S = () => useStore.getState().S
@@ -3389,9 +3390,11 @@ function Calendar({ start, close }) {
     // A day off with a note on it (#261) shows the note's dot instead of the plan's, and its
     // note as the tooltip; tapping it opens the day sheet, where the note is.
     const note = !ws && dayNoteOf(st, iso)
-    const dotCls = ws ? 'done' : note ? 'noted' : ovr && planned ? 'ovr' : planned ? 'plan' : ''
+    // A manual gym check-in (this fork, lib/gym-visits.js) on a day with no workout: a ring in the accent.
+    const visit = !ws && visitOn(st, iso)
+    const dotCls = ws ? 'done' : visit ? 'visit' : note ? 'noted' : ovr && planned ? 'ovr' : planned ? 'plan' : ''
     cells.push(<button key={d} className={'cal-d' + (ws ? ' has' : '') + (note ? ' noted' : '') + (iso === todayISO() ? ' today' : '')}
-      title={note ? dayNoteLine(note, t) : undefined} onClick={() => {
+      title={visit ? t('Checked in') : note ? dayNoteLine(note, t) : undefined} onClick={() => {
       if (!ws) { close(); dayOverrideSheet(iso); return }
       if (ws.length === 1) { close(); workoutDetailSheet(ws[0]); return }
       close(); ui().openSheet(c2 => <><h3>{fmtDate(iso, true)}</h3><div className="list">{ws.map(w => <WorkoutRow key={w.id} w={w} onClick={() => { c2(); workoutDetailSheet(w) }} />)}</div></>)
@@ -3409,6 +3412,8 @@ function Calendar({ start, close }) {
       <span><i style={{ background: 'var(--acc)' }} />{t('Trained')}</span>
       <span><i style={{ background: 'var(--label-3)' }} />{t('Planned')}</span>
       <span><i style={{ background: 'var(--orange)' }} />{t('Rescheduled')}</span>
+      {visitDays(st).some(k => k.startsWith(y + '-' + String(mo + 1).padStart(2, '0'))) &&
+        <span><i style={{ background: 'transparent', boxShadow: 'inset 0 0 0 1.5px var(--acc)' }} />{t('Checked in')}</span>}
       {Object.keys(st.dayNotes || {}).some(k => k.startsWith(y + '-' + String(mo + 1).padStart(2, '0')) && dayNoteOf(st, k)) &&
         <span><i style={{ background: 'var(--indigo)' }} />{t('Day note')}</span>}
     </div>

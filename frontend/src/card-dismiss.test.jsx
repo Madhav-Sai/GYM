@@ -11,6 +11,7 @@ import { createRoot } from 'react-dom/client'
 import { DEF, useStore } from './store/useStore.js'
 import { useUI } from './store/useUI.js'
 import { todayISO } from './lib/format.js'
+import { visitOn } from './lib/gym-visits.js'
 import { RecapHomeCard } from './components/Recap.jsx'
 import { exercisePicker, workoutDetailSheet, calendarSheet } from './sheets.jsx'
 import Library from './views/Library.jsx'
@@ -102,11 +103,22 @@ describe('Home: the streak card and check-in', () => {
     act(() => card.querySelector('.tap-main').click())
     expect(calendarSheet).toHaveBeenCalledTimes(1)
   })
-  it('check-in opens from its text, a real button', () => {
+  // This fork: the check-in card is no longer one big button to the QR codes. It holds two plain
+  // buttons side by side, nothing nested: "Check in" records today (counts towards the streak), and
+  // "Membership codes" opens the page the whole card used to open.
+  it('check-in is two real buttons: one checks in today (and takes it back), one opens the codes', () => {
     const host = mount()
-    const main = host.querySelector('.checkin-card .tap-main')
-    expect(nameOf(main)).toBe('Check in')
-    act(() => main.click())
+    const card = host.querySelector('.checkin-card')
+    expect(card.classList.contains('tap-host')).toBe(false)
+    expect([...card.querySelectorAll('button')].map(nameOf)).toEqual(['Check in', 'Membership codes'])
+    act(() => card.querySelectorAll('button')[0].click())
+    expect(visitOn(useStore.getState().S, todayISO())).toBe(true)
+    expect(navSpy).not.toHaveBeenCalled()
+    const again = [...host.querySelectorAll('.checkin-card button')]
+    expect(again.map(nameOf)).toEqual(['Undo', 'Membership codes'])
+    act(() => again[0].click())
+    expect(visitOn(useStore.getState().S, todayISO())).toBe(false)
+    act(() => again[1].click())
     expect(navSpy).toHaveBeenCalledWith('/checkin')
   })
   it('nothing on Home is a control inside a control', () => {

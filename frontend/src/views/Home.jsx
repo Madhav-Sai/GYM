@@ -29,6 +29,7 @@ import { SeasonDeco } from '../components/Seasonal.jsx'
 import { WrappedHomeCard } from '../components/WrappedEntry.jsx'
 import RecoveryHint from '../components/RecoveryHint.jsx'
 import { WhoopHomeCard } from './WhoopSheets.jsx'
+import { visitOn, withVisit } from '../lib/gym-visits.js'
 import { ChallengesCard } from '../components/Challenges.jsx'
 import { isOn } from '../lib/modules.js'
 
@@ -112,7 +113,7 @@ export default function Home() {
   const left = workoutsLeft(S, todayISO())
   // The streak with its best run and freezes (lib/streak.js), read back from the workouts.
   const todayKey = todayISO()
-  const streak = useMemo(() => streakInfo(S, todayKey), [S.workouts, S.weekStart, todayKey]) // eslint-disable-line react-hooks/exhaustive-deps
+  const streak = useMemo(() => streakInfo(S, todayKey), [S.workouts, S.gymVisits, S.weekStart, todayKey]) // eslint-disable-line react-hooks/exhaustive-deps
   // Settings → Modules (lib/modules.js): what a module switched off hides here.
   const on = id => isOn(S, id)
   const bwPoints = S.bodyweight.slice(-30).map(b => ({ t: weighInAt(b), y: b.w, d: b.d }))
@@ -212,12 +213,19 @@ export default function Home() {
 
     {/* Jump to the gym check-in cards (QR membership codes). Shown here as a quick tap on
         arrival at the gym; folds away per user via the "Gym check-in" switch in Settings. */}
-    {on('checkin') && (
-      <div className="card tap-host checkin-card">
-        <CardHead icon="qr" tint="var(--blue)" eyebrow={t('At the gym')} title={t('Check in')} open={{ onClick: () => nav('/checkin') }}
-          action={<Icon name="chevronRight" className="chev" />} />
+    {/* Manual gym check-in (this fork): one tap says you were at the gym today. It counts towards the
+        streak and shows on the calendar (lib/gym-visits.js). The QR membership codes stay one tap away. */}
+    {on('checkin') && (() => {
+      const day = todayISO(), here = visitOn(S, day)
+      return <div className="card checkin-card">
+        <CardHead icon={here ? 'checkCircle' : 'pin'} tint="var(--blue)" eyebrow={t('At the gym')}
+          title={here ? t('Checked in today') : t('Check in')}
+          sub={here ? t('It counts towards your streak.') : t('One tap. It counts towards your streak.')}
+          action={<Button size="sm" icon={here ? 'undo' : 'check'}
+            onClick={() => useStore.getState().update(st => { st.gymVisits = withVisit(st.gymVisits, day, !here) })}>{here ? t('Undo') : t('Check in')}</Button>} />
+        <Button size="sm" icon="qr" onClick={() => nav('/checkin')}>{t('Membership codes')}</Button>
       </div>
-    )}
+    })()}
 
     {!S.routines.length && !S.active && (
       <div className="card">

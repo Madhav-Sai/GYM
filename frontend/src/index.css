@@ -2503,6 +2503,7 @@ body.totop-on.resting #app{padding-bottom:calc(232px + var(--sab))}
 .cal-d i.plan{background:var(--label-3)}
 .cal-d i.ovr{background:var(--orange)}
 .cal-d i.noted{background:var(--indigo)}
+.cal-d i.visit{background:transparent;box-shadow:inset 0 0 0 1.5px var(--acc)}
 .cal-legend{display:flex;gap:14px;justify-content:center;margin-top:12px;font-size:var(--fs-caption);color:var(--label-3)}
 .cal-legend i{display:inline-block;width:6px;height:6px;border-radius:50%;margin-inline-end:5px}
 /* --- openGym date field + picker (#809, components/DateField.jsx) ---

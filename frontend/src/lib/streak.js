@@ -1,7 +1,8 @@
 // The week streak: weeks in a row with at least one workout, in the profile's own weeks (Monday or
 // Sunday first, lib/format.js weekKey), with the best run ever, freezes and milestone badges.
 //
-// Everything here is read back from the workouts, nothing of it is stored: two devices, a restored
+// Everything here is read back from the workouts (and, in this fork, the manual gym check-ins),
+// nothing of it is stored: two devices, a restored
 // backup or an import of old sessions all arrive at the same streak, and there is nothing for a sync
 // to merge. The one stored thing is which celebration was already shown (S.streakSeen, below).
 //
@@ -15,6 +16,7 @@
 // So a holiday or a cold is covered without anyone having to remember a switch first: train 4
 // weeks, and the next missed one is forgiven. Two missed weeks need two freezes, i.e. 8 weeks.
 import { todayISO, isoOf, weekKey, weekStartOf } from './format.js'
+import { visitDays } from './gym-visits.js'
 
 export const FREEZE_EVERY = 4
 export const FREEZE_MAX = 2
@@ -42,6 +44,11 @@ export function streakInfo (S, today = todayISO()) {
   for (const w of Array.isArray(S?.workouts) ? S.workouts : []) {
     if (!w || !isISO(w.d)) continue
     const k = weekKey(w.d, ws)
+    if (k <= cur) trained.add(k)
+  }
+  // A manual gym check-in (this fork, lib/gym-visits.js) trains its week like a logged workout does.
+  for (const d of visitDays(S)) {
+    const k = weekKey(d, ws)
     if (k <= cur) trained.add(k)
   }
   const empty = { current: 0, best: 0, freezes: 0, frozen: [], thisWeekDone: false, badges: [], next: STREAK_BADGES[0], toNextFreeze: FREEZE_EVERY, weekKey: cur }
