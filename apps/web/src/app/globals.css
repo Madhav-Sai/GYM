@@ -1,0 +1,26 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bg: #0a0a0b;
+  --color-surface: #141416;
+  --color-surface-2: #1c1c1f;
+  --color-border: #27272a;
+  --color-text: #fafafa;
+  --color-dim: #a1a1aa;
+  --color-mute: #52525b;
+  --color-accent: #10b981;
+  --color-warn: #f59e0b;
+  --color-danger: #ef4444;
+  --color-info: #3b82f6;
+  --color-strain: #0ea5e9;
+  --font-sans: Inter, -apple-system, "SF Pro Text", system-ui, "Segoe UI", Roboto, sans-serif;
+}
+
+html { color-scheme: dark; background: var(--color-bg); }
+body {
+  background: var(--color-bg); color: var(--color-text); font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums; -webkit-font-smoothing: antialiased;
+  padding-top: env(safe-area-inset-top); -webkit-tap-highlight-color: transparent;
+}
+button { cursor: pointer; touch-action: manipulation; }
+input { font-variant-numeric: tabular-nums; }

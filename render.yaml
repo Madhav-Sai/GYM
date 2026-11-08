@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: gym-api
+    runtime: node
+    plan: free
+    buildCommand: corepack enable && pnpm install --frozen-lockfile
+    startCommand: pnpm --filter @gym/api start
+    healthCheckPath: /health
+    envVars:
+      - { key: NODE_ENV, value: production }
+      - { key: DATABASE_URL, sync: false }   # Neon pooled
+      - { key: AUTH_SECRET, sync: false }    # openssl rand -hex 32
