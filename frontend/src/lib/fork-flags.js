@@ -20,3 +20,13 @@ export function simpleLogin() {
   if (v === '0') return false
   return import.meta.env.MODE !== 'test'
 }
+
+/** myGym's shorter Settings: no Apple Watch / Zepp / Health Connect pages, no "Connect to my server", no pairing or
+ *  passkey rows (the app signs in with a name and password to one server), and a Whoop page at the top. Off under
+ *  test so upstream's Settings tests keep guarding those rows; VITE_TRIMMED_SETTINGS=0 brings them back. */
+export function trimmedSettings() {
+  const v = import.meta.env.VITE_TRIMMED_SETTINGS
+  if (v === '1') return true
+  if (v === '0') return false
+  return import.meta.env.MODE !== 'test'
+}

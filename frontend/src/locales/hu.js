@@ -2320,6 +2320,7 @@ export default {
   'This app can’t confirm with a passkey. Make the code in a browser signed in to this profile, or add a password there first.': 'Ez az app nem tud jelszókulccsal megerősíteni. Készítsd el a kódot egy böngészőben, ahol ebbe a profilba vagy bejelentkezve, vagy előbb adj meg ott egy jelszót.',
   // --- Settings → Apple Watch ---
   'Apple Watch': 'Apple Watch',
+  'Whoop': 'Whoop',
   'Weight': 'Súly',
   'Send workouts to the watch': 'Edzések küldése az órára',
   'Open on the watch': 'Megnyitás az órán',

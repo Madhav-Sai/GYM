@@ -334,6 +334,23 @@ test('the summary shows dashes for what is missing and flags heart rate over 175
   assert.equal(s.zone45.weekStart, '2026-11-02'); assert.equal(s.zone45.minutes, 28); assert.equal(s.zone45.status, 'high');
 });
 
+test('the summary carries every scored field per day, averages, naps and calories', async () => {
+  const now = Date.parse('2026-11-08T12:00:00Z');
+  const fake = fakeWhoop({
+    cycles: [cycleRec(3, '2026-11-08T03:00:00.000Z')], recoveries: [recoveryRec(3, 70)],
+    sleeps: [sleepRec('s3', 3, '2026-11-07T20:00:00.000Z', '2026-11-08T04:00:00.000Z'), sleepRec('nap', 3, '2026-11-08T07:00:00.000Z', '2026-11-08T07:30:00.000Z', true)],
+  });
+  const r = rig({ fake, now: () => now });
+  await connect(r);
+  await r.svc.sync('u1', { force: true });
+  const s = r.svc.summary('u1', now);
+  const d = s.days[s.days.length - 1];
+  for (const k of ['spo2', 'skinTemp', 'kj', 'avgHr', 'maxHr', 'deepMin', 'remMin', 'lightMin', 'awakeMin', 'performance', 'efficiency', 'respRate', 'neededMin', 'debtMin']) assert.ok(k in d, k);
+  assert.equal(s.avg.recovery.d7, 70); assert.equal(s.avg.recovery.d30, 70);
+  assert.equal(s.naps.length, 1);
+  assert.equal(s.today.cycle.kcal == null || Number.isInteger(s.today.cycle.kcal), true);
+});
+
 test('before the first sync the summary is empty, not zeros', () => {
   const r = rig();
   const s = r.data.summary('nobody');

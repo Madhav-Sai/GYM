@@ -283,6 +283,28 @@ const widgetPlugin = () => pluginP || (pluginP = (async () => {
   return { WidgetBridge: registerPlugin('WidgetBridge') }
 })().catch(() => null))
 
+/** myGym: the Whoop numbers the Whoop and Steps widgets draw (ios/App/OpenGymWidgets/WhoopWidgets.swift), from
+ *  the server's /api/whoop/summary. null when there is nothing to show: the widget then says "Open myGym". */
+export function whoopWidgetBlock (s) {
+  if (!s || !s.connected || !s.today) return null
+  const n = v => (typeof v === 'number' && Number.isFinite(v) ? v : null)
+  const r = s.today.recovery || {}, c = s.today.cycle || {}, sl = s.today.sleep || {}
+  const week = (s.days || []).slice(-7)
+  return {
+    day: s.today.day || null, syncedAt: n(s.syncedAt),
+    recovery: n(r.score), band: s.today.guidance?.band || null, guidance: s.today.guidance?.text || null,
+    hrv: n(r.hrv), rhr: n(r.rhr), spo2: n(r.spo2), skinTemp: n(r.skinTemp),
+    strain: n(c.strain), kcal: n(c.kcal),
+    sleepMin: n(sl.asleepMin), sleepNeedMin: n(sl.neededMin), sleepPerf: n(sl.performance), respRate: n(sl.respRate),
+    steps: n(s.steps?.value), stepGoal: 8000,
+    week: week.map(d => n(d.recovery)), strainWeek: week.map(d => n(d.strain)), weekDays: week.map(d => d.day),
+    zoneMin: n(s.zone45?.minutes), zoneTarget: s.zone45?.target || null, zoneWarn: n(s.zone45?.warnAbove),
+    hrOver: (s.hrFlags || []).length ? n(Math.max(...s.hrFlags.map(f => f.maxHr))) : null,
+  }
+}
+
+const WHOOP_POLL_MS = 5 * 60_000
+
 /**
  * Started once by the app: writes the snapshot when what it shows changes (debounced, and only
  * when it differs from the last one written), and again when the app comes back, which may be on
@@ -291,12 +313,14 @@ const widgetPlugin = () => pluginP || (pluginP = (async () => {
 export async function startWidgetSync ({ useStore }) {
   const p = await widgetPlugin()
   if (!p) return () => {}
-  let last = null, tm = null
+  let last = null, tm = null, whoop = null
   const write = async () => {
     tm = null
     if (useStore.getState().tourSandbox) return
     try {
-      const json = JSON.stringify(buildWidgetSnapshot(useStore.getState().S))
+      const snap = buildWidgetSnapshot(useStore.getState().S)
+      if (whoop) snap.whoop = whoop
+      const json = JSON.stringify(snap)
       if (json === last) return
       await p.WidgetBridge.write({ json })
       last = json
@@ -305,10 +329,24 @@ export async function startWidgetSync ({ useStore }) {
   // The tour's practice workout (useStore enterTourSandbox) is left off the widgets.
   const schedule = () => { if (useStore.getState().tourSandbox) return; clearTimeout(tm); tm = setTimeout(write, WRITE_DEBOUNCE_MS) }
   const off = useStore.subscribe((s, prev) => { if (s.S !== prev.S) schedule() })
-  const onVisible = () => { if (document.visibilityState === 'visible') schedule() }
+  // Whoop: the server's numbers, every 5 minutes while the app is open and each time it comes back.
+  let poll = null
+  const pullWhoop = async () => {
+    const st = useStore.getState()
+    if (!st.user || !(st.config?.integrations?.providers || []).includes('whoop')) return
+    if (!poll) poll = setInterval(pullWhoop, WHOOP_POLL_MS)
+    try {
+      const { api } = await import('./api.js')
+      const next = whoopWidgetBlock(await api('/api/whoop/summary'))
+      if (JSON.stringify(next) !== JSON.stringify(whoop)) { whoop = next; schedule() }
+    } catch { /* offline: keep the last numbers */ }
+  }
+  const offUser = useStore.subscribe((s, prev) => { if (s.user !== prev.user || s.config !== prev.config) pullWhoop() })
+  pullWhoop()
+  const onVisible = () => { if (document.visibilityState === 'visible') { schedule(); pullWhoop() } }
   document.addEventListener('visibilitychange', onVisible)
   write()
-  return () => { off(); clearTimeout(tm); document.removeEventListener('visibilitychange', onVisible) }
+  return () => { off(); offUser(); if (poll) clearInterval(poll); clearTimeout(tm); document.removeEventListener('visibilitychange', onVisible) }
 }
 
 // Test seams.

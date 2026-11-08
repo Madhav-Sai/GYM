@@ -6,6 +6,7 @@
 // by the same text and flash it (views/Settings.jsx). settings-pages.test.jsx renders every page
 // and checks that each entry below really is a row there.
 import { englishOnly } from '../lib/english-only.js'
+import { trimmedSettings } from '../lib/fork-flags.js'
 import { t } from '../lib/i18n.js'
 import { ACCENT_NAMES } from '../lib/format.js'
 import { MODULES } from '../lib/modules.js'
@@ -15,6 +16,7 @@ import { MODULES } from '../lib/modules.js'
 export const PAGES = {
   // Settings → Modules (v1.4.4): whole feature areas on and off (views/Modules.jsx).
   modules: { title: 'Modules', icon: 'grid', tint: 'var(--blue)', kw: 'modules features plugins extras enable disable turn on off hide simplify lean minimal clutter just training everything preset' },
+  whoop: { title: 'Whoop', icon: 'heart', tint: 'var(--red)', kw: 'whoop recovery strain sleep hrv heart rate steps connect sync band' },
   workout: { title: 'Workout', icon: 'play', tint: 'var(--green)' },
   alerts: { title: 'Timer alerts', icon: 'speaker', tint: 'var(--pink)' },
   reminders: { title: 'Reminders', icon: 'bell', tint: 'var(--red)' },
@@ -46,7 +48,7 @@ export const PAGE_IDS = Object.keys(PAGES)
 
 // The root, top to bottom. Whether a row shows is pageVisible's call.
 // Modules first, on its own: what the app shows at all comes before how each part behaves.
-export const ROOT_GROUPS = [['modules'], ['workout', 'alerts', 'reminders'], ['plan', 'units', 'equipment'], ['look', 'coach', 'watch', 'zepp'], ['integrations', 'data', 'about']]
+export const ROOT_GROUPS = [['whoop'], ['modules'], ['workout', 'alerts', 'reminders'], ['plan', 'units', 'equipment'], ['look', 'coach', 'watch', 'zepp'], ['integrations', 'data', 'about']]
 
 /**
  * Whether a page exists for this device and profile. Reminders need a push server (signed in) or
@@ -56,6 +58,9 @@ export const ROOT_GROUPS = [['modules'], ['workout', 'alerts', 'reminders'], ['p
 export function pageVisible(page, ctx) {
   // A page of a module that is off (ctx.mod answers isOn for this profile; absent: all on).
   if (PAGES[page]?.mod && ctx.mod && !ctx.mod(PAGES[page].mod)) return false
+  // myGym: Whoop on top; no watch, Zepp or Health Connect pages.
+  if (page === 'whoop') return trimmedSettings() && !ctx.demo
+  if (trimmedSettings() && (page === 'watch' || page === 'zepp' || page === 'health-connect')) return false
   if (page === 'reminders') return !!(ctx.user || ctx.mobile)
   if (page === 'coach') return !!ctx.mobile
   // The iPhone app only: the watch app ships inside it.
@@ -77,6 +82,8 @@ export function pageVisible(page, ctx) {
 // offers a row the page would not show. The one rule a search cannot know in advance is whether
 // this browser's push subscription is on (the server is asked when the page opens): those rows
 // name `via`, the row the hit flashes instead when they turn out not to be there.
+// The rows myGym's Settings does not show (trimmedSettings); the search must not offer them either.
+export const TRIMMED_ROWS = new Set(['Connect to my server', 'Pair the mobile app', 'Add another device', 'Passkeys', 'Create passkey profile', 'Sign in with passkey', 'Pair a watch'])
 const signedInWeb = c => !!c.user && !c.mobile && !c.demo
 // The reminder rows: the phone's own notifications, or web push where the browser has it.
 const remind = c => !!c.mobile || !!c.pushOK
@@ -298,6 +305,7 @@ export function searchSettings(query, ctx, tr = t) {
     // A page under another that its own module hides (Look & Home → Seasonal themes).
     if (PAGES[e.page].mod && !pageVisible(e.page, ctx)) continue
     if (e.when && !e.when(ctx)) continue
+    if (trimmedSettings() && TRIMMED_ROWS.has(e.title)) continue
     if (e.mod && ctx.mod && !ctx.mod(e.mod)) continue
     consider(e, false)
   }

@@ -2317,6 +2317,7 @@ export default {
   'This app can’t confirm with a passkey. Make the code in a browser signed in to this profile, or add a password there first.': 'Esta app no puede confirmar con una passkey. Crea el código en un navegador con este perfil abierto, o añade allí una contraseña primero.',
   // --- Settings → Apple Watch ---
   'Apple Watch': 'Apple Watch',
+  'Whoop': 'Whoop',
   'Weight': 'Peso',
   'Send workouts to the watch': 'Enviar entrenos al reloj',
   'Open on the watch': 'Abrir en el reloj',

@@ -2314,6 +2314,7 @@ export default {
   'This app can’t confirm with a passkey. Make the code in a browser signed in to this profile, or add a password there first.': 'Цей застосунок не може підтвердити ключем доступу. Створіть код у браузері, де ви ввійшли в цей профіль, або спершу задайте там пароль.',
   // --- Settings → Apple Watch ---
   'Apple Watch': 'Apple Watch',
+  'Whoop': 'Whoop',
   'Weight': 'Вага',
   'Send workouts to the watch': 'Надсилати тренування на годинник',
   'Open on the watch': 'Відкривати на годиннику',

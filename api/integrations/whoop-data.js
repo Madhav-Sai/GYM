@@ -96,13 +96,26 @@ export function createWhoopData({ dir, now = Date.now }) {
         day: latest.day,
         recovery: rec, guidance: recoveryBand(rec?.score ?? null),
         sleep: sl,
-        cycle: { strain: latest.strain, kj: latest.kj, avgHr: latest.avgHr, maxHr: latest.maxHr, steps: latest.steps, state: latest.state },
+        cycle: { strain: latest.strain, kj: latest.kj, kcal: latest.kj != null ? Math.round(latest.kj / 4.184) : null, avgHr: latest.avgHr, maxHr: latest.maxHr, steps: latest.steps, state: latest.state, start: latest.start, end: latest.end },
       };
 
-      const days = cycles.slice(0, 30).map(c => {
+      // Up to 90 days, oldest first, every field Whoop scores (null where it sent none).
+      const days = cycles.slice(0, 90).map(c => {
         const r = recOf(c), s = sleepOf(c);
-        return { day: c.day, recovery: r?.score ?? null, hrv: r?.hrv ?? null, rhr: r?.rhr ?? null, strain: c.strain, steps: c.steps, sleepMin: s?.asleepMin ?? null, consistency: s?.consistency ?? null };
+        return {
+          day: c.day, recovery: r?.score ?? null, hrv: r?.hrv ?? null, rhr: r?.rhr ?? null, spo2: r?.spo2 ?? null, skinTemp: r?.skinTemp ?? null,
+          strain: c.strain, kj: c.kj, avgHr: c.avgHr, maxHr: c.maxHr, steps: c.steps,
+          sleepMin: s?.asleepMin ?? null, inBedMin: s?.inBedMin ?? null, neededMin: s?.neededMin ?? null, debtMin: s?.debtMin ?? null,
+          lightMin: s?.lightMin ?? null, deepMin: s?.deepMin ?? null, remMin: s?.remMin ?? null, awakeMin: s?.awakeMin ?? null,
+          performance: s?.performance ?? null, efficiency: s?.efficiency ?? null, consistency: s?.consistency ?? null,
+          respRate: s?.respRate ?? null, disturbances: s?.disturbances ?? null,
+        };
       }).reverse();
+      // Averages over the last 7 and 30 days (only days Whoop scored count).
+      const avgOf = (n, k) => { const v = days.slice(-n).map(x => x[k]).filter(x => typeof x === 'number' && Number.isFinite(x)); return v.length ? Math.round(v.reduce((a, b) => a + b, 0) / v.length * 10) / 10 : null; };
+      const avg = {};
+      for (const k of ['recovery', 'hrv', 'rhr', 'strain', 'sleepMin', 'steps', 'performance', 'respRate', 'spo2', 'skinTemp', 'kj']) avg[k] = { d7: avgOf(7, k), d30: avgOf(30, k) };
+      const naps = Object.values(d.sleep).filter(s => s.nap).sort((a, b) => Date.parse(b.start) - Date.parse(a.start)).slice(0, 5);
 
       const workouts = Object.values(d.workouts).sort((a, b) => Date.parse(b.start) - Date.parse(a.start));
 
@@ -125,7 +138,7 @@ export function createWhoopData({ dir, now = Date.now }) {
         .map(w => ({ day: w.day, sport: w.sport, maxHr: w.maxHr, ceiling: HR_CEILING }));
 
       return {
-        ...base, today, days, zone45, hrFlags,
+        ...base, today, days, avg, naps, zone45, hrFlags,
         workouts: workouts.slice(0, 20),
         // Steps, labelled with where they came from. null when Whoop did not send one: a dash, not 0.
         steps: { value: latest.steps, day: latest.day, source: 'whoop' },

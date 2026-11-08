@@ -2352,6 +2352,7 @@ export default {
 
   // --- Settings → Apple Watch ---
   'Apple Watch': 'Apple Watch',
+  'Whoop': 'Whoop',
   'Weight': 'Vikt',
   'Send workouts to the watch': 'Skicka pass till klockan',
   'Open on the watch': 'Öppna på klockan',

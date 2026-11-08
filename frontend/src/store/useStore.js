@@ -2038,6 +2038,8 @@ export const useStore = create((set, get) => {
       // case it behaves exactly like the signed-in web flow below, straight from here.
       if (MOBILE) {
         const remote = await loadRemote()
+        // myGym: one server, name + password. A guest flag left by an earlier build would skip the sign-in screen.
+        if (PRESET_SERVER) get().setGuest(false)
         // Before the first request: a server behind Cloudflare Access answers nothing without it.
         await loadCfAccess({ pairedBase: remote?.mode === 'remote' ? remote.base : '' })
         set({ coachLocal: coachDeviceSettings(await loadCoachDevice()) })
@@ -2070,6 +2072,14 @@ export const useStore = create((set, get) => {
             await get().pullState()
             if (!get().sync.lastError) await applyStash()   // only once the server really answered
           } catch (e) {
+            // myGym: the server refused this phone's sign-in (revoked, expired): back to the sign-in screen.
+            if (PRESET_SERVER && (e?.status === 401 || e?.status === 403)) {
+              await forgetRemote().catch(() => {})
+              pairedBase = null
+              get().setUser(null)
+              finishBoot()
+              return
+            }
             // Whatever the answer — no network, a server error, a token the server no longer
             // accepts — the pairing, this copy and the account all stay, and what is owed stays
             // owed. A refused token used to unpair the phone on the spot while it went on showing
@@ -2090,7 +2100,9 @@ export const useStore = create((set, get) => {
         } else if (hasData(S)) {
           nativePersist(true)   // first run after an update from a file-less version: seed the mirror
         }
-        if (get().user) {
+        if (get().user && PRESET_SERVER) {
+          get().setUser(null)   // myGym: not signed in to the server = the sign-in screen, never a local account
+        } else if (get().user) {
           // A phone that lost its pairing to a refused token under an earlier version: that boot
           // dropped the pairing file — address and token with it — but not the account, and every
           // push since "landed" on the WebView's own asset server. No other path leaves an

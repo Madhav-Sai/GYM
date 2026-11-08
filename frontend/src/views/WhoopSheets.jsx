@@ -12,10 +12,12 @@ import { confirmSheet } from '../sheets.jsx'
 import Icon from '../components/Icon.jsx'
 import CardHead from '../components/CardHead.jsx'
 import { Section, Row, Button } from '../components/ui.jsx'
+import { useNavigate } from 'react-router-dom'
+import { WhoopHomeDash, WhoopDashboard } from './WhoopDashboard.jsx'
 import './whoop.css'
 
 /* Whoop (our addition): the sign-in, the manage sheet and the Home card. The numbers come from our
-   own server (GET /api/whoop/summary), which pulls them from Whoop every 30 minutes; a value Whoop
+   own server (GET /api/whoop/summary), which pulls them from Whoop every 5 minutes; a value Whoop
    did not send is a dash, never 0 (lib/whoop.js). Nothing here talks to Whoop directly. */
 
 const sheet = render => useUI.getState().openSheet(render)
@@ -44,9 +46,9 @@ export function useWhoopSummary(enabled) {
 export async function connectWhoop(toast) {
   try {
     const r = await api('/api/integrations/whoop/authorize')
-    // In the phone app the page must open in the phone's own browser (navigating the app's WebView away loses the
-    // app), and the server finishes the sign-in there; on the website the same tab goes and comes back.
-    if (r?.url) { if (MOBILE) window.open(r.url, '_blank', 'noopener'); else window.location.assign(r.url) }
+    // On the website the same tab goes and comes back. In the phone app, Capacitor hands a link to another host to
+    // Safari (window.open after an await is blocked by iOS), and the server finishes the sign-in there.
+    if (r?.url) window.location.assign(r.url)
   } catch (e) { toast?.(errText(e, t('Could not connect Whoop. Try again.'))) }
 }
 
@@ -117,9 +119,7 @@ function WhoopDetail({ close, conn, server, toast }) {
     {!s?.today && !w.error && <p className="intg-lead">{s?.connected === false ? t('Not connected.') : t('The first sync is running. Pull down in a minute.')}</p>}
     {w.error && <p className="intg-lead" role="alert">{t('Could not reach your server')}</p>}
 
-    {s?.today && <Section>
-      <div style={{ padding: '4px 16px 12px' }}><Stats s={s} /></div>
-    </Section>}
+    {s?.today && <WhoopDashboard s={s} />}
 
     {s?.today && <Section title={t('Today')}>
       <Row icon="heart" iconTint="var(--red)" title={t('HRV')} value={rec?.hrv != null ? numOrDash(rec.hrv, 0) + ' ms' : DASH} />
@@ -144,22 +144,82 @@ function WhoopDetail({ close, conn, server, toast }) {
   </>
 }
 
-/** Home: recovery, sleep and steps from Whoop. Shows nothing unless the server offers Whoop and this profile connected it. */
+/** Home: the Whoop dashboard card. Shows nothing unless the server offers Whoop; a connect card until it is connected. */
 export function WhoopHomeCard() {
   const user = useStore(s => s.user)
   const config = useStore(s => s.config)
   const S = useStore(s => s.S)
   const toast = useUI(s => s.toast)
+  const nav = useNavigate()
   const offered = !!user && !DEMO && (config?.integrations?.providers || []).includes('whoop') && isOn(S, 'integrations')
   const w = useWhoopSummary(offered)
-  if (!offered || !w.data?.connected) return null
+  if (!offered || !w.data) return null
   const s = w.data
-  const conn = { id: s.connectionId, status: s.status, info: { name: s.profile?.firstName }, lastError: null }
+  if (!s.connected) return <div className="card whoop-card">
+    <CardHead icon="heart" tint="var(--red)" eyebrow="Whoop" title={t('Connect your Whoop')} />
+    <p className="wh-dim">{t('Recovery, strain, sleep, HRV and steps, right here.')}</p>
+    <div style={{ height: 10 }} />
+    <Button variant="primary" icon="plug" onClick={() => connectWhoop(toast)}>{t('Connect Whoop')}</Button>
+  </div>
   return <div className="card tap-host whoop-card">
-    <CardHead icon="heart" tint="var(--red)" eyebrow="Whoop" title={s.today ? t('Recovery, sleep and steps') : t('Whoop is syncing')}
-      open={{ onClick: () => whoopSheet({ conn, server: { load: w.load }, toast }) }}
-      action={<Icon name="chevronRight" className="chev" />} />
-    {s.today ? <Stats s={s} /> : <p className="wh-dim">{t('Your first sync is running. Your numbers appear here in a minute.')}</p>}
+    <CardHead icon="heart" tint="var(--red)" eyebrow="Whoop" title={s.today ? t('Today') : t('Whoop is syncing')}
+      open={{ onClick: () => nav('/settings/whoop') }}
+      action={<span className="wh-dim">{s.syncedAt ? fmtAgo(s.syncedAt) : ''} <Icon name="chevronRight" className="chev" /></span>} />
+    {s.today ? <WhoopHomeDash s={s} onOpen={() => nav('/settings/whoop')} /> : <p className="wh-dim">{t('Your first sync is running. Your numbers appear here in a minute.')}</p>}
     {s.status === 'attention' && <div className="wh-flag">{t('Whoop needs to be connected again.')}</div>}
   </div>
+}
+
+/** Settings → Whoop: connect, the full dashboard, sync and disconnect. */
+export function WhoopSettingsPage() {
+  const user = useStore(s => s.user)
+  const config = useStore(s => s.config)
+  const toast = useUI(s => s.toast)
+  const offered = !!user && !DEMO && (config?.integrations?.providers || []).includes('whoop')
+  const w = useWhoopSummary(offered)
+  const [busy, setBusy] = useState(false)
+  const s = w.data
+  if (!user) return <Section><Row icon="info" title={t('Sign in first, then connect Whoop.')} /></Section>
+  if (!offered) return <Section footer={t('Your server has no Whoop app keys yet (WHOOP_CLIENT_ID, WHOOP_CLIENT_SECRET, WHOOP_REDIRECT_URI).')}><Row icon="info" title={t('Whoop is not set up on the server')} /></Section>
+  if (!s && !w.error) return <p className="intg-lead">{t('Loading…')}</p>
+  if (w.error) return <p className="intg-lead" role="alert">{t('Could not reach your server')}</p>
+  if (!s.connected) return <>
+    <div className="whd-card whd-hero">
+      <Icon name="heart" style={{ width: 40, height: 40, color: 'var(--red)' }} />
+      <h3 style={{ margin: '8px 0 4px' }}>{t('Connect your Whoop')}</h3>
+      <p className="wh-dim">{t('myGym pulls recovery, strain, sleep stages, HRV, resting heart rate, SpO2, skin temperature, workouts with heart-rate zones and steps every 5 minutes.')}</p>
+    </div>
+    <div style={{ height: 12 }} />
+    <Button variant="primary" icon="plug" onClick={() => connectWhoop(toast)}>{t('Connect Whoop')}</Button>
+  </>
+  const sync = async () => {
+    setBusy(true)
+    try { toast?.(t(syncMessage(await api('/api/integrations/whoop/sync', { method: 'POST', body: '{}' })))) }
+    catch (e) { toast?.(errText(e, t('Sync failed'))) }
+    await w.load(); setBusy(false)
+  }
+  const disconnect = () => confirmSheet({
+    title: t('Disconnect Whoop?'),
+    message: t('Your server tells Whoop to end the connection and forgets everything it pulled. Whoop itself is not changed.'),
+    confirmText: t('Disconnect'), danger: true,
+    onConfirm: async () => {
+      try { await api('/api/integrations/disconnect', { method: 'POST', body: JSON.stringify({ id: s.connectionId }) }); await w.load(); toast?.(t('Whoop disconnected')) }
+      catch (e) { toast?.(errText(e, t('Something went wrong'))) }
+    },
+  })
+  return <>
+    {s.status === 'attention' && <><div className="whd-card whd-alarm"><div className="whd-alarm-h"><Icon name="warning" /> {t('Whoop needs to be connected again.')}</div></div>
+      <div style={{ height: 8 }} /><Button variant="primary" icon="plug" onClick={() => connectWhoop(toast)}>{t('Connect again')}</Button><div style={{ height: 12 }} /></>}
+    {s.today ? <WhoopDashboard s={s} /> : <p className="intg-lead">{t('The first sync is running. Pull down in a minute.')}</p>}
+    <Section>
+      {s.profile?.firstName && <Row icon="personCircle" iconTint="var(--blue)" title={t('Connected as {0}', s.profile.firstName)} />}
+      <Row icon="clock" iconTint="var(--blue)" title={t('Last sync')} subtitle={t('Syncs every 5 minutes')} value={s.syncedAt ? fmtAgo(s.syncedAt) : t('Not yet')} />
+    </Section>
+    <Button variant="primary" icon="repeat" disabled={busy} onClick={sync}>{busy ? t('Syncing…') : t('Sync now')}</Button>
+    <div className="sect-b intg-end">
+      <button type="button" className="lrow tap danger" onClick={disconnect} disabled={busy}>
+        <Icon name="trash" className="intg-act-i" /><span className="lrow-m"><span className="lrow-t">{t('Disconnect Whoop')}</span></span>
+      </button>
+    </div>
+  </>
 }
