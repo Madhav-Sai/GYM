@@ -178,7 +178,7 @@ tags:
       instance has the Coach switched on and a provider connected.
   - name: integrations
     description: >-
-      Settings → Integrations: outbound webhooks now, more providers later. Off unless the
+      Settings → Integrations: outbound webhooks, and Whoop (inbound, OAuth) added by this fork. Off unless the
       server runs with `INTEGRATIONS` (e.g. `INTEGRATIONS=webhook`); then a profile can add
       its own connections. Secrets are sealed at rest and shown once. See docs/INTEGRATIONS.md.
 
@@ -2522,6 +2522,93 @@ paths:
                     type: array
                     items: { $ref: '#/components/schemas/IntegrationConnection' }
         '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /api/integrations/whoop/authorize:
+    get:
+      tags: [integrations]
+      operationId: whoopAuthorize
+      summary: The Whoop sign-in URL (OAuth 2.0 authorization code)
+      description: |
+        Whoop only (`INTEGRATIONS=webhook,whoop` plus `WHOOP_CLIENT_ID`, `WHOOP_CLIENT_SECRET`,
+        `WHOOP_REDIRECT_URI`). The app navigates the browser to `url`; Whoop sends it back to
+        `/api/integrations/oauth/callback`. The `state` inside is single-use, tied to the caller and
+        valid for ten minutes. Scopes: offline (needed for a refresh token), read:recovery,
+        read:cycles, read:sleep, read:workout, read:profile, read:body_measurement.
+      responses:
+        '200':
+          description: Where to send the browser.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  url: { type: string }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { description: Whoop is not switched on on this server. }
+        '429': { description: Too many sign-ins in progress. }
+
+  /api/integrations/oauth/callback:
+    get:
+      tags: [integrations]
+      operationId: whoopCallback
+      summary: Where Whoop sends the browser back to
+      description: |
+        A browser navigation, not an API call. Checks `state`, exchanges `code` for tokens, seals
+        them, starts the first sync and answers `302` to the app's Integrations page with
+        `?whoop=ok`, `denied`, `signin` or `error`.
+      parameters:
+        - { in: query, name: code, schema: { type: string } }
+        - { in: query, name: state, schema: { type: string } }
+        - { in: query, name: error, schema: { type: string } }
+      responses:
+        '302': { description: Back to the app. }
+
+  /api/integrations/whoop/sync:
+    post:
+      tags: [integrations]
+      operationId: whoopSync
+      summary: Pull the latest Whoop data now
+      description: |
+        Also runs on its own every 30 minutes (`WHOOP_SYNC_MINUTES`). Whoop allows 100 requests a
+        minute and 10 000 a day. `code` is `rate` when Whoop asked us to wait, `reauth` when the
+        grant was refused and the person has to connect again.
+      responses:
+        '200':
+          description: What was pulled, or why not.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  cycles: { type: integer }
+                  recovery: { type: integer }
+                  sleep: { type: integer }
+                  workouts: { type: integer }
+                  code: { type: string, enum: [rate, reauth, network, http, error] }
+                  skipped: { type: string }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { description: Whoop is off, or not connected. }
+
+  /api/whoop/summary:
+    get:
+      tags: [integrations]
+      operationId: whoopSummary
+      summary: Recovery, sleep, strain, steps and workouts from Whoop
+      description: |
+        Everything the Whoop screens and the Home card draw. A value Whoop did not send is `null`
+        (draw a dash, never 0). `steps` is Whoop's own `step_count` when the device sends one.
+        `today.guidance` is the recovery band (67+ green, 34-66 yellow, 33 and below red);
+        `zone45` the week's zone 4-5 minutes against the 20-25 minute target (warn above 30);
+        `hrFlags` the workouts that went above the 175 bpm ceiling in the last 14 days.
+      responses:
+        '200':
+          description: The summary (empty `days` until the first sync finishes).
+          content:
+            application/json:
+              schema: { type: object }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { description: Whoop is not switched on on this server. }
 
   /api/integrations/connect:
     post:

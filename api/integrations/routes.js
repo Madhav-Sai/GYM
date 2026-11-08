@@ -4,7 +4,7 @@
  * looked up in the caller's own file, so another profile's id is simply "no such connection".
  * Documented in api/openapi.yaml (tag Integrations). */
 
-export function integrationRoutes({ json, readBody, readSession, hub, audit = () => {} }) {
+export function integrationRoutes({ json, readBody, readSession, hub, audit = () => {}, origin = '' }) {
   // A refusal the hub throws ({ status, code, message }) is the caller's to read, never a 500.
   const guard = fn => async (req, res) => {
     const user = readSession(req);
@@ -15,6 +15,15 @@ export function integrationRoutes({ json, readBody, readSession, hub, audit = ()
       json(res, e.status, { error: e.message, ...(e.code ? { code: e.code } : {}), ...(e.retryAfter ? { retryAfter: e.retryAfter } : {}) },
         e.retryAfter ? { 'Retry-After': String(e.retryAfter) } : undefined);
     }
+  };
+  const whoopOr404 = () => {
+    if (!hub.whoop) throw Object.assign(new Error('Whoop is off on this server'), { status: 404, code: 'off' });
+    return hub.whoop;
+  };
+  // Where the browser lands after Whoop: the app's own Integrations page (it is a HashRouter).
+  const back = (res, result) => {
+    res.writeHead(302, { Location: `${origin}/#/settings/integrations?whoop=${result}`, 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' });
+    res.end();
   };
   const idOf = body => (typeof body?.id === 'string' ? body.id.slice(0, 40) : null);
 
@@ -51,6 +60,40 @@ export function integrationRoutes({ json, readBody, readSession, hub, audit = ()
     'POST /api/integrations/retry': guard(async (req, res, user) => {
       const body = await readBody(req);
       json(res, 200, await hub.retry(user.id, idOf(body)));
+    }),
+
+    // ---- Whoop (our addition) ----
+    // The app asks for the Whoop sign-in URL and navigates there; Whoop sends the browser back to
+    // WHOOP_REDIRECT_URI (= this server's /api/integrations/oauth/callback).
+    'GET /api/integrations/whoop/authorize': guard(async (req, res, user) => {
+      json(res, 200, whoopOr404().authorize(user.id));
+    }),
+
+    // A browser navigation, not a fetch: it answers with a redirect back into the app, never JSON.
+    'GET /api/integrations/oauth/callback': async (req, res) => {
+      const user = readSession(req);
+      if (!user) return back(res, 'signin');
+      let result = 'error';
+      try {
+        const whoop = whoopOr404();
+        const q = Object.fromEntries(new URL(req.url, 'http://x').searchParams);
+        await whoop.callback(user.id, { code: q.code, state: q.state, error: q.error });
+        audit(req, 'integration.connect', { user, msg: 'whoop' });
+        whoop.sync(user.id, { force: true }).catch(() => {}); // the first pull runs while the browser returns
+        result = 'ok';
+      } catch (e) {
+        if (!e?.status) console.error('whoop callback', e);
+        result = e?.code === 'denied' ? 'denied' : 'error';
+      }
+      back(res, result);
+    },
+
+    'POST /api/integrations/whoop/sync': guard(async (req, res, user) => {
+      json(res, 200, await whoopOr404().sync(user.id, { force: true }));
+    }),
+
+    'GET /api/whoop/summary': guard(async (req, res, user) => {
+      json(res, 200, whoopOr404().summary(user.id));
     }),
 
     'GET /api/integrations/log': guard(async (req, res, user) => {

@@ -25,6 +25,10 @@ import { createOutbox, createBuckets } from './outbox.js';
 import { deriveKey, newId } from './crypto.js';
 import { detectEvents, eventData, envelope, testData, EVENTS } from './events.js';
 import { webhookProvider } from './providers/webhook.js';
+// Our addition: Whoop (OAuth, pulled data). See providers/whoop.js and whoop-service.js.
+import { whoopProvider } from './providers/whoop.js';
+import { createWhoopData } from './whoop-data.js';
+import { createWhoop } from './whoop-service.js';
 
 const on = v => /^(1|true|yes|on)$/i.test(String(v || ''));
 
@@ -39,9 +43,9 @@ export function enabledIds(env, known) {
   return out;
 }
 
-export function createIntegrations({ dataDir, secret, env = process.env, now = Date.now, transport = null, version = 'dev' }) {
+export function createIntegrations({ dataDir, secret, env = process.env, now = Date.now, transport = null, version = 'dev', whoopFetch = globalThis.fetch }) {
   const allowLan = on(env.INTEGRATIONS_ALLOW_LAN);
-  const all = { webhook: webhookProvider({ allowLan, transport, version }) };
+  const all = { webhook: webhookProvider({ allowLan, transport, version }), whoop: whoopProvider({ env, fetchImpl: (...a) => whoopFetch(...a), now }) };
   const ids = enabledIds(env, Object.keys(all)).filter(id => {
     if (all[id].configured(env)) return true;
     console.warn(`INTEGRATIONS: ${id} needs ${all[id].env.join(', ')}; left off`);
@@ -52,11 +56,15 @@ export function createIntegrations({ dataDir, secret, env = process.env, now = D
 
   // Nothing is created on disk for an instance that never turned this on.
   const dir = path.join(dataDir, 'integrations');
-  let store = null, outbox = null;
+  let store = null, outbox = null, whoop = null, whoopData = null, whoopTimers = [];
   const ensure = () => {
     if (store) return;
     const key = deriveKey(secret);
     store = createStore({ dir, key, now });
+    if (providers.whoop) {
+      whoopData = createWhoopData({ dir: path.join(dataDir, 'whoop'), now });
+      whoop = createWhoop({ store, data: whoopData, provider: providers.whoop, now, backfillDays: Number(env.WHOOP_BACKFILL_DAYS) > 0 ? Math.min(Number(env.WHOOP_BACKFILL_DAYS), 365) : undefined });
+    }
     outbox = createOutbox({
       file: path.join(dir, 'outbox.json'), now,
       deliver: job => {
@@ -134,6 +142,7 @@ export function createIntegrations({ dataDir, secret, env = process.env, now = D
       if (!active) off();
       const p = providers[providerId];
       if (!p) fail(404, 'no such integration', 'missing');
+      if (p.kind === 'oauth') fail(400, 'this one is connected by signing in with it', 'oauth');
       userLimit(uid, 'act');
       if (store.list(uid).filter(r => r.provider === p.id).length >= p.max) fail(409, `at most ${p.max} of these per profile`, 'too-many');
       const made = p.connect(input || {});
@@ -159,8 +168,11 @@ export function createIntegrations({ dataDir, secret, env = process.env, now = D
     disconnect(uid, id) {
       if (!active) off();
       const rec = own(uid, id);
+      // Whoop: tell Whoop to drop the grant (best effort), then forget what it sent us.
+      const revoke = rec.provider === 'whoop' && whoop ? whoop.accessToken(uid, rec).then(t => providers.whoop.revoke(t)).catch(() => {}) : null;
       store.remove(uid, id);
       outbox.dropConnection(uid, id);
+      if (rec.provider === 'whoop' && whoop) { whoop.disconnect(uid); void revoke; }
       return { ok: true, provider: rec.provider, label: rec.label };
     },
 
@@ -168,6 +180,7 @@ export function createIntegrations({ dataDir, secret, env = process.env, now = D
     async test(uid, id, type) {
       if (!active) off();
       const rec = own(uid, id);
+      if (providers[rec.provider].kind === 'oauth') fail(400, 'nothing to test here, use Sync now', 'oauth');
       userLimit(uid, 'test');
       const ev = EVENTS.includes(type) ? type : rec.events[0] || 'workout.finished';
       const job = { id: newId('evt'), uid, conn: id, provider: rec.provider, ev: 'test', payload: envelope({ id: newId('evt'), type: ev, data: testData(ev, now()), at: now(), test: true }) };
@@ -222,10 +235,23 @@ export function createIntegrations({ dataDir, secret, env = process.env, now = D
       if (!store) return;
       store.removeUser(uid);
       outbox.dropUser(uid);
+      whoopData?.clear(uid);
     },
 
-    start(everyMs) { if (active) outbox.start(everyMs); },
-    stop() { outbox?.stop(); },
+    /** The Whoop service (null unless INTEGRATIONS names it): authorize, callback, sync, summary. */
+    get whoop() { return whoop; },
+    start(everyMs) {
+      if (!active) return;
+      outbox.start(everyMs);
+      if (whoop) {
+        // First pull a minute after boot, then every 30 minutes: well inside Whoop's 100/min, 10 000/day.
+        const every = Math.max(5, Number(env.WHOOP_SYNC_MINUTES) || 30) * 60_000;
+        const run = () => whoop.syncAll().catch(e => console.error('whoop syncAll', e.message));
+        whoopTimers = [setTimeout(run, 60_000), setInterval(run, every)];
+        for (const t of whoopTimers) t.unref?.();
+      }
+    },
+    stop() { outbox?.stop(); for (const t of whoopTimers) { clearTimeout(t); clearInterval(t); } whoopTimers = []; },
     // For the tests.
     _outbox: () => outbox,
     _store: () => store,

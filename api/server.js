@@ -2978,7 +2978,7 @@ const routes = {
   /* ---------- integrations ---------- */
   // integrations/routes.js, handed the same helpers. With INTEGRATIONS unset they answer an empty
   // list (GET) or 404 "off", so the routes exist on every server and the app can tell.
-  ...integrationRoutes({ json, readBody, readSession, hub: integrations, audit }),
+  ...integrationRoutes({ json, readBody, readSession, hub: integrations, audit, origin: ORIGIN }),
 
   /* ---------- photos & videos ---------- */
   // Absent, not refusing, when MEDIA_UPLOADS=0: a 404 is what a server from before the feature

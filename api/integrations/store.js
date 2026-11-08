@@ -133,6 +133,10 @@ export function createStore({ dir, key, now = Date.now }) {
     seal: (uid, id, name, value) => seal(key, value, aad(uid, id, name)),
     reveal: (uid, rec, name) => open(key, rec?.secrets?.[name], aad(uid, rec?.id, name)),
     forget: uid => cache.delete(uid),
+    /** Every profile that has a connections file (our addition: the Whoop schedule walks them). */
+    uids() {
+      try { return fs.readdirSync(dir).map(f => /^u-(.+)\.json$/.exec(f)?.[1]).filter(Boolean); } catch { return []; }
+    },
   };
   return api;
 }
