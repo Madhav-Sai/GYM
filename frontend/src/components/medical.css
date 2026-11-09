@@ -1,0 +1,57 @@
+/* Medical (this fork): dense, numbers big and tabular, labels small and dim. */
+.med-num{font-size:var(--fs-title2);font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.med-num small{font-size:var(--fs-caption);font-weight:500;color:var(--label-2);margin-inline-start:3px}
+.med-lbl{font-size:var(--fs-caption);color:var(--label-2)}
+.med-cards{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media (max-width:360px){.med-cards{grid-template-columns:1fr}}
+.med-card{background:var(--surface);border-radius:14px;padding:11px 12px 8px;min-width:0;border-inline-start:3px solid var(--flag,var(--sep))}
+.med-card-h{display:flex;justify-content:space-between;align-items:baseline;gap:6px}
+.med-card-h .med-lbl{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.med-flag{font-size:var(--fs-caption2);font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--flag)}
+.med-ref{font-size:var(--fs-caption2);color:var(--label-3);font-variant-numeric:tabular-nums}
+.med-refbar{position:relative;height:6px;border-radius:3px;background:var(--surface-3);margin:7px 0 4px}
+.med-refbar-band{position:absolute;top:0;bottom:0;border-radius:3px;background:rgba(48,209,88,.45)}
+.med-refbar-dot{position:absolute;top:50%;width:10px;height:10px;border-radius:50%;transform:translate(-50%,-50%);box-shadow:0 0 0 2px var(--surface)}
+.med-chart{width:100%;height:auto;display:block;overflow:visible}
+.med-chart .med-band{fill:rgba(48,209,88,.13)}
+.med-axis{font-size:9px;fill:var(--label-3);font-variant-numeric:tabular-nums}
+.med-chart-empty{padding:14px 0;text-align:center}
+.med-legend{display:flex;gap:14px;margin-top:4px;font-variant-numeric:tabular-nums}
+.med-legend i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-inline-end:5px}
+.med-callout{margin-top:10px;padding:9px 11px;border-radius:11px;background:rgba(48,209,88,.14);color:var(--green);font-weight:600;font-size:var(--fs-footnote)}
+.med-goal{padding:9px 0}
+.med-goal + .med-goal{border-top:.5px solid var(--sep)}
+.med-goal.compact{padding:6px 0}
+.med-goal-top{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.med-goal-name{font-size:var(--fs-footnote);color:var(--label-2)}
+.med-goal-num{font-variant-numeric:tabular-nums;font-size:var(--fs-footnote)}
+.med-goal-num b{font-size:var(--fs-title3);font-weight:700;color:var(--label)}
+.med-goal.compact .med-goal-num b{font-size:var(--fs-callout)}
+.med-goal-track{height:7px;border-radius:4px;background:var(--surface-3);overflow:hidden;margin:5px 0 3px}
+.med-goal-track span{display:block;height:100%;border-radius:4px}
+.med-goal-meta{display:flex;justify-content:space-between;font-variant-numeric:tabular-nums;font-size:var(--fs-caption)}
+.med-retest{display:flex;gap:8px;align-items:flex-start;padding:9px 11px;border-radius:11px;margin:4px 0 8px;background:rgba(255,159,10,.14);color:var(--orange);font-size:var(--fs-footnote)}
+.med-retest.due{background:rgba(255,69,58,.14);color:var(--red)}
+.med-retest b{color:inherit}
+.med-panel-h{display:flex;justify-content:space-between;align-items:center;width:100%;background:none;border:0;color:inherit;padding:11px 0;font:inherit;cursor:pointer}
+.med-panel-h + .med-panel-b{padding-bottom:6px}
+.med-panel + .med-panel{border-top:.5px solid var(--sep)}
+.med-mrow{display:grid;grid-template-columns:1fr auto;gap:2px 10px;padding:6px 0;align-items:baseline}
+.med-mrow + .med-mrow{border-top:.5px solid var(--sep-op)}
+.med-mrow-v{font-variant-numeric:tabular-nums;font-weight:600;text-align:end}
+.med-mrow-v small{font-weight:400;color:var(--label-2);margin-inline-start:3px}
+.med-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px 8px}
+.med-grid .med-num{font-size:var(--fs-title3)}
+.med-seg{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;text-align:center}
+.med-seg .med-num{font-size:var(--fs-callout)}
+.med-tag{display:inline-block;font-size:var(--fs-caption2);font-weight:600;padding:1px 6px;border-radius:6px;margin-top:2px}
+.med-tag.normal{color:var(--green);background:rgba(48,209,88,.14)}
+.med-tag.under,.med-tag.over{color:var(--orange);background:rgba(255,159,10,.14)}
+.med-hist{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 0}
+.med-hist + .med-hist{border-top:.5px solid var(--sep)}
+.med-form-row{display:grid;grid-template-columns:1fr 92px 64px;gap:6px;align-items:center;padding:4px 0}
+.med-form-row .num,.med-form-row .field{width:100%}
+.med-form-sec{margin:14px 0 4px;font-size:var(--fs-caption);color:var(--label-2);text-transform:uppercase;letter-spacing:.04em}
+.med-form-new{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.med-form-new .field,.med-form-new .num{width:100%}
+.med-chips{display:flex;gap:6px;flex-wrap:wrap}
