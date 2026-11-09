@@ -41,9 +41,11 @@ describe('Brazilian Portuguese locale', () => {
     // has to be taught is a number nobody reads. What the numbers stood for is asserted above.
     // If the hash fails, review the changed keys and wording before accepting a new one. From
     // frontend/: node scripts/pt-br-inheritance-fingerprint.mjs --list
-    expect(fingerprint, 'pt-PT inheritance changed; review the inherited pt-BR wording').toBe('4c5a1cf7436465427d5d975da14fb890c37ee9effa2d8144fd3ec1ba4e0f9b80')
+    expect(fingerprint, 'pt-PT inheritance changed; review the inherited pt-BR wording').toBe('2350dcd8f449fde9cc67840dbd2a94d11c47b28b2f55656fbdac8f4972b6b662')
     // Re-pinned for the openGym -> myGym brand rename (this fork). Verified before accepting: reversing the brand word
     // in the new text and re-sorting by key reproduces the previous value, 1411e38b…, exactly: no wording changed.
+    // Re-pinned again when the upstream website left the strings: an unused "Download the APK from <site>"
+    // key was dropped, the Wear OS footer now says GitHub, and About gained Licences and its credit line.
   })
 
   // pt-PT labelled Unpair 'Desfazer': Undo, in Portuguese (it is pt-BR's Undo), on the button that

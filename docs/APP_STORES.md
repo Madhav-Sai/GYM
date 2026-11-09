@@ -4,7 +4,7 @@ openGym ships to phones three ways, all from the same code and the same version 
 
 | | Where | Who installs updates | Built where |
 |---|---|---|---|
-| Android APK | GitHub release, opengym.ch | the app itself (Settings → About) | release machine |
+| Android APK | GitHub release | the app itself (Settings → About) | release machine |
 | Android, Google Play | Play Store | Google Play | release machine |
 | Android, F-Droid | F-Droid (planned, see below) | F-Droid | F-Droid's build server, from the public source |
 | iPhone (+ Apple Watch) | App Store, TestFlight beta | the App Store | Mac runner (compile) + release machine (finish, sign, upload) |
@@ -240,7 +240,7 @@ on the phone (Settings → Reset, or uninstall).
    has its own bundle id because `ch.duartesantos.opengym` is held by another Apple team (an
    Xcode build of the public code reserves it); Android keeps `ch.duartesantos.opengym`.
 3. Signing material, all doable from Linux:
-   - `openssl req -new -newkey rsa:2048 -nodes -keyout dist.key -out dist.csr -subj "/CN=Duarte Santos/emailAddress=…"`,
+   - `openssl req -new -newkey rsa:2048 -nodes -keyout dist.key -out dist.csr -subj "/CN=Your Name/emailAddress=…"`,
      upload the CSR under Certificates → Apple Distribution, download `distribution.cer`, then
      `openssl x509 -inform der -in distribution.cer -out dist.pem && openssl pkcs12 -export -legacy -inkey dist.key -in dist.pem -out dist.p12`.
    - Profiles → an App Store Connect profile for `ch.opengym.app` → `openGym_AppStore.mobileprovision`,

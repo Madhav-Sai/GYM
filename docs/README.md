@@ -17,9 +17,6 @@ Pick the part that matches what you're doing. If you just have a question, try t
 | [AI coach](AI_COACH.md) | Your instance has the coach switched on and you want to know what it sees and can change |
 | [Integrations](INTEGRATIONS.md) | You want Apple Health, Health Connect, your watch or scale, or a webhook to Home Assistant, n8n or ntfy |
 
-The [live demo](https://opengym.ch/demo/) is the real app with example data, nothing
-to install.
-
 ## Hosting it
 
 | Guide | Read it when |
@@ -61,6 +58,5 @@ Design notes for specific features, kept next to the code they describe:
 
 ## Still stuck?
 
-Ask on the [Discord](https://discord.gg/e62jY6fwVb) or in
-[Discussions](https://github.com/DuarteSantos8/openGym/discussions). If something in these docs was
+Open an [issue](https://github.com/Madhav-Sai/GYM/issues). If something in these docs was
 wrong or missing, that's worth an issue too.

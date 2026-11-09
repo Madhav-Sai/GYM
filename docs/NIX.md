@@ -220,7 +220,7 @@ word-for-word.
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     # the flake lives in a subdirectory — ?dir= points at it
-    opengym.url = "github:DuarteSantos8/openGym?dir=contrib/nix";
+    opengym.url = "github:Madhav-Sai/GYM?dir=contrib/nix";
   };
 
   outputs = { self, nixpkgs, opengym, ... }: {
@@ -234,9 +234,6 @@ word-for-word.
   };
 }
 ```
-
-On the GitLab mirror the same input is
-`"git+https://gitlab.com/DuarteSantos8/opengym?dir=contrib/nix"`.
 
 Then `sudo nixos-rebuild switch --flake .#myhost`.
 

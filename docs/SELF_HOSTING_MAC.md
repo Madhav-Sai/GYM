@@ -34,12 +34,12 @@ Homebrew's `docker-compose` is a CLI plugin. Tell the `docker` command where it 
 
 ## 2. Get openGym
 
-Clone it somewhere that is **not** iCloud Drive or another synced folder (`~/Dev/opengym` works). The
+Clone it somewhere that is **not** iCloud Drive or another synced folder (`~/Dev/GYM` works). The
 `./data` folder is written all the time and does not like being synced.
 
 ```bash
-git clone https://github.com/DuarteSantos8/openGym ~/Dev/opengym
-cd ~/Dev/opengym
+git clone https://github.com/Madhav-Sai/GYM ~/Dev/GYM
+cd ~/Dev/GYM
 cp .env.example .env
 ```
 
@@ -97,7 +97,7 @@ More on pairing in [MOBILE.md](./MOBILE.md).
 ## 6. Updating
 
 ```bash
-cd ~/Dev/opengym
+cd ~/Dev/GYM
 git pull
 docker compose pull
 docker compose up -d

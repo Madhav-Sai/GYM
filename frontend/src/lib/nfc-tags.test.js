@@ -20,10 +20,10 @@ describe('tagUrl / parseTagUrl', () => {
     ]) expect(parseTagUrl(tagUrl(tag))).toEqual(tag)
   })
 
-  it('writes short https links on opengym.ch', () => {
-    expect(tagUrl({ kind: 'checkin', start: true })).toBe('https://opengym.ch/nfc?do=start')
-    expect(tagUrl({ kind: 'checkin', start: false, card: 'c1' })).toBe('https://opengym.ch/nfc?do=checkin&card=c1')
-    expect(tagUrl({ kind: 'exercise', id: '0025' })).toBe('https://opengym.ch/nfc?ex=0025')
+  it('writes short https links on madhav.pentestnotes.tech', () => {
+    expect(tagUrl({ kind: 'checkin', start: true })).toBe('https://madhav.pentestnotes.tech/nfc?do=start')
+    expect(tagUrl({ kind: 'checkin', start: false, card: 'c1' })).toBe('https://madhav.pentestnotes.tech/nfc?do=checkin&card=c1')
+    expect(tagUrl({ kind: 'exercise', id: '0025' })).toBe('https://madhav.pentestnotes.tech/nfc?ex=0025')
     // NTAG213 holds 137 bytes of NDEF: even a long custom id stays far below.
     expect(tagUrl({ kind: 'exercise', id: 'x'.repeat(64) }).length).toBeLessThan(110)
   })
@@ -33,10 +33,10 @@ describe('tagUrl / parseTagUrl', () => {
     expect(() => tagUrl({ kind: 'exercise', id: '' })).toThrow()
     expect(() => tagUrl({ kind: 'nope' })).toThrow()
     // A card id that is not one is left off, not written.
-    expect(tagUrl({ kind: 'checkin', card: 'a b' })).toBe('https://opengym.ch/nfc?do=checkin')
+    expect(tagUrl({ kind: 'checkin', card: 'a b' })).toBe('https://madhav.pentestnotes.tech/nfc?do=checkin')
   })
 
-  it('reads the opengym:// forms, from opengym.ch/nfc and written by hand', () => {
+  it('reads the opengym:// forms, from madhav.pentestnotes.tech/nfc and written by hand', () => {
     expect(parseTagUrl('opengym://nfc?do=start')).toEqual({ kind: 'checkin', start: true, card: null })
     expect(parseTagUrl('opengym://nfc?ex=0032')).toEqual({ kind: 'exercise', id: '0032' })
     expect(parseTagUrl('opengym://checkin')).toEqual({ kind: 'checkin', start: false, card: null })
@@ -47,17 +47,17 @@ describe('tagUrl / parseTagUrl', () => {
   })
 
   it('takes www, a trailing slash and the .html page', () => {
-    expect(parseTagUrl('https://www.opengym.ch/nfc/?do=start')).toEqual({ kind: 'checkin', start: true, card: null })
-    expect(parseTagUrl('https://opengym.ch/nfc.html?ex=0025')).toEqual({ kind: 'exercise', id: '0025' })
+    expect(parseTagUrl('https://www.madhav.pentestnotes.tech/nfc/?do=start')).toEqual({ kind: 'checkin', start: true, card: null })
+    expect(parseTagUrl('https://madhav.pentestnotes.tech/nfc.html?ex=0025')).toEqual({ kind: 'exercise', id: '0025' })
   })
 
   it('answers null for anything that is not one of ours', () => {
     for (const raw of [
-      null, undefined, 42, '', 'not a url', 'https://evil.example/nfc?do=start', 'https://opengym.ch.evil.example/nfc?do=start',
-      'https://opengym.ch/privacy?do=start', 'https://opengym.ch/nfc', 'https://opengym.ch/nfc?do=launch-missiles',
-      'https://opengym.ch/nfc?ex=', 'https://opengym.ch/nfc?ex=%3Cscript%3E', 'opengym://exercise/', 'opengym://exercise/a/b',
+      null, undefined, 42, '', 'not a url', 'https://evil.example/nfc?do=start', 'https://madhav.pentestnotes.tech.evil.example/nfc?do=start',
+      'https://madhav.pentestnotes.tech/privacy?do=start', 'https://madhav.pentestnotes.tech/nfc', 'https://madhav.pentestnotes.tech/nfc?do=launch-missiles',
+      'https://madhav.pentestnotes.tech/nfc?ex=', 'https://madhav.pentestnotes.tech/nfc?ex=%3Cscript%3E', 'opengym://exercise/', 'opengym://exercise/a/b',
       'opengym://settings', 'opengym://checkin/extra', 'javascript:alert(1)', 'tel:123', 'opengym://nfc?ex=' + 'x'.repeat(65),
-      'https://opengym.ch/nfc?ex=' + 'x'.repeat(600),
+      'https://madhav.pentestnotes.tech/nfc?ex=' + 'x'.repeat(600),
     ]) expect(parseTagUrl(raw), String(raw)).toBeNull()
   })
 })

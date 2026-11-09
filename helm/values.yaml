@@ -94,7 +94,7 @@ affinity: {}
 
 api:
   image:
-    repository: ghcr.io/duartesantos8/opengym-api
+    repository: ghcr.io/madhav-sai/gym-api   # placeholder: publish your own image here
     pullPolicy: IfNotPresent
     tag: 1.4.3               # keep in step with web.image.tag
   service:
@@ -151,7 +151,7 @@ api:
 
 web:
   image:
-    repository: ghcr.io/duartesantos8/opengym-web
+    repository: ghcr.io/madhav-sai/gym-web   # placeholder: publish your own image here
     pullPolicy: IfNotPresent
     tag: 1.4.3
   service:

@@ -12,7 +12,7 @@ TestFlight beta) on an iPhone, the APK on Android. Then read
 |---|---|---|
 | **iPhone and iPad** | The [App Store](https://apps.apple.com/app/id6822275400). To test the next version early: the [public TestFlight beta](https://testflight.apple.com/join/RKATb61k) | the App Store or TestFlight |
 | **Apple Watch** | Comes with the iPhone app | with the iPhone app |
-| **Android, APK** | [GitHub release](https://github.com/DuarteSantos8/openGym/releases/latest) or [opengym.ch](https://opengym.ch). From v1.4.2 in three sizes: Standard (animations at 180 px), Plus (240 px) and HD (360 px, the biggest download) | the app itself, each size to its own kind |
+| **Android, APK** | [GitHub release](https://github.com/Madhav-Sai/GYM/releases/latest). From v1.4.2 in three sizes: Standard (animations at 180 px), Plus (240 px) and HD (360 px, the biggest download) | the app itself, each size to its own kind |
 | **Android, Google Play** | Coming: the account has to run a closed test first | Google Play, sharper animations as downloads |
 
 The APK and the Google Play app are signed with the same key, so a phone can move from one to
@@ -260,7 +260,7 @@ that.
   `tools:overrideLibrary` keeps the app at 24 (Android 7.0) and the plugin checks the version
   before touching it.
 - **Privacy link.** Health Connect's "why does this app ask?" link opens the app through the two
-  activity-aliases in the manifest; `MainActivity` then opens https://opengym.ch/privacy, the same
+  activity-aliases in the manifest; `MainActivity` then opens https://madhav.pentestnotes.tech/privacy.html, the same
   policy the Play listing names (Play requires that).
 
 Worth checking on a real device after changes here: turning it on shows Health Connect's own
@@ -530,11 +530,11 @@ quiet; a black-holed server: posts after the 3 s bound; no server: posts).
 
 A routine (Plan → a routine → **Share with a friend**) or a past workout (History → the workout →
 Workout options → **Share with a friend**, sent as the routine Save as routine would make) goes out
-as `https://opengym.ch/r#<payload>` through the share sheet (`components/RoutineShare.jsx`,
+as `https://madhav.pentestnotes.tech/#/r/<payload>` (the web app's own route) through the share sheet (`components/RoutineShare.jsx`,
 `src/lib/routine-link.js`). The payload is `1.d.<base64url>`: link format 1, a plan file holding
 that one routine (same `opengym_plan` version, read by the same `parsePlan`/`mergePlan` as an
 imported file), deflate-raw through `CompressionStream` (`j` = plain JSON where there is none).
-It sits in the URL **fragment**, which browsers never send, so opengym.ch only serves the page. The
+It sits in the URL **fragment**, which browsers never send, so the server only serves the app. The
 sender's weights ride along only with **Include my weights**, their name only with **Your name**
 (both off by default). Over 2000 characters the share falls back to a plan file of that routine.
 
@@ -544,13 +544,12 @@ created like a plan file's. A newer link format than the app reads asks for an u
 
 | Where | Link | |
 | --- | --- | --- |
-| Website | `https://opengym.ch/r#P` | `website/r/index.html` (served at /r/): the routine by name and sets, Open in openGym, Get the app, Open in the web app (your server or the demo) |
-| Android | same link | VIEW filter on `MainActivity` (https, opengym.ch, path `/r` and `/r/`, `autoVerify`), so it opens the app directly once opengym.ch serves `/.well-known/assetlinks.json` with the app's signing certificates (Play and sideload). Until then Android may show the page or ask |
-| App | `opengym://r#P` | the website's Open in openGym; the `opengym` scheme is already registered (CFBundleURLTypes, the VIEW filter for `opengym:`). Read through `@capacitor/app`'s `appUrlOpen` and `getLaunchUrl` (`useRoutineLinks`, waits until the app is set up) |
-| Web app | `<server>/#/r/P` | read before the router sends the unknown route to /home, then the address goes back to `#/plan` |
+| Android | `https://madhav.pentestnotes.tech/r#P` (older form, still read) | VIEW filter on `MainActivity` (https, madhav.pentestnotes.tech, path `/r` and `/r/`, `autoVerify`), so it opens the app directly once madhav.pentestnotes.tech serves `/.well-known/assetlinks.json` with the app's signing certificates (Play and sideload). Until then Android may show the page or ask |
+| App | `opengym://r#P` | the app's own scheme; the `opengym` scheme is already registered (CFBundleURLTypes, the VIEW filter for `opengym:`). Read through `@capacitor/app`'s `appUrlOpen` and `getLaunchUrl` (`useRoutineLinks`, waits until the app is set up) |
+| Web app | `<server>/#/r/P` (what Share sends) | read before the router sends the unknown route to /home, then the address goes back to `#/plan` |
 
 iPhone: without associated domains the https link opens the page in Safari, one more tap to the
-app. Adding `applinks:opengym.ch` (see the NFC notes below) would cover `/r*` too.
+app. Adding `applinks:madhav.pentestnotes.tech` (see the NFC notes below) would cover `/r*` too.
 
 ### NFC stickers (v1.4.4)
 
@@ -560,9 +559,9 @@ the link is under 110 bytes) with one NDEF URI record. Two kinds, chosen in the 
 
 | Sticker | Link | A tap |
 | --- | --- | --- |
-| Start | `https://opengym.ch/nfc?do=start` | starts today's planned session through the usual Start (weigh-in first, if on); a running workout opens instead, never a second one; nothing planned: the Start screen |
-| Check in | `https://opengym.ch/nfc?do=checkin&card=<id>` | the membership code screen (`#/checkin`) on that card; offered only when a code is saved |
-| Machine | `https://opengym.ch/nfc?ex=<exercise id>` | during a workout: jumps to the exercise (`active.cur`), or asks before adding it after the current one; outside: the exercise's details. An exercise the profile lacks: a short toast |
+| Start | `https://madhav.pentestnotes.tech/nfc?do=start` | starts today's planned session through the usual Start (weigh-in first, if on); a running workout opens instead, never a second one; nothing planned: the Start screen |
+| Check in | `https://madhav.pentestnotes.tech/nfc?do=checkin&card=<id>` | the membership code screen (`#/checkin`) on that card; offered only when a code is saved |
+| Machine | `https://madhav.pentestnotes.tech/nfc?ex=<exercise id>` | during a workout: jumps to the exercise (`active.cur`), or asks before adding it after the current one; outside: the exercise's details. An exercise the profile lacks: a short toast |
 
 The same tap within 4 s, or any tap within 1.2 s of the last, is dropped (`tagDebouncer`). A link
 that opens the app before it is set up (cold start, sign-in) waits until it is (`useNfcTagLinks`).
@@ -570,16 +569,15 @@ that opens the app before it is set up (cold start, sign-in) waits until it is (
 too. Machine stickers come from an exercise's details → **Write NFC sticker for this exercise**.
 
 - **Why an https link:** that is what a phone reads with the app closed. Android routes it to the
-  app by the `NDEF_DISCOVERED` filter on `MainActivity` (scheme https, host opengym.ch, path
+  app by the `NDEF_DISCOVERED` filter on `MainActivity` (scheme https, host madhav.pentestnotes.tech, path
   `/nfc`), no App Links verification needed; `NfcTagsPlugin.java` passes it on as its `open`
   event (kept until the page listens). iOS background tag reading (iPhone XS and newer) only routes
   web links and universal links, never custom schemes. The app has **no associated domains yet**,
-  so on an iPhone the tap shows a banner that opens `opengym.ch/nfc` in Safari, and that page
-  (`website/nfc/index.html`, served at /nfc) hands the query to the app as `opengym://nfc?...` (CFBundleURLTypes in
-  Info.plist, delivered through `@capacitor/app`'s `appUrlOpen`). A phone without openGym lands on
-  the same page. To make it one tap on iPhone later: enable Associated Domains on the app id, add
-  `applinks:opengym.ch` to `App.entitlements`, and serve `/.well-known/apple-app-site-association`
-  for `/nfc*` on opengym.ch.
+  so on an iPhone the tap shows a banner that opens `madhav.pentestnotes.tech/nfc` in Safari (the
+  web app). The app itself reads `opengym://nfc?...` (CFBundleURLTypes in Info.plist, delivered
+  through `@capacitor/app`'s `appUrlOpen`). To make it one tap on iPhone later: enable Associated Domains on the app id, add
+  `applinks:madhav.pentestnotes.tech` to `App.entitlements`, and serve `/.well-known/apple-app-site-association`
+  for `/nfc*` on madhav.pentestnotes.tech.
 - **Writing, Android:** `NfcAdapter.enableReaderMode` while the sheet waits (so the system's tag
   dispatch stays out of it), `Ndef.writeNdefMessage`, or `NdefFormatable.format` for an
   unformatted sticker. `android.permission.NFC` (normal, no prompt) and
@@ -708,8 +706,8 @@ Google Play build come from the same code; how they are built and uploaded is in
 
 ### Android: sideload the APK
 
-Every release has three signed APKs on [the GitHub release](https://github.com/DuarteSantos8/openGym/releases),
-each with its `.sha256` beside it, and [opengym.ch](https://opengym.ch) links to all three:
+Every release has three signed APKs on [the GitHub release](https://github.com/Madhav-Sai/GYM/releases),
+each with its `.sha256` beside it:
 
 - **`openGym-X.Y.Z.apk` (Standard):** the exercise animations built in at 180 px, about 315 MB.
 - **`openGym-Plus-X.Y.Z.apk` (Plus):** the same app with 240 px animations, about 424 MB.

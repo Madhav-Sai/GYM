@@ -1,12 +1,12 @@
-# openGym MCP server
+# myGym MCP server
 
 A [Model Context Protocol](https://modelcontextprotocol.io) bridge that lets an external LLM
-application (Claude Desktop, Cursor, Cline, Continue, etc.) read your openGym profile —
+application (Claude Desktop, Cursor, Cline, Continue, etc.) read your myGym profile —
 routines, workouts, body-weight log, estimated 1RMs, and muscle balance — directly from your
 self-hosted `./data` directory, and log a workout you describe to it.
 
 It runs locally as a stdio process spawned by the LLM client and adds no new container. The
-read tools need no authentication: they read the same `state-<uid>.json` files the openGym api
+read tools need no authentication: they read the same `state-<uid>.json` files the myGym api
 already writes, and the LLM never sees passkeys, VAPID keys, or session secrets. The one write
 tool, `log_workout`, is off until you pair it with your server (see
 [Logging workouts](#logging-workouts)).
@@ -36,7 +36,7 @@ to answer for — its user id is in `./data/db.json` under `users[].id`:
 node src/index.js
 
 # multi-user instance, or just to be explicit:
-OPENGYM_UID=<your-uid> OPENGYM_DATA=/path/to/openGym/data node src/index.js
+OPENGYM_UID=<your-uid> OPENGYM_DATA=/path/to/GYM/data node src/index.js
 ```
 
 ### 3. Register with your LLM client
@@ -47,11 +47,11 @@ Add the server to your LLM client's MCP config. For Claude Desktop, edit
 ```jsonc
 {
   "mcpServers": {
-    "opengym": {
+    "mygym": {
       "command": "node",
-      "args": ["/absolute/path/to/openGym/mcp/src/index.js"],
+      "args": ["/absolute/path/to/GYM/mcp/src/index.js"],
       "env": {
-        "OPENGYM_DATA": "/absolute/path/to/openGym/data",
+        "OPENGYM_DATA": "/absolute/path/to/GYM/data",
         "OPENGYM_UID": "<your-uid>"   // optional — auto-detected if you have one profile
       }
     }
@@ -62,7 +62,7 @@ Add the server to your LLM client's MCP config. For Claude Desktop, edit
 For Cursor and other MCP-compatible clients, see the client's MCP docs — the same `command` +
 `args` + `env` shape is what every stdio MCP server expects.
 
-Restart the client; you should see the openGym tools appear with "serving profile \<name\>" on
+Restart the client; you should see the myGym tools appear with "serving profile \<name\>" on
 the server's stderr.
 
 ## Tools
@@ -106,7 +106,7 @@ re-interpret them.
 
 The LLM turns that into exercises and sets; the tool matches the exercises against your library,
 builds the workout the way the app's Finish button does (PR badges, the next suggested weight,
-warm-ups kept out of volume) and saves it through your openGym server, so every signed-in
+warm-ups kept out of volume) and saves it through your myGym server, so every signed-in
 device shows it within half a minute. Asking for the same thing twice logs it once.
 
 Exercise names are matched the way a CSV import matches them. A common name resolves to the
@@ -138,7 +138,7 @@ address and a sign-in:
 
    ```jsonc
    "env": {
-     "OPENGYM_DATA": "/absolute/path/to/openGym/data",
+     "OPENGYM_DATA": "/absolute/path/to/GYM/data",
      "OPENGYM_URL": "https://gym.example.com",
      "OPENGYM_TOKEN": "<the token pair.mjs printed>"
    }
@@ -188,7 +188,7 @@ dependencies landed in `frontend/`, no public exports changed.
   `log_workout` uses the paired-session token the phone app already uses; no new kind of
   credential, no new api route.
 - **No telemetry.** The read tools make no network call. `log_workout` talks to your own
-  openGym server and nothing else. The process exits when the LLM client disconnects.
+  myGym server and nothing else. The process exits when the LLM client disconnects.
 
 ## Tests
 
@@ -225,4 +225,4 @@ a laptop and fails under `CI`). The workout it builds is tested in
 
 ## License
 
-AGPL-3.0-or-later, same as openGym.
+AGPL-3.0-or-later, same as myGym.

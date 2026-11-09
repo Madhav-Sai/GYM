@@ -14,7 +14,7 @@ describe('parseWidgetLink', () => {
   })
 
   it('ignores anything else', () => {
-    for (const u of [null, 42, '', 'https://opengym.ch/stats', 'opengym://settings', 'opengym://stats/../admin', 'javascript:alert(1)']) {
+    for (const u of [null, 42, '', 'https://madhav.pentestnotes.tech/stats', 'opengym://settings', 'opengym://stats/../admin', 'javascript:alert(1)']) {
       expect(parseWidgetLink(u), String(u)).toBeNull()
     }
   })

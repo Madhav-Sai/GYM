@@ -1134,7 +1134,7 @@ export default function Settings({ page = null, find = null, via = null, entryKe
       </Section>
       {/* The F-Droid build has no Wear OS link (it would need Google Play services, which F-Droid
           leaves out): said here rather than having a watch that silently never connects. */}
-      {fdroid && <Section footer={t('Wear OS watches talk to the phone through Google Play services, which F-Droid apps leave out. The APK from opengym.ch and the Google Play app have the watch link.')}>
+      {fdroid && <Section footer={t('Wear OS watches talk to the phone through Google Play services, which F-Droid apps leave out. The APK from GitHub and the Google Play app have the watch link.')}>
         <Row icon="watch" iconTint="var(--grey)" title={t('Wear OS watch')} value={t('Not in this build')} />
       </Section>}
       {/* Tutorials (components/Tour.jsx): the tour from the top, and the four short guided runs
@@ -1161,13 +1161,13 @@ export default function Settings({ page = null, find = null, via = null, entryKe
       {/* The version, where the support template tells people to look for it. On the phone
           build there is no address bar and no about box, so without this there is no way to tell
           which build you are running, or whether an update actually installed. */}
+      {/* The legal notices (AGPL section 5(d) and the media licence's attribution) live one tap away. */}
+      <Section>
+        <Row icon="info" iconTint="var(--grey)" title={t('Licences')} accessory="chevron" onClick={licencesSheet} />
+      </Section>
       <div className="dim small sp-version">
         myGym v{__APP_VERSION__} · {t('free & open source (AGPL v3)')}<br />
-        {t('By Madhav. Based on openGym by Duarte Santos (AGPL v3).')}<br />
-        <a href="https://github.com/Madhav-Sai/GYM" target="_blank" rel="noopener">{t('Source code')}</a><br />
-        {/* Attribution the media licence asks for word for word (agreement §8c), so it is not translated */}
-        Exercise media © Aliaksandr Makatserchyk, <a href="https://gymvisual.com/" target="_blank" rel="noopener">Gym visual</a>, gymvisual.com.
-        Media licensed for use in openGym only; see <a href="https://github.com/Madhav-Sai/GYM/blob/claude/pensive-tesla-tl5xxk/NOTICE.md" target="_blank" rel="noopener">NOTICE.md</a>
+        <a href="https://github.com/Madhav-Sai/GYM" target="_blank" rel="noopener">{t('Source code')}</a>
       </div>
     </>,
 
@@ -1395,6 +1395,22 @@ export function RestSoundSheet({ close }) {
   </>
 }
 const restSoundSheet = () => useUI.getState().openSheet(close => <RestSoundSheet close={close} />)
+
+// Settings → About → Licences: the notices the licences require in the app.
+function licencesSheet() {
+  useUI.getState().openSheet(() => <>
+    <h3>{t('Licences')}</h3>
+    <div className="dim small" style={{ lineHeight: 1.5, display: 'grid', gap: 8 }}>
+      <div>{t('Built on openGym (AGPL v3).')} <a href="https://github.com/Madhav-Sai/GYM" target="_blank" rel="noopener">{t('Source code')}</a></div>
+      {/* Attribution the media licence asks for word for word (agreement §8c), so it is not translated */}
+      <div>
+        Exercise media © Aliaksandr Makatserchyk, <a href="https://gymvisual.com/" target="_blank" rel="noopener">Gym visual</a>, gymvisual.com.
+        Media licensed for use in openGym only; see <a href="https://github.com/Madhav-Sai/GYM/blob/claude/pensive-tesla-tl5xxk/NOTICE.md" target="_blank" rel="noopener">NOTICE.md</a>
+      </div>
+    </div>
+    <div style={{ height: 8 }} />
+  </>)
+}
 
 function effortHelpSheet() {
   useUI.getState().openSheet(close => <>

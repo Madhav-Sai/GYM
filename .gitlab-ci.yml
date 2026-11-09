@@ -9,7 +9,7 @@
 #                 job also measures the bundle and compares it with main's.
 #                 On a v* tag: release:preflight checks tag, package versions and CHANGELOG
 #                 before anything expensive starts.
-#   build       — the two container images → registry.gitlab.com/duartesantos8/opengym/{api,web},
+#   build       — the two container images → $CI_REGISTRY_IMAGE/{api,web},
 #                 and a run of both api targets that proves what each one does and does not carry
 #   package     — the signed Android APK → job artifact + generic package registry, on every
 #                 main push and every tag; the unsigned iOS archive the same way, once a Mac
@@ -273,7 +273,7 @@ test:api:
 
 # --------------------------------------------------------------------------- images
 
-# Images land at registry.gitlab.com/duartesantos8/opengym/{api,web} and are what
+# Images land at $CI_REGISTRY_IMAGE/{api,web} and are what
 # `docker compose pull` fetches.
 #
 # On a v* tag: linux/amd64 + linux/arm64, tagged X.Y.Z, X.Y and latest.
@@ -791,9 +791,7 @@ verify:scan:
 
 # ---------------------------------------------------------------------------- pages
 
-# The browser-only demo: https://opengym-bc111a.gitlab.io/
-# (that opaque host is GitLab's "unique domain" for Pages, on by default; the tidier
-# https://duartesantos8.gitlab.io/opengym/ 308s to it. Settings → Pages turns it off.)
+# The browser-only demo, on GitLab Pages for whichever project runs this pipeline.
 # Pages serves static files only, so this build has no backend — VITE_DEMO=1 makes the
 # app boot straight into guest mode with a seeded example history (frontend/src/lib/demo.js).
 # Vite's base is './', so the bundle drops into a subdirectory unchanged.
@@ -876,7 +874,7 @@ release:
       | \`$CI_REGISTRY_IMAGE/api\` | \`$SEMVER\` \`$MINOR\` \`latest\` | \`$IMAGE_DIGEST_API\` |
       | \`$CI_REGISTRY_IMAGE/web\` | \`$SEMVER\` \`$MINOR\` \`latest\` | \`$IMAGE_DIGEST_WEB\` |
 
-      Both images are linux/amd64 + linux/arm64. The Android APK and the store apps are on the GitHub release: https://github.com/DuarteSantos8/openGym/releases/tag/$CI_COMMIT_TAG. Built from $CI_COMMIT_SHA.
+      Both images are linux/amd64 + linux/arm64. The Android APK and the store apps are on the GitHub release: https://github.com/Madhav-Sai/GYM/releases/tag/$CI_COMMIT_TAG. Built from $CI_COMMIT_SHA.
       EOF
       cat release-notes.md
   release:
@@ -886,7 +884,7 @@ release:
     assets:
       links:
         - name: "Android APK (GitHub release)"
-          url: "https://github.com/DuarteSantos8/openGym/releases/tag/$CI_COMMIT_TAG"
+          url: "https://github.com/Madhav-Sai/GYM/releases/tag/$CI_COMMIT_TAG"
           link_type: package
         - name: "Container images (api + web)"
           url: "$CI_PROJECT_URL/container_registry"

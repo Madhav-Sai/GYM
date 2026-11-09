@@ -1,5 +1,5 @@
 /* The write tool. log_workout files a session the user describes ("dumbbell curls, 12 kg,
-   12/12/10, last set to failure") into their history, through their own openGym server
+   12/12/10, last set to failure") into their history, through their own myGym server
    (api-client.js), as if it had been logged on the phone: every device shows it within the
    half minute they poll the revision.
 
@@ -102,7 +102,7 @@ const setSchema = z.object({
 export const logWorkout = {
   name: 'log_workout',
   description: [
-    'Log a workout the user describes into their openGym history (it syncs to all their devices). Turn what they said into exercises and one entry per set:',
+    'Log a workout the user describes into their myGym history (it syncs to all their devices). Turn what they said into exercises and one entry per set:',
     '"curls, 12 kg, 12/12/10" is three sets of {reps, weight: 12}; "3 sets of 12, except the last was 10" is 12, 12, 10.',
     'Ask instead of assuming when the weight, the number of sets or the reps are unclear.',
     'Exercises are matched against the user\'s library by name or id. A common name resolves to the library\'s default variant ("shoulder press" is the barbell one): when the reply\'s `name` differs from `you_said` and the variant matters (dumbbell vs barbell, machine vs cable), confirm with the user, or pass an id. If a name matches several exercises, or none, nothing is saved and `problems` lists candidates: ask the user which one, then call again with its id.',
@@ -141,7 +141,7 @@ export const logWorkout = {
     const me = await apiFetch(cfg, '/api/me', opts)
     const uid = me.body?.user?.id
     // A guard that cannot read whose token this is refuses rather than steps aside.
-    if (typeof uid !== 'string' || !uid) throw fail('EAPI', 'the openGym server did not say which profile OPENGYM_TOKEN belongs to (GET /api/me); nothing was saved')
+    if (typeof uid !== 'string' || !uid) throw fail('EAPI', 'the myGym server did not say which profile OPENGYM_TOKEN belongs to (GET /api/me); nothing was saved')
     const local = localUid()
     if (local && local !== uid) {
       // The ids go to the operator on stderr, not into the model's context (state.js ambiguousUid).
@@ -156,7 +156,7 @@ export const logWorkout = {
     for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
       const doc = got.body?.state
       if (!doc || typeof doc !== 'object') {
-        throw fail('ENOSTATE', 'this profile has no synced data on the server yet: open openGym and sign in on a device once, then try again')
+        throw fail('ENOSTATE', 'this profile has no synced data on the server yet: open myGym and sign in on a device once, then try again')
       }
       // The document exactly as the server sent it, plus the workout: anything else in the PUT —
       // a default filled in here — would be stamped as an edit made now and land on every device.
@@ -194,7 +194,7 @@ export const logWorkout = {
       // so the workout is built again on top of that one. A 409 without one (a proxy's page) is
       // not something to build on.
       if (!put.body?.state || typeof put.body.state !== 'object' || typeof put.body.rev !== 'number') {
-        throw fail('EAPI', 'the openGym server answered 409 without the current profile; nothing was saved')
+        throw fail('EAPI', 'the myGym server answered 409 without the current profile; nothing was saved')
       }
       got = { status: 200, body: { state: put.body.state, rev: put.body.rev } }
     }

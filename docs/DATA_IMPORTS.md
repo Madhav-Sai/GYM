@@ -103,7 +103,7 @@ are imported as written.
 
 Boostcamp, GymBook and Alpha Progression don't document an export format openGym could read
 safely, and wger has no export of its workout log (its API names exercises by number only). If you have one of these files, a sample
-(with your numbers changed) in a [GitHub issue](https://github.com/DuarteSantos8/openGym/issues)
+(with your numbers changed) in a [GitHub issue](https://github.com/Madhav-Sai/GYM/issues)
 is the fastest way to get it added. A CSV with a date, an exercise and a weight or reps column
 usually works already, see [your own CSV](#your-own-csv).
 
@@ -146,7 +146,7 @@ On the **Plan** screen, tap the share icon:
 - **Print / Save as PDF** gives you a clean printout.
 
 An export always contains every routine. To share only some of them, import the file into the
-[demo](https://opengym.ch/demo/), delete what you don't want, and export again. The
+demo build (`VITE_DEMO=1`), delete what you don't want, and export again. The
 demo keeps everything in your browser; nothing is uploaded. The same trick works for building a plan
 on a computer and then importing it into the phone app.
 

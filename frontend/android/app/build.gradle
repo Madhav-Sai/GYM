@@ -38,7 +38,7 @@ android {
             applicationIdSuffix ".test"
         }
     }
-    // Where the app is installed from. "sideload" is the APK on GitHub and opengym.ch: it checks
+    // Where the app is installed from. "sideload" is the APK on GitHub releases: it checks
     // GitHub for a newer release and installs it itself (InstallPlugin, REQUEST_INSTALL_PACKAGES).
     // "play" is the Google Play build: Play installs the updates, so the updater, its permission
     // and its plugin are left out (Play does not allow an app to update itself). Same
