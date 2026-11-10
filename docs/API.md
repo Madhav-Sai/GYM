@@ -5,7 +5,7 @@ request/response schemas and the env-dependent behavior) is documented as a
 hand-written OpenAPI 3.1 spec:
 
 - **Spec (source of truth):** [`api/openapi.yaml`](../api/openapi.yaml)
-- **Browsable (Swagger UI):** https://opengym.ch/api.html
+- **Browsable (Swagger UI):** `website/api.html`, built from the spec by `scripts/build-api-docs.mjs`
 
 Lint it after changing routes:
 

@@ -7,7 +7,7 @@ import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 
 /**
- * Which build this is: "sideload" (the APK from GitHub and opengym.ch, which updates itself) or
+ * Which build this is: "sideload" (the APK from GitHub releases, which updates itself) or
  * "play" (Google Play, which updates it). The page asks once (lib/channel.js) and shows the
  * updater only in the first.
  */

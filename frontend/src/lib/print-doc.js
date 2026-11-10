@@ -3,7 +3,7 @@
 //
 // What every printout gets from here:
 //  - the myGym logo top left, the title, a line of facts, and who it is for and when;
-//  - page numbers and opengym.ch in the bottom margin (CSS @page margin boxes: Chrome, Android's
+//  - page numbers and the app name in the bottom margin (CSS @page margin boxes: Chrome, Android's
 //    WebView, desktop Chrome/Edge; the iOS app draws the same line natively, PrintPlugin.swift).
 //    Desktop Firefox (checked with 158) and Safari drop margin boxes, so there the line is left
 //    out on purpose: nothing else changes, and their own "Headers and footers" print option (on

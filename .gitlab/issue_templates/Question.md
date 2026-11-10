@@ -1,7 +1,5 @@
 <!-- GitLab has no Discussions, so questions live in the issue tracker — labelled, so nobody
-     mistakes a question for agreed-on work. If you'd rather just ask, there is a Discord:
-     https://discord.gg/e62jY6fwVb — an issue is the better place for anything the next
-     person should be able to find by searching. -->
+     mistakes a question for agreed-on work. -->
 
 /label ~question
 

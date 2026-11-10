@@ -1,4 +1,4 @@
-/* The one way the MCP server writes: through the openGym api, as the app's own devices do.
+/* The one way the MCP server writes: through the myGym api, as the app's own devices do.
    Reads stay on the data directory (state.js). A write goes over HTTP because PUT /api/data is
    the only place a profile's document is compared and written in one step — a second process
    renaming the same file underneath it has no lock to take, so a phone's push landing in between
@@ -27,7 +27,7 @@ function fail(code, message, extra) {
 export function apiBase(raw) {
   let u
   try { u = new URL(String(raw || '').trim()) } catch {
-    throw fail('ENOCONFIG', 'OPENGYM_URL is not a URL: the address you open openGym at, e.g. https://gym.example.com')
+    throw fail('ENOCONFIG', 'OPENGYM_URL is not a URL: the address you open myGym at, e.g. https://gym.example.com')
   }
   if (u.protocol !== 'https:' && !(u.protocol === 'http:' && LOOPBACK.has(u.hostname))) {
     throw fail('ENOCONFIG', 'OPENGYM_URL must be https:// (plain http only for localhost): the token it carries is a full sign-in to your profile')
@@ -41,7 +41,7 @@ export function apiConfig(env = process.env) {
   const url = (env.OPENGYM_URL || '').trim()
   const token = (env.OPENGYM_TOKEN || '').trim()
   if (!url || !token) {
-    throw fail('ENOCONFIG', 'logging workouts writes through your openGym server: set OPENGYM_URL and OPENGYM_TOKEN in this MCP server\'s config (mcp/README.md, "Logging workouts")')
+    throw fail('ENOCONFIG', 'logging workouts writes through your myGym server: set OPENGYM_URL and OPENGYM_TOKEN in this MCP server\'s config (mcp/README.md, "Logging workouts")')
   }
   if (!TOKEN_CHARS.test(token)) {
     throw fail('ENOCONFIG', 'OPENGYM_TOKEN has characters a token never has (a line break or space from copying it?): paste it again as one line')
@@ -68,16 +68,16 @@ export async function apiFetch(cfg, path, { method = 'GET', body, timeoutMs = TI
   } catch (e) {
     // Only a code or a name, never the exception's text: some of them quote what was sent.
     const why = e?.name === 'TimeoutError' ? `no answer within ${timeoutMs / 1000} s` : (e?.cause?.code || e?.name || 'network error')
-    throw fail('EAPI', `could not reach the openGym server at ${cfg.base} (${why})`)
+    throw fail('EAPI', `could not reach the myGym server at ${cfg.base} (${why})`)
   }
   if (res.status >= 300 && res.status < 400) {
-    throw fail('EAPI', `the openGym server at ${cfg.base} redirects (${res.status}); set OPENGYM_URL to the https address openGym is actually served at`, { status: res.status })
+    throw fail('EAPI', `the myGym server at ${cfg.base} redirects (${res.status}); set OPENGYM_URL to the https address myGym is actually served at`, { status: res.status })
   }
   let data = null
   try { data = await res.json() } catch { /* an HTML error page from a proxy: the status says enough */ }
   if (res.ok || res.status === 409) return { status: res.status, body: data }
-  if (res.status === 401) throw fail('EAUTH', 'the openGym server did not accept OPENGYM_TOKEN: it expired or was signed out everywhere. Pair again (node mcp/scripts/pair.mjs) and update the config.')
+  if (res.status === 401) throw fail('EAUTH', 'the myGym server did not accept OPENGYM_TOKEN: it expired or was signed out everywhere. Pair again (node mcp/scripts/pair.mjs) and update the config.')
   if (res.status === 413) throw fail('ETOOBIG', 'the profile is larger than the server accepts in one write (MAX_BODY); nothing was saved')
   const said = data && typeof data.error === 'string' ? `: ${data.error.slice(0, 200)}` : ''
-  throw fail('EAPI', `the openGym server answered ${res.status}${said}`, { status: res.status })
+  throw fail('EAPI', `the myGym server answered ${res.status}${said}`, { status: res.status })
 }

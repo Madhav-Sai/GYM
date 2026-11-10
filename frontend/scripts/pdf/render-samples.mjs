@@ -29,7 +29,7 @@ const out = resolve(arg('out', join(root, 'pdf-samples')))
 const langs = arg('langs', 'en,de,ar').split(',').filter(Boolean)
 const papers = arg('paper', 'A4').split(',').filter(Boolean)
 const only = arg('only', '')
-const owner = arg('owner', 'Ana Duarte')
+const owner = arg('owner', 'Ana Silva')
 mkdirSync(out, { recursive: true })
 
 const server = await createServer({

@@ -9,7 +9,7 @@ describe('public/privacy.html', () => {
   it('is a standalone page: no scripts, no external stylesheets or trackers', () => {
     expect(html).not.toMatch(/<script/i)
     expect(html).not.toMatch(/<link[^>]+stylesheet/i)
-    // it links only to this project's and its upstream's repositories: nothing that could track a reader
+    // it links only to this project's repository: nothing that could track a reader
     const urls = [...html.matchAll(/https?:\/\/[^\s"'<>)]+/g)].map(m => new URL(m[0]).hostname)
     expect([...new Set(urls)].sort()).toEqual(['github.com'])
   })
@@ -19,8 +19,8 @@ describe('public/privacy.html', () => {
   it('does not publish a personal email address', () => {
     expect(html).not.toMatch(/[\w.+-]+@[\w-]+\.[\w.]+/)
   })
-  it('keeps the credit to the project it is based on', () => {
-    expect(html).toContain('openGym')
+  it('names the licence and where the source is', () => {
+    expect(html).toContain('github.com/Madhav-Sai/GYM')
     expect(html).toContain('AGPL')
   })
 })

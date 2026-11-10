@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Builds and signs the Android releases on the release machine:
-#   openGym-<version>.apk      the Standard sideloaded APK (GitHub, opengym.ch): 180 px built in
+#   openGym-<version>.apk      the Standard sideloaded APK (GitHub releases): 180 px built in
 #   openGym-Plus-<version>.apk the Plus sideloaded APK: 240 px built in (PLUS_PX)
 #   openGym-HD-<version>.apk   the HD sideloaded APK: sharper animations built in (HD_PX, 360)
 #   openGym-<version>.aab      the Google Play bundle: Play updates it

@@ -60,7 +60,7 @@ in a file in the app's private storage (MOBILE.md explains the modes).
 | `catalogue/` | The exercise database: one JSON per exercise, translations, the licensed 180 px media |
 | `mcp/` | Optional MCP server for AI clients: reads the data folder, `log_workout` saves through the API |
 | `scripts/` | Build and release helpers, see [scripts/README.md](../scripts/README.md) |
-| `website/` | opengym.ch, plain HTML |
+| `website/` | the project page and API reference, plain HTML |
 | `helm/`, `kubernetes/`, `contrib/nix/` | Other ways to deploy |
 
 ## Frontend

@@ -24,25 +24,24 @@
             android:launchMode="singleTask"
             android:windowSoftInputMode="adjustResize"
             android:exported="true">
-            <!-- openGym's own NFC stickers (NfcTagsPlugin, lib/nfc-tags.js): a tap opens the app,
+            <!-- myGym's own NFC stickers (NfcTagsPlugin, lib/nfc-tags.js): a tap opens the app,
                  closed or not. Only links on our own stickers, nothing else NFC. -->
             <intent-filter>
                 <action android:name="android.nfc.action.NDEF_DISCOVERED" />
                 <category android:name="android.intent.category.DEFAULT" />
-                <data android:scheme="https" android:host="opengym.ch" android:pathPrefix="/nfc" />
+                <data android:scheme="https" android:host="madhav.pentestnotes.tech" android:pathPrefix="/nfc" />
             </intent-filter>
-            <!-- A friend's routine link, https://opengym.ch/r#<routine> (components/RoutineShare.jsx):
-                 straight into the app instead of the page. Verified once opengym.ch serves
+            <!-- A friend's routine link, https://madhav.pentestnotes.tech/r#<routine> (components/RoutineShare.jsx):
+                 straight into the app instead of the page. Verified once the server serves
                  /.well-known/assetlinks.json for this app; until then Android may ask which app. -->
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="https" android:host="opengym.ch" android:path="/r" />
-                <data android:scheme="https" android:host="opengym.ch" android:path="/r/" />
+                <data android:scheme="https" android:host="madhav.pentestnotes.tech" android:path="/r" />
+                <data android:scheme="https" android:host="madhav.pentestnotes.tech" android:path="/r/" />
             </intent-filter>
-            <!-- opengym://nfc?... from opengym.ch/nfc, the page a sticker opens in a browser, and
-                 opengym://r#<routine> from opengym.ch/r. -->
+            <!-- opengym://nfc?... and opengym://r#<routine>, the app's own scheme. -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />

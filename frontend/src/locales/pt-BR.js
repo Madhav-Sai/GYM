@@ -1119,8 +1119,8 @@ export const PT_BR_OVERRIDES = {
   'Backup folder': 'Pasta de backup',
   'Use default folder': 'Usar a pasta padrão',
   'This folder can’t be used for backups.': 'Esta pasta não pode ser usada para backups.',
-  'openGym can no longer write to “{0}”, so copies go to Documents/openGym again. Choose the folder again to switch back.': 'O openGym não consegue mais gravar em “{0}”, então as cópias voltam para Documents/openGym. Escolha a pasta de novo para voltar a ela.',
-  'openGym can no longer write to the chosen folder, so copies go to Documents/openGym again. Choose the folder again to switch back.': 'O openGym não consegue mais gravar na pasta escolhida, então as cópias voltam para Documents/openGym. Escolha a pasta de novo para voltar a ela.',
+  'myGym can no longer write to “{0}”, so copies go to Documents/openGym again. Choose the folder again to switch back.': 'O myGym não consegue mais gravar em “{0}”, então as cópias voltam para Documents/openGym. Escolha a pasta de novo para voltar a ela.',
+  'myGym can no longer write to the chosen folder, so copies go to Documents/openGym again. Choose the folder again to switch back.': 'O myGym não consegue mais gravar na pasta escolhida, então as cópias voltam para Documents/openGym. Escolha a pasta de novo para voltar a ela.',
   // --- missed-workout nudge (lib/nudge.js; the push copy is mirrored in api/nudge-copy.js) ---
   'Nudge me when I skip a planned workout': 'Me avise quando eu pular um treino planejado',
   'One nudge in the evening of a planned day with nothing logged, between 20:00 and 21:30. After 3 missed days in a row it goes quiet until your next workout.': 'Um aviso à noite em um dia planejado sem nada registrado, entre 20:00 e 21:30. Depois de 3 dias perdidos seguidos ele fica quieto até o seu próximo treino.',
@@ -2418,7 +2418,7 @@ export const PT_BR_OVERRIDES = {
   "Paired watches": "Relógios pareados",
   "Couldn’t reach your server. Try again in a moment.": "Não foi possível acessar seu servidor. Tente de novo daqui a pouco.",
   // --- the F-Droid build ---
-  "Wear OS watches talk to the phone through Google Play services, which F-Droid apps leave out. The APK from opengym.ch and the Google Play app have the watch link.": "Os relógios Wear OS falam com o celular através dos serviços do Google Play, que os aplicativos do F-Droid deixam de fora. O APK de opengym.ch e o aplicativo do Google Play têm a conexão com o relógio.",
+  "Wear OS watches talk to the phone through Google Play services, which F-Droid apps leave out. The APK from GitHub and the Google Play app have the watch link.": "Os relógios Wear OS falam com o celular através dos serviços do Google Play, que os aplicativos do F-Droid deixam de fora. O APK de GitHub e o aplicativo do Google Play têm a conexão com o relógio.",
   // --- Settings → Modules (1.4.4) ---
   "Beginner to Elite for your main lifts, measured against your body weight.": "De Iniciante a Elite nos seus exercícios principais, medido em relação ao seu peso corporal.",
   "Change it anytime in Settings → Modules.": "Mude quando quiser em Configurações → Módulos.",

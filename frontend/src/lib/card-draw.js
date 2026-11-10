@@ -8,7 +8,7 @@
 export const FORMATS = { story: { width: 1080, height: 1920 }, square: { width: 1080, height: 1080 } }
 export const FORMAT_IDS = Object.keys(FORMATS)
 export const STYLE_IDS = ['dark', 'light']
-export const SITE = 'opengym.ch'
+export const SITE = 'madhav.pentestnotes.tech'
 
 /**
  * The colours of a card, the app's own (index.css) in a fixed light or dark look, whatever the
@@ -78,8 +78,8 @@ export function drawBrand(ctx, { x, y, width, colors, family, size = 40 }) {
   ctx.textAlign = 'left'
   ctx.font = `800 ${size}px ${family}`
   ctx.fillStyle = colors.label
-  ctx.fillText('open', tx, y)
-  tx += ctx.measureText('open').width
+  ctx.fillText('my', tx, y)
+  tx += ctx.measureText('my').width
   ctx.fillStyle = colors.accText || colors.acc
   ctx.fillText('Gym', tx, y)
   ctx.font = `600 ${Math.round(size * 0.72)}px ${family}`

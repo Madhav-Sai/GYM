@@ -1,5 +1,5 @@
 // Where this copy of the app came from, which decides who installs its updates:
-//   'sideload' the APK from GitHub or opengym.ch: it checks GitHub and installs updates itself
+//   'sideload' the APK from GitHub releases: it checks GitHub and installs updates itself
 //   'play'     Google Play, which updates it (and does not allow an app to update itself)
 //   'fdroid'   F-Droid, which builds it from source and updates it. Nothing from Google Play
 //              services in it: no Wear OS link, and the check-in scanner is the browser's

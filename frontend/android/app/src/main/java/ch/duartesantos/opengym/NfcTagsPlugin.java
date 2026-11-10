@@ -21,10 +21,10 @@ import java.io.IOException;
  * openGym's NFC stickers (lib/nfc.js, components/Nfc.jsx): writes one openGym link onto a sticker,
  * and passes on the link of a sticker that started or reached the app.
  *
- * Reading needs no session: the manifest's NDEF_DISCOVERED filter (https://opengym.ch/nfc...)
+ * Reading needs no session: the manifest's NDEF_DISCOVERED filter (https://madhav.pentestnotes.tech/nfc...)
  * makes Android start the app for one of our stickers, with the app closed too, and the link goes
  * to the page as the `open` event (kept until the page listens, so a cold start arrives). An
- * opengym:// link from opengym.ch/nfc comes through the same way.
+ * opengym:// link comes through the same way.
  *
  * Writing uses the adapter's reader mode while the page's sheet waits: the sticker comes straight
  * here, not to the system's tag dispatch, and is written as one NDEF URI record (a blank sticker
@@ -33,7 +33,7 @@ import java.io.IOException;
  * Usage from JS:
  *   const NfcTags = registerPlugin('NfcTags')
  *   await NfcTags.isAvailable()               // { supported: true, enabled: true }
- *   await NfcTags.write({ url: 'https://opengym.ch/nfc?do=start' })
+ *   await NfcTags.write({ url: 'https://madhav.pentestnotes.tech/nfc?do=start' })
  *   await NfcTags.cancel()
  */
 @CapacitorPlugin(name = "NfcTags")
@@ -52,7 +52,7 @@ public class NfcTagsPlugin extends Plugin {
         passOn(intent);
     }
 
-    /** Whether `uri` is one of the links openGym puts on a sticker (or opengym.ch/nfc hands over). */
+    /** Whether `uri` is one of the links myGym puts on a sticker. */
     static boolean isOurLink(Uri uri) {
         if (uri == null || uri.getScheme() == null) return false;
         String scheme = uri.getScheme().toLowerCase();
@@ -61,7 +61,7 @@ public class NfcTagsPlugin extends Plugin {
         String host = uri.getHost() == null ? "" : uri.getHost().toLowerCase();
         if (host.startsWith("www.")) host = host.substring(4);
         String path = uri.getPath() == null ? "" : uri.getPath();
-        return host.equals("opengym.ch") && (path.equals("/nfc") || path.equals("/nfc/") || path.equals("/nfc.html"));
+        return host.equals("madhav.pentestnotes.tech") && (path.equals("/nfc") || path.equals("/nfc/") || path.equals("/nfc.html"));
     }
 
     private void passOn(Intent intent) {

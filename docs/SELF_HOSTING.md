@@ -25,7 +25,7 @@ HTTPS on a LAN without a public domain has [its own guide](SELF_HOSTING_HTTPS.md
 Requirements: [Docker](https://docs.docker.com/get-docker/) with the Compose plugin.
 
 ```bash
-git clone https://github.com/DuarteSantos8/openGym   # or https://gitlab.com/DuarteSantos8/opengym — same repo
+git clone https://github.com/Madhav-Sai/GYM
 cd openGym
 cp .env.example .env
 docker compose pull   # prebuilt images from ghcr.io (amd64 + arm64; the same images are on GitLab's registry) — or skip and build from source
@@ -542,7 +542,7 @@ them. Spell them out (here for QNAP; use your share's path):
 name: opengym
 services:
   api:
-    image: ghcr.io/duartesantos8/opengym-api:latest
+    image: ghcr.io/madhav-sai/gym-api:latest
     restart: unless-stopped
     env_file: /share/Container/opengym/.env
     environment:
@@ -552,7 +552,7 @@ services:
     volumes:
       - /share/Container/opengym/data:/data
   web:
-    image: ghcr.io/duartesantos8/opengym-web:latest
+    image: ghcr.io/madhav-sai/gym-web:latest
     restart: unless-stopped
     depends_on: [api]
     ports:

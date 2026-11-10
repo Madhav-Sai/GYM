@@ -1,8 +1,8 @@
 #!/usr/bin/env node
-/* openGym MCP server — stdio transport. The LLM client (Claude Desktop, Cursor, …) spawns
+/* myGym MCP server — stdio transport. The LLM client (Claude Desktop, Cursor, …) spawns
    this process locally, talks JSON-RPC over stdin/stdout, tears it down when the session ends.
    No extra container. The read tools make no network call; log_workout, once paired, talks to
-   your own openGym server and nothing else — your data stays in a folder you control. */
+   your own myGym server and nothing else — your data stays in a folder you control. */
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { TOOLS } from './tools.js'
@@ -10,7 +10,7 @@ import { WRITE_TOOLS } from './write-tools.js'
 import { init, getUser } from './state.js'
 
 const server = new McpServer({
-  name: 'opengym',
+  name: 'mygym',
   version: '0.1.0'
 })
 

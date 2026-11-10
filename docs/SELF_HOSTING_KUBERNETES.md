@@ -16,7 +16,7 @@ downloaded at start-up. There are only a few resources to create:
   works as well), plus a cert-manager Certificate for the hostname.
 
 ```bash
-git clone https://github.com/DuarteSantos8/openGym   # or https://gitlab.com/DuarteSantos8/opengym, same repo
+git clone https://github.com/Madhav-Sai/GYM
 cd openGym
 # In kubernetes/deployment.yaml, set RP_ID and ORIGIN in spec.template.spec.containers[api].env
 # to your hostname, and the hostname in kubernetes/httproute.yaml.
@@ -35,7 +35,7 @@ Notes:
   called `eg` in `envoy-gateway-system` with an `https` listener; change both to match your
   cluster. The Gateway has to terminate TLS; this was tested with
   [Envoy Gateway](https://gateway.envoyproxy.io) and [cert-manager](https://cert-manager.io).
-- The images are the published `ghcr.io/duartesantos8/opengym-api` and `opengym-web`. The AI
+- The images are `ghcr.io/madhav-sai/gym-api` and `gym-web` (placeholders: publish your own builds there, or change the names). The AI
   Coach with an API key works on that same API image; the Claude and Codex sign-in providers
   need the `coach` build target, which is not published, so build it yourself (see
   [AI_COACH.md](AI_COACH.md)).

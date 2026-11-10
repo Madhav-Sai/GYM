@@ -45,7 +45,7 @@ buildNpmPackage rec {
 
   meta = with lib; {
     description = "openGym MCP server — read-only stdio bridge for LLM clients";
-    homepage = "https://gitlab.com/DuarteSantos8/opengym";
+    homepage = "https://github.com/Madhav-Sai/GYM";
     license = licenses.agpl3Plus;
     platforms = nodejs.meta.platforms;
   };
