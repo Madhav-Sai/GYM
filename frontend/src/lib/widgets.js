@@ -34,6 +34,10 @@ import { accentPair, accentValue } from './accent.js'
 import { speedUnitOf } from './speed.js'
 import { isOn } from './modules.js'
 import { viewTarget, exUnitOf, shownWeight } from './ex-unit.js'
+import { TARGETS, dayTypeOf } from './diet-plan.js'
+import { checklist } from './supplements.js'
+import { healthDay, healthMinutes } from './ist.js'
+import { DEMO } from './demo.js'
 
 export const WIDGET_SNAPSHOT_VERSION = 2
 // What the weight goal's little curve draws: the last weigh-ins.
@@ -242,6 +246,8 @@ export function buildWidgetSnapshot (S, { today = todayISO() } = {}) {
     records: recordsOf(st, today),
     volume: volumeOf(st, today),
     challenges: challengesOfWidget(st, today),
+    // myGym: the "My day" widget (ios/App/OpenGymWidgets/MyGymWidgets.swift).
+    day: dayWidgetBlock(st, days[0]),
     // Points to the next level: not built yet. Stays null until it is; the widgets skip it then.
     level: null,
     labels: {
@@ -298,9 +304,95 @@ export function whoopWidgetBlock (s) {
     sleepMin: n(sl.asleepMin), sleepNeedMin: n(sl.neededMin), sleepPerf: n(sl.performance), respRate: n(sl.respRate),
     steps: n(s.steps?.value), stepGoal: 8000,
     week: week.map(d => n(d.recovery)), strainWeek: week.map(d => n(d.strain)), weekDays: week.map(d => d.day),
+    // The configurable "Whoop metric" widget's sparklines (MyGymWidgets.swift), oldest first.
+    hrvWeek: week.map(d => n(d.hrv)), rhrWeek: week.map(d => n(d.rhr)), sleepWeek: week.map(d => n(d.sleepMin)),
+    stepsWeek: week.map(d => n(d.steps)), spo2Week: week.map(d => n(d.spo2)),
     zoneMin: n(s.zone45?.minutes), zoneTarget: s.zone45?.target || null, zoneWarn: n(s.zone45?.warnAbove),
     hrOver: (s.hrFlags || []).length ? n(Math.max(...s.hrFlags.map(f => f.maxHr))) : null,
   }
+}
+
+const num = v => (typeof v === 'number' && Number.isFinite(v) ? v : null)
+const HHMM = /^([01]\d|2[0-3]):([0-5]\d)$/
+// Minutes into the health day (lib/ist.js): before 04:00 counts as the evening before, so the 00:45
+// magnesium sorts after the 23:45 isabgol.
+const healthMinOf = hhmm => {
+  const m = HHMM.exec(hhmm || '')
+  if (!m) return null
+  const v = +m[1] * 60 + +m[2]
+  return v < 240 ? v + 1440 : v
+}
+
+/** myGym: the Macros widget's numbers, from GET /api/health/diet (api/health/diet.js dayView).
+ *  null when the answer is not a day view: the widget then says "Open myGym". */
+export function dietWidgetBlock (v) {
+  if (!v || typeof v !== 'object' || !v.totals || typeof v.totals !== 'object') return null
+  const tt = v.totals
+  const protein = num(tt.protein)
+  return {
+    day: typeof v.day === 'string' ? v.day : null,
+    dayType: typeof v.day === 'string' ? dayTypeOf(v.day, v.dayType) : null,
+    kcal: num(tt.kcal), kcalTarget: TARGETS.kcal,
+    protein, proteinTarget: TARGETS.protein,
+    proteinLeft: protein == null ? null : Math.max(0, Math.round(TARGETS.protein - protein)),
+    fiber: num(tt.fiber), fiberTarget: TARGETS.fiber,
+    water: num(v.water), waterTarget: TARGETS.waterMin, waterMax: TARGETS.waterMax,
+    entries: Array.isArray(v.entries) ? v.entries.length : null,
+  }
+}
+
+export const WIDGET_SUPPS_MAX = 8
+
+/** myGym: the Supplements widget, from GET /api/health/supplements and lib/supplements.js: today's
+ *  due items in time order, the next one due (`minutes` into the health day), how many are pending,
+ *  and whether today is a D3 dose day. null when the answer is not a list. */
+export function supplementsWidgetBlock (v, { day = healthDay(), minutes = healthMinutes() } = {}) {
+  if (!v || typeof v !== 'object' || !Array.isArray(v.list)) return null
+  let items = []
+  try { items = checklist(v.list, v.log || {}, day, dayTypeOf(day)) } catch { return null }
+  const rows = items.map(i => ({
+    id: i.s.id || null,
+    name: String(i.s.name || ''),
+    time: HHMM.test(i.s.remind || '') ? i.s.remind : null,
+    dose: i.dose || null,
+    taken: i.status === 'taken',
+    skipped: i.status === 'skipped',
+    d3: i.s.schedule?.kind === 'phase',
+  }))
+  // Timed ones first, in health-day order; untimed after, as listed.
+  const key = r => healthMinOf(r.time) ?? 9999
+  rows.sort((a, b) => key(a) - key(b))
+  const pending = rows.filter(r => !r.taken && !r.skipped)
+  const upcoming = pending.find(r => r.time && healthMinOf(r.time) >= minutes)
+  const next = upcoming || pending[0] || null
+  const d3 = rows.find(r => r.d3)
+  return {
+    day,
+    items: rows.slice(0, WIDGET_SUPPS_MAX),
+    total: rows.length,
+    pending: pending.length,
+    next: next ? { name: next.name, time: next.time, overdue: !upcoming } : null,
+    d3Due: !!d3,
+    d3Taken: d3 ? d3.taken : null,
+  }
+}
+
+export const WIDGET_DAY_LIFTS = 4
+
+/** myGym: the "My day" widget's schedule (S.daySchedule, rows { time: 'HH:MM', label }, left out
+ *  when the profile has none) and today's workout with its first lifts (from the Today day). */
+export function dayWidgetBlock (S, today) {
+  const out = {}
+  const rows = Array.isArray(S?.daySchedule)
+    ? S.daySchedule.filter(r => r && HHMM.test(r.time) && typeof r.label === 'string' && r.label.trim())
+      .map(r => ({ time: r.time, label: r.label.trim().slice(0, 60) }))
+      .sort((a, b) => healthMinOf(a.time) - healthMinOf(b.time))
+    : []
+  if (rows.length) out.schedule = rows
+  out.workout = today && today.name
+    ? { name: today.name, count: today.count || 0, done: !!today.done, ids: today.ids || [], lifts: (today.exercises || []).slice(0, WIDGET_DAY_LIFTS) }
+    : null
+  return out
 }
 
 const WHOOP_POLL_MS = 5 * 60_000
@@ -313,13 +405,15 @@ const WHOOP_POLL_MS = 5 * 60_000
 export async function startWidgetSync ({ useStore }) {
   const p = await widgetPlugin()
   if (!p) return () => {}
-  let last = null, tm = null, whoop = null
+  let last = null, tm = null, whoop = null, diet = null, supps = null
   const write = async () => {
     tm = null
     if (useStore.getState().tourSandbox) return
     try {
       const snap = buildWidgetSnapshot(useStore.getState().S)
       if (whoop) snap.whoop = whoop
+      if (diet) snap.diet = diet
+      if (supps) snap.supps = supps
       const json = JSON.stringify(snap)
       if (json === last) return
       await p.WidgetBridge.write({ json })
@@ -329,21 +423,35 @@ export async function startWidgetSync ({ useStore }) {
   // The tour's practice workout (useStore enterTourSandbox) is left off the widgets.
   const schedule = () => { if (useStore.getState().tourSandbox) return; clearTimeout(tm); tm = setTimeout(write, WRITE_DEBOUNCE_MS) }
   const off = useStore.subscribe((s, prev) => { if (s.S !== prev.S) schedule() })
-  // Whoop: the server's numbers, every 5 minutes while the app is open and each time it comes back.
+  // Whoop, Diet and Supplements: the server's numbers, every 5 minutes while the app is open and
+  // each time it comes back. Signed in only; a failed request keeps the last numbers.
   let poll = null
-  const pullWhoop = async () => {
-    const st = useStore.getState()
-    if (!st.user || !(st.config?.integrations?.providers || []).includes('whoop')) return
-    if (!poll) poll = setInterval(pullWhoop, WHOOP_POLL_MS)
+  const pullWhoop = async (st, api) => {
+    if (!(st.config?.integrations?.providers || []).includes('whoop')) return
     try {
-      const { api } = await import('./api.js')
       const next = whoopWidgetBlock(await api('/api/whoop/summary'))
       if (JSON.stringify(next) !== JSON.stringify(whoop)) { whoop = next; schedule() }
     } catch { /* offline: keep the last numbers */ }
   }
-  const offUser = useStore.subscribe((s, prev) => { if (s.user !== prev.user || s.config !== prev.config) pullWhoop() })
-  pullWhoop()
-  const onVisible = () => { if (document.visibilityState === 'visible') { schedule(); pullWhoop() } }
+  const pullHealth = async api => {
+    const day = healthDay()
+    const [d, s] = await Promise.allSettled([api('/api/health/diet?day=' + encodeURIComponent(day)), api('/api/health/supplements')])
+    let changed = false
+    if (d.status === 'fulfilled') { const next = dietWidgetBlock(d.value); if (JSON.stringify(next) !== JSON.stringify(diet)) { diet = next; changed = true } }
+    if (s.status === 'fulfilled') { const next = supplementsWidgetBlock(s.value, { day }); if (JSON.stringify(next) !== JSON.stringify(supps)) { supps = next; changed = true } }
+    if (changed) schedule()
+  }
+  const pull = async () => {
+    const st = useStore.getState()
+    if (!st.user || DEMO) return
+    if (!poll) poll = setInterval(pull, WHOOP_POLL_MS)
+    let api
+    try { ({ api } = await import('./api.js')) } catch { return }
+    await Promise.all([pullWhoop(st, api), pullHealth(api).catch(() => {})])
+  }
+  const offUser = useStore.subscribe((s, prev) => { if (s.user !== prev.user || s.config !== prev.config) pull() })
+  pull()
+  const onVisible = () => { if (document.visibilityState === 'visible') { schedule(); pull() } }
   document.addEventListener('visibilitychange', onVisible)
   write()
   return () => { off(); offUser(); if (poll) clearInterval(poll); clearTimeout(tm); document.removeEventListener('visibilitychange', onVisible) }

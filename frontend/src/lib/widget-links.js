@@ -4,6 +4,10 @@
 //   opengym://stats         Stats (the streak, the records, the volume)
 //   opengym://whoop         Settings → Whoop (myGym's Whoop and Steps widgets)
 //   opengym://weigh-in      Home with the weigh-in sheet open
+//   opengym://diet          Diet (myGym's Macros widget)
+//   opengym://supplements   Supplements (myGym's Supplements widget)
+//   opengym://medical       Medical
+//   opengym://day           Home (myGym's My day widget)
 //   opengym://start?r=a,b   starts the next planned workout (those routines), or goes back to
 //                           the one already running
 //   opengym://weigh-in?w=78.2[&u=kg]   the weigh-in sheet with that weight in (Assistant, lib/voice.js)
@@ -33,6 +37,10 @@ export function parseWidgetLink (url) {
     case 'home': return { to: '/' }
     case 'stats': return { to: '/stats' }
     case 'whoop': return { to: '/settings/whoop' }   // myGym's Whoop widgets
+    case 'diet': return { to: '/diet' }
+    case 'supplements': return { to: '/supplements' }
+    case 'medical': return { to: '/medical' }
+    case 'day': return { to: '/' }
     case 'weigh-in': {
       const w = parseSpokenWeight(q.get('w') || '')
       if (!w) return { action: 'weigh-in' }
