@@ -1,15 +1,16 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useUI } from '../store/useUI.js'
 import { t, dateLocale } from '../lib/i18n.js'
-import { FOODS, foodById, entryFor, amountLabel, macrosFor } from '../lib/diet-foods.js'
+import { pickableFoods, foodById, entryFor, amountLabel, macrosFor } from '../lib/diet-foods.js'
 import { SLOTS, TARGETS, planFor, dayTypeOf, nonNegotiables } from '../lib/diet-plan.js'
+import { proteinBasis, G_PER_KG_MIN, G_PER_KG_MAX, G_PER_KG_STEP, KCAL_MIN, KCAL_MAX } from '../lib/diet-targets.js'
 import { altsFor, proteinSwap, signed } from '../lib/diet-swap.js'
 import { healthDay } from '../lib/ist.js'
-import { useDietDay, useHealthOn } from './health-data.js'
+import { useDietDay, useHealthOn, useDietTargets, useFoods } from './health-data.js'
 import Icon from '../components/Icon.jsx'
 import CardHead from '../components/CardHead.jsx'
-import { Section, Row, Button, Switch, Segmented, NumberField, TextField, SearchField } from '../components/ui.jsx'
+import { Section, Row, Button, Switch, Segmented, NumberField, TextField, SearchField, Stepper } from '../components/ui.jsx'
 import { DASH, n0, n1, litres, Totals, Flags } from '../components/HealthParts.jsx'
 import './health.css'
 
@@ -80,7 +81,8 @@ function LogFoodSheet({ close, slot: slot0, onLog }) {
   const [qty, setQty] = useState(100)
   const [slot, setSlot] = useState(slot0 || 'other')
   const [c, setC] = useState({ name: '', qty: 100, kcal: 0, protein: 0, carbs: 0, fat: 0, fiber: 0, satFat: null })
-  const list = useMemo(() => FOODS.filter(f => f.name.toLowerCase().includes(q.trim().toLowerCase())), [q])
+  const foodsV = useFoods()
+  const list = useMemo(() => pickableFoods().filter(f => f.name.toLowerCase().includes(q.trim().toLowerCase())), [q, foodsV])
   const pick = f => { setFood(f); setQty(f.unit === 'g' || f.unit === 'ml' ? 100 : 1) }
   const m = food ? macrosFor(food, qty) : null
   const slots = [...SLOTS.map(s => ({ value: s.id, label: s.time })), { value: 'other', label: t('Other') }]
@@ -102,7 +104,7 @@ function LogFoodSheet({ close, slot: slot0, onLog }) {
         <div style={{ height: 10 }} />
         <SearchField value={q} onChange={e => setQ(e.target.value)} onClear={() => setQ('')} placeholder={t('Search foods')} />
         <div className="hl-foods">
-          {list.map(f => <Row key={f.id} title={f.name} subtitle={`${f.kcal} kcal · ${f.protein} g P · ${t('per {0}', f.per === 1 ? f.unit : f.per + ' ' + f.unit)}`} onClick={() => pick(f)} accessory="chevron">
+          {list.map(f => <Row key={f.id} title={f.name} subtitle={`${f.kcal} kcal · ${f.protein} g P · ${t('per {0}', f.per === 1 ? f.unit : f.per + ' ' + f.unit)}${f.note ? ' · ' + f.note : ''}`} onClick={() => pick(f)} accessory="chevron">
             {!f.veg && <span className="hl-badge">{t('Non-veg')}</span>}
           </Row>)}
         </div>
@@ -118,6 +120,7 @@ function LogFoodSheet({ close, slot: slot0, onLog }) {
           {t('Veg swap: {0} {1}, {2} kcal, {3} g protein', amountLabel(s.to.food, s.to.qty), s.to.food.name.toLowerCase(), signed(s.delta.kcal), signed(s.delta.protein))}
         </div> })}
         {food.approx && <div className="hl-dim" style={{ marginTop: 6 }}>{t('Approximate values. Check your tub’s label.')}</div>}
+        {food.note && <div className="hl-dim" style={{ marginTop: 6 }}>{food.note}</div>}
       </>}
     </> : <>
       <div className="hl-field"><span>{t('Name')}</span><TextField value={c.name} maxLength={80} onChange={e => setC({ ...c, name: e.target.value })} /></div>
@@ -135,6 +138,42 @@ function LogFoodSheet({ close, slot: slot0, onLog }) {
     <div style={{ height: 14 }} />
     <Button variant="primary" icon="check" disabled={mode === 'db' && (!food || !qty)} onClick={log}>{t('Log it')}</Button>
   </>
+}
+
+/* ---------- the calorie target: the plan's, or one of your own ---------- */
+function KcalSheet({ close, value, onSave }) {
+  const [v, setV] = useState(value ?? null)
+  const ok = v != null && v >= KCAL_MIN && v <= KCAL_MAX
+  return <>
+    <h3>{t('Calorie target')}</h3>
+    <div className="hl-dim">{t('The plan is {0} kcal a day. Set your own from {1} to {2}, or go back to the plan.', TARGETS.kcal, KCAL_MIN, KCAL_MAX)}</div>
+    <div className="hl-field"><span>kcal</span><NumberField decimal={false} nullable value={v} onChange={setV} placeholder={String(TARGETS.kcal)} /></div>
+    <div style={{ height: 14 }} />
+    <Button variant="primary" icon="check" disabled={!ok} onClick={async () => { if (await onSave(Math.round(v))) close() }}>{t('Save')}</Button>
+    <div style={{ height: 8 }} />
+    <Button variant="ghost" disabled={value == null} onClick={async () => { if (await onSave(null)) close() }}>{t('Use the plan’s {0} kcal', TARGETS.kcal)}</Button>
+  </>
+}
+
+function TargetsSection({ targets, prefs, onPrefs }) {
+  // The stepper moves at once on screen; the server hears the last value after a short pause.
+  const [g, setG] = useState(targets.gPerKg)
+  useEffect(() => { setG(targets.gPerKg) }, [targets.gPerKg])
+  const timer = useRef(null)
+  useEffect(() => () => clearTimeout(timer.current), [])
+  const step = v => {
+    setG(v)
+    clearTimeout(timer.current)
+    timer.current = setTimeout(() => onPrefs({ proteinPerKg: v }), 600)
+  }
+  const basis = proteinBasis({ ...targets, gPerKg: g, protein: targets.weightKg ? Math.round(g * targets.weightKg / 5) * 5 : targets.protein })
+  const openKcal = () => useUI.getState().openSheet(close => <KcalSheet close={close} value={prefs?.kcalTarget ?? null} onSave={kcalTarget => onPrefs({ kcalTarget })} />)
+  return <Section title={t('Targets')} footer={basis ? t('From your latest weight ({0}). The 20:00 flag fires under {1} g.', targets.weightDate || '', targets.proteinFloor) : t('No body weight yet, so the plan’s {0} g is used. Log a weigh-in to set it from your weight.', TARGETS.protein)}>
+    <Row icon="scale" iconTint="var(--green)" title={t('Protein per kg')} subtitle={basis || t('{0} g a day', targets.protein)}>
+      <Stepper value={g} step={G_PER_KG_STEP} min={G_PER_KG_MIN} max={G_PER_KG_MAX} onChange={step} ariaLabel={t('Protein per kg')} />
+    </Row>
+    <Row icon="target" title={t('Calorie target')} subtitle={targets.kcalOwn ? t('Your own') : t('The plan’s')} value={`${targets.kcal} kcal`} accessory="chevron" onClick={openKcal} />
+  </Section>
 }
 
 function Shell({ nav, children, sub }) {
@@ -160,6 +199,8 @@ export default function Diet() {
   const veg = !!data?.prefs?.veg
   const plan = useMemo(() => planFor(type, { veg, vegMeals: data?.vegMeals || {} }), [type, veg, data?.vegMeals])
   const entries = data?.entries || []
+  const targets = useDietTargets(data?.prefs)
+  useFoods(on)
 
   if (!on) return <Shell nav={nav}><div className="empty">{t('Sign in to your server to keep a diet log.')}</div></Shell>
   if (!data) return <Shell nav={nav}>{d.error ? <div className="empty" role="alert">{t('Could not reach your server')}</div> : <div className="empty">{t('Loading…')}</div>}</Shell>
@@ -179,15 +220,16 @@ export default function Diet() {
       <div className="row between" style={{ alignItems: 'flex-end' }}>
         <div>
           <div className="hl-l">{t('Protein')}</div>
-          <div className="hl-big">{n0(data.totals.protein)}<small>/ {TARGETS.protein} g</small></div>
+          <div className="hl-big">{n0(data.totals.protein)}<small>/ {targets.protein} g</small></div>
         </div>
         <div style={{ textAlign: 'end' }}>
           <div className="hl-l">{t('Calories')}</div>
-          <div className="hl-n">{n0(data.totals.kcal)}<small>/ {TARGETS.kcal}</small></div>
+          <div className="hl-n">{n0(data.totals.kcal)}<small>/ {targets.kcal}</small></div>
         </div>
       </div>
-      <Totals totals={data.totals} />
-      <Flags totals={data.totals} />
+      {proteinBasis(targets) && <div className="hl-dim" style={{ marginTop: 4 }}>{proteinBasis(targets)}</div>}
+      <Totals totals={data.totals} targets={targets} />
+      <Flags totals={data.totals} targets={targets} />
     </div>
 
     <Water ml={data.water} onAdd={ml => post('water', { ml })} />
@@ -202,6 +244,8 @@ export default function Diet() {
         <Switch checked={veg} onChange={v => d.post('/api/health/diet/prefs', { veg: v })} aria-label={t('Vegetarian today')} />
       </Row>
     </Section>
+
+    <TargetsSection targets={targets} prefs={data.prefs} onPrefs={body => d.post('/api/health/diet/prefs', body)} />
 
     <div className="card">
       <CardHead icon="checkCircle" tint="var(--green)" title={t('Non-negotiables')} sub={t('{0} of {1} done', checks.filter(c => c.done).length, checks.length)} />

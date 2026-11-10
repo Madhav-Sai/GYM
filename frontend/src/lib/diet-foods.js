@@ -66,7 +66,48 @@ export const FOODS = [
 ]
 
 export const MACRO_KEYS = ['kcal', 'protein', 'carbs', 'fat', 'fiber', 'satFat', 'omega3']
-const BY_ID = new Map(FOODS.map(x => [x.id, x]))
+
+/*
+ * The instance's own changes (GET /api/health/foods, edited in Admin → Foods, api/health/foods.js):
+ * `added` foods, `edited` fields on a built-in one, and `hidden` ids. A hidden food is left out of
+ * the pick list but still resolves by id, so a plan item or an old entry that names it keeps working.
+ * Each food comes back with `builtin` (it is in FOODS) and, when changed, `edited` / `hidden` set.
+ */
+export function mergeFoods(base, overrides) {
+  const o = overrides || {}
+  const edited = o.edited && typeof o.edited === 'object' ? o.edited : {}
+  const hidden = new Set(Array.isArray(o.hidden) ? o.hidden : [])
+  const ids = new Set(base.map(x => x.id))
+  const out = base.map(x => {
+    const e = edited[x.id]
+    const row = e ? { ...x, ...e, id: x.id, edited: true } : { ...x }
+    row.builtin = true
+    if (hidden.has(x.id)) row.hidden = true
+    return row
+  })
+  for (const a of Array.isArray(o.added) ? o.added : []) {
+    if (!a || typeof a.id !== 'string' || ids.has(a.id) || !a.name || !a.unit || !(a.per > 0)) continue
+    ids.add(a.id)
+    out.push({ satFat: null, omega3: null, cat: 'other', veg: true, ...a, builtin: false, ...(hidden.has(a.id) ? { hidden: true } : {}) })
+  }
+  return out
+}
+
+let ALL = mergeFoods(FOODS, null)
+let BY_ID = new Map(ALL.map(x => [x.id, x]))
+let version = 0
+
+/** Apply the instance's changes (null goes back to the built-in list). Returns the new version. */
+export function setFoodOverrides(overrides) {
+  ALL = mergeFoods(FOODS, overrides)
+  BY_ID = new Map(ALL.map(x => [x.id, x]))
+  return ++version
+}
+export const foodsVersion = () => version
+/** The foods offered when logging: the merged list without the hidden ones. */
+export const pickableFoods = () => ALL.filter(x => !x.hidden)
+/** Every food, hidden ones too (Admin → Foods). */
+export const allFoods = () => ALL
 export const foodById = id => BY_ID.get(id) || null
 
 const r1 = v => Math.round(v * 10) / 10

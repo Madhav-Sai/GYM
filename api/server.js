@@ -45,6 +45,8 @@ import { createMedicalStore } from './medical/store.js';
 import { medicalRoutes } from './medical/routes.js';
 import { createHealthStore } from './health/store.js';
 import { healthRoutes } from './health/routes.js';
+import { createFoodStore } from './health/foods.js';
+import { createDataBrowser } from './data-browser.js';
 import { excusedOn, nudgeFor, nudgeWindowOpen, toneOf } from './nudge.js';
 import { wrappedPushYear, wrappedSummary, wrappedPushOwed, wrappedPush } from './wrapped.js';
 import {
@@ -139,6 +141,10 @@ const medical = createMedicalStore({ dir: path.join(DATA, 'medical') });
 const TOTP_KEY = deriveTotpKey(SECRET);
 // Diet and supplements (health/, our addition): one file per profile in DATA_DIR/health/.
 const health = createHealthStore({ dir: path.join(DATA, 'health') });
+// The food database's per-instance changes (health/foods.js): one file for every profile.
+const foods = createFoodStore({ file: path.join(DATA, 'health', 'foods.json') });
+// The admin data browser and export (data-browser.js): read-only, secrets never served.
+const dataBrowser = createDataBrowser({ dir: DATA });
 
 const dbFile = path.join(DATA, 'db.json');
 // Every account, passkey and invite. Only a missing file starts empty: an unreadable one (a write
@@ -3168,7 +3174,33 @@ const routes = {
   ...medicalRoutes({ json, readBody, readSession, store: medical }),
   /* ---------- diet + supplements ---------- */
   // health/routes.js (our addition), handed the same helpers.
-  ...healthRoutes({ json, readBody, readSession, store: health }),
+  ...healthRoutes({ json, readBody, readSession, requireAdmin, store: health, foods, audit }),
+
+  /* ---------- admin data browser + export (our addition) ---------- */
+  // Read-only. data-browser.js decides what is never shown (the session secret, the push private
+  // key, sealed integration tokens, passkeys, password and two-factor fields).
+  'GET /api/admin/data/files': async (req, res) => {
+    if (!requireAdmin(req, res)) return;
+    json(res, 200, { files: dataBrowser.list(), max: 2 * 1024 * 1024 });
+  },
+
+  'GET /api/admin/data/file': async (req, res) => {
+    const admin = requireAdmin(req, res); if (!admin) return;
+    const rel = new URL(req.url, 'http://x').searchParams.get('path');
+    try { json(res, 200, dataBrowser.read(rel)); }
+    catch (e) {
+      if (!e?.status) throw e;
+      if (e.status === 403 || e.status === 400) audit(req, 'admin.denied', { ok: false, user: admin, msg: 'data file' });
+      json(res, e.status, { error: e.message });
+    }
+  },
+
+  'GET /api/admin/export': async (req, res) => {
+    const admin = requireAdmin(req, res); if (!admin) return;
+    audit(req, 'admin.export', { user: admin });
+    const day = new Date().toISOString().slice(0, 10);
+    json(res, 200, dataBrowser.exportAll(), { 'Content-Disposition': `attachment; filename="mygym-export-${day}.json"` });
+  },
 
   /* ---------- photos & videos ---------- */
   // Absent, not refusing, when MEDIA_UPLOADS=0: a 404 is what a server from before the feature

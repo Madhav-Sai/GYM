@@ -75,6 +75,8 @@ function lazyView(load) {
   }
 }
 const Admin = lazyView(() => import('./views/Admin.jsx'))
+const AdminFoods = lazyView(() => import('./views/AdminFoods.jsx'))
+const AdminData = lazyView(() => import('./views/AdminData.jsx'))
 const CoachChat = lazyView(() => import('./views/CoachChat.jsx'))
 const Measurements = lazyView(() => import('./views/Measurements.jsx'))
 // Medical (this fork): blood work, InBody and goals, one chunk for the three screens.
@@ -370,6 +372,8 @@ function Shell() {
       {isOn(S, 'coach') && <Route path="/coach/proposal" element={<Navigate to="/coach" replace />} />}
       {isOn(S, 'coach') && <Route path="/coach/setup" element={<CoachSetup />} />}
       <Route path="/admin" element={user?.admin ? <Admin /> : <Navigate to="/home" replace />} />
+      <Route path="/admin/foods" element={user?.admin ? <AdminFoods /> : <Navigate to="/home" replace />} />
+      <Route path="/admin/data" element={user?.admin ? <AdminData /> : <Navigate to="/home" replace />} />
       <Route path="*" element={<Navigate to="/home" replace />} />
     </Routes>
   ))

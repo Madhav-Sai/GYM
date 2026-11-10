@@ -5,19 +5,29 @@
 import { validDay, KEEP_DAYS } from './store.js';
 import { addEntry, removeEntry, addWater, setDay, setPrefs, dayView, blankDay } from './diet.js';
 import { saveSupplement, markSupplement } from './supplements.js';
+import { saveFood, hideFood } from './foods.js';
 
 const DAY = 86400_000;
 
-export function healthRoutes({ json, readBody, readSession, store, now = Date.now }) {
-  const guard = fn => async (req, res) => {
-    const user = readSession(req);
-    if (!user) return json(res, 401, { error: 'not signed in' });
+export function healthRoutes({ json, readBody, readSession, requireAdmin, store, foods, audit = () => {}, now = Date.now }) {
+  // `who` resolves the caller and answers 401 (or 403) itself when it returns nothing.
+  const guarded = who => fn => async (req, res) => {
+    const user = who(req, res);
+    if (!user) return;
     try { await fn(req, res, user); }
     catch (e) {
       if (!e?.status) throw e;
       json(res, e.status, { error: e.message, ...(e.code ? { code: e.code } : {}) });
     }
   };
+  const guard = guarded((req, res) => {
+    const user = readSession(req);
+    if (!user) json(res, 401, { error: 'not signed in' });
+    return user;
+  });
+  // The food database is one per instance: anyone signed in reads it, an admin changes it.
+  const adminGuard = guarded((req, res) => requireAdmin(req, res));
+  const foodsView = () => ({ ...foods.get(), at: Date.now() });
   const today = () => new Date(now()).toISOString().slice(0, 10);
   // The app sends its own (India time) day. Anything that is not a date, or is outside what the
   // file keeps (or more than two days ahead of the server's clock), is refused.
@@ -67,6 +77,24 @@ export function healthRoutes({ json, readBody, readSession, store, now = Date.no
     'POST /api/health/diet/prefs': guard(async (req, res, user) => {
       const body = await readBody(req);
       json(res, 200, { prefs: store.change(user.id, doc => setPrefs(doc, body)) });
+    }),
+
+    'GET /api/health/foods': guard(async (req, res) => {
+      json(res, 200, foodsView());
+    }),
+
+    'POST /api/admin/foods/save': adminGuard(async (req, res, user) => {
+      const body = await readBody(req);
+      const food = foods.change(doc => saveFood(doc, { food: body.food, builtin: body.builtin === true }));
+      audit(req, 'admin.foods.save', { user, msg: food.id });
+      json(res, 200, { food, ...foodsView() });
+    }),
+
+    'POST /api/admin/foods/delete': adminGuard(async (req, res, user) => {
+      const body = await readBody(req);
+      foods.change(doc => hideFood(doc, { id: body.id, restore: body.restore === true, reset: body.reset === true }));
+      audit(req, 'admin.foods.delete', { user, msg: String(body.id || '').slice(0, 40) });
+      json(res, 200, foodsView());
     }),
 
     'GET /api/health/supplements': guard(async (req, res, user) => {

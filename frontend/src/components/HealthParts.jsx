@@ -27,22 +27,24 @@ export function MacroBar({ label, value, target, unit = 'g', max = false, digits
   </div>
 }
 
-export function Totals({ totals, compact = false }) {
+/** The day's bars against `targets` (lib/diet-targets.js dietTargets; the plan's TARGETS without). */
+export function Totals({ totals, compact = false, targets = TARGETS }) {
   const tt = totals || {}
+  const T = targets || TARGETS
   return <div className="hl-bars">
-    <MacroBar label={t('Protein')} value={tt.protein} target={TARGETS.protein} />
-    <MacroBar label={t('Calories')} value={tt.kcal} target={TARGETS.kcal} unit="kcal" />
-    <MacroBar label={t('Fibre')} value={tt.fiber} target={TARGETS.fiber} digits={1} />
+    <MacroBar label={t('Protein')} value={tt.protein} target={T.protein} />
+    <MacroBar label={t('Calories')} value={tt.kcal} target={T.kcal} unit="kcal" />
+    <MacroBar label={t('Fibre')} value={tt.fiber} target={T.fiber} digits={1} />
     {!compact && <>
-      <MacroBar label={t('Carbs')} value={tt.carbs} target={TARGETS.carbs} />
-      <MacroBar label={t('Fat')} value={tt.fat} target={TARGETS.fat} />
-      <MacroBar label={tt.unknown?.satFat ? t('Saturated fat (partial)') : t('Saturated fat')} value={tt.satFat} target={TARGETS.satFatMax} max digits={1} />
+      <MacroBar label={t('Carbs')} value={tt.carbs} target={T.carbs} />
+      <MacroBar label={t('Fat')} value={tt.fat} target={T.fat} />
+      <MacroBar label={tt.unknown?.satFat ? t('Saturated fat (partial)') : t('Saturated fat')} value={tt.satFat} target={T.satFatMax} max digits={1} />
     </>}
   </div>
 }
 
-export function Flags({ totals }) {
-  const flags = dietFlags(totals, healthMinutes())
+export function Flags({ totals, targets }) {
+  const flags = dietFlags(totals, healthMinutes(), targets)
   return flags.map(f => <div key={f.id} className="hl-flag" role="status"><Icon name="warning" /><span>{t(f.text, f.need)}</span></div>)
 }
 

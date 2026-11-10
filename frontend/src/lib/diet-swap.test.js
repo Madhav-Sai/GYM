@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest'
 import { proteinSwap, vegItem, altsFor, VEG_ALTS, signed } from './diet-swap.js'
-import { foodById } from './diet-foods.js'
+import { foodById, mergeFoods, setFoodOverrides, pickableFoods, FOODS } from './diet-foods.js'
 
 describe('protein-matched veg swaps', () => {
   test('150 g chicken (46.5 g protein) is about 89 g dry soya chunks', () => {
@@ -50,5 +50,28 @@ describe('protein-matched veg swaps', () => {
     expect(signed(61)).toBe('+61')
     expect(signed(-3.2)).toBe('-3.2')
     expect(signed(null)).toBe('–')
+  })
+})
+
+describe('food database changes', () => {
+  test('added, edited and hidden foods merge onto the built-in list', () => {
+    const out = mergeFoods(FOODS, {
+      added: [{ id: 'x-sattu', name: 'Sattu', unit: 'g', per: 100, kcal: 400, protein: 22, carbs: 60, fat: 6, fiber: 10 }, { id: 'chicken', name: 'Clash', unit: 'g', per: 100 }, { id: 'bad' }],
+      edited: { chicken: { protein: 30, vegAlt: 'tofu' } },
+      hidden: ['rohu'],
+    })
+    expect(out.length).toBe(FOODS.length + 1)
+    expect(out.find(f => f.id === 'chicken')).toMatchObject({ protein: 30, name: 'Chicken breast cooked', edited: true, builtin: true })
+    expect(out.find(f => f.id === 'x-sattu')).toMatchObject({ builtin: false, satFat: null, omega3: null })
+    expect(out.find(f => f.id === 'rohu').hidden).toBe(true)
+  })
+  test('setFoodOverrides: hidden foods still resolve, the pick list leaves them out, vegAlt goes first', () => {
+    setFoodOverrides({ edited: { chicken: { vegAlt: 'tofu' } }, hidden: ['rohu'], added: [] })
+    expect(foodById('rohu')).not.toBe(null)
+    expect(pickableFoods().some(f => f.id === 'rohu')).toBe(false)
+    expect(altsFor('chicken')).toEqual(['tofu', 'soya', 'paneer'])
+    setFoodOverrides(null)
+    expect(altsFor('chicken')).toEqual(['soya', 'paneer'])
+    expect(pickableFoods().length).toBe(FOODS.length)
   })
 })

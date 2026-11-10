@@ -16,7 +16,12 @@ export const VEG_ALTS = {
   prawns: ['tofu'],
 }
 
-export const altsFor = foodId => VEG_ALTS[foodId] || []
+/** A food's veg alternatives: the one set in Admin → Foods (`vegAlt`) first, then the defaults. */
+export function altsFor(foodId) {
+  const own = foodById(foodId)?.vegAlt
+  const base = VEG_ALTS[foodId] || []
+  return own && foodById(own) ? [own, ...base.filter(x => x !== own)] : base
+}
 
 const r1 = v => Math.round(v * 10) / 10
 
