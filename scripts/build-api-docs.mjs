@@ -142,6 +142,7 @@ const TAGS = {
   // spec needs a line here.
   coach: { title: 'AI Coach', side: 'Plans, reviews, debriefs' },
   integrations: { title: 'Integrations', side: 'Webhooks (INTEGRATIONS)' },
+  health: { title: 'Diet &amp; supplements', side: 'Food log, water, supplements' },
   admin: { title: 'Admin', side: 'Users, invites, audit log, Coach' }
 }
 

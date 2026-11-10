@@ -1,0 +1,68 @@
+import { t, dateLocale } from '../lib/i18n.js'
+import { TARGETS } from '../lib/diet-plan.js'
+import { dietFlags } from '../lib/diet-flags.js'
+import { healthMinutes } from '../lib/ist.js'
+import Icon from './Icon.jsx'
+import CardHead from './CardHead.jsx'
+import '../views/health.css'
+
+/* Pieces the Diet and Supplements screens share with their Home cards (our addition), kept apart
+   from the screens so Home does not pull them into the first bundle. A missing value is a dash. */
+
+export const DASH = '–'
+export const n0 = v => (v == null ? DASH : String(Math.round(v)))
+export const n1 = v => (v == null ? DASH : String(Math.round(v * 10) / 10))
+export const litres = ml => (Math.round((ml || 0) / 100) / 10).toFixed(1)
+
+/** One macro against its target: label small and dim, the number big, a bar under it. */
+export function MacroBar({ label, value, target, unit = 'g', max = false, digits = 0 }) {
+  const f = value == null || !target ? 0 : Math.min(1, value / target)
+  const cls = max ? (value > target ? ' over' : ' ok') : value >= target ? ' ok' : ''
+  return <div>
+    <div className="hl-bar-h">
+      <span className="hl-l">{label}</span>
+      <span className="hl-v">{digits ? n1(value) : n0(value)}<small> / {max ? '≤ ' : ''}{target} {unit}</small></span>
+    </div>
+    <div className="hl-track"><div className={'hl-fill' + cls} style={{ width: (f * 100).toFixed(1) + '%' }} /></div>
+  </div>
+}
+
+export function Totals({ totals, compact = false }) {
+  const tt = totals || {}
+  return <div className="hl-bars">
+    <MacroBar label={t('Protein')} value={tt.protein} target={TARGETS.protein} />
+    <MacroBar label={t('Calories')} value={tt.kcal} target={TARGETS.kcal} unit="kcal" />
+    <MacroBar label={t('Fibre')} value={tt.fiber} target={TARGETS.fiber} digits={1} />
+    {!compact && <>
+      <MacroBar label={t('Carbs')} value={tt.carbs} target={TARGETS.carbs} />
+      <MacroBar label={t('Fat')} value={tt.fat} target={TARGETS.fat} />
+      <MacroBar label={tt.unknown?.satFat ? t('Saturated fat (partial)') : t('Saturated fat')} value={tt.satFat} target={TARGETS.satFatMax} max digits={1} />
+    </>}
+  </div>
+}
+
+export function Flags({ totals }) {
+  const flags = dietFlags(totals, healthMinutes())
+  return flags.map(f => <div key={f.id} className="hl-flag" role="status"><Icon name="warning" /><span>{t(f.text, f.need)}</span></div>)
+}
+
+export const shortDay = day => new Date(day + 'T12:00:00Z').toLocaleDateString(dateLocale(), { day: 'numeric', month: 'short' })
+
+/** The D3 phase card: which of the weekly doses are done, then the monthly rhythm. */
+export function D3Card({ p, onMark, compact = false }) {
+  const label = { taken: t('Taken'), skipped: t('Skipped'), missed: t('Missed'), due: t('Today'), upcoming: t('Upcoming') }
+  return <div className={'card' + (p.dueToday ? ' hl-d3' : '')}>
+    <CardHead icon="sun" tint="var(--orange)" eyebrow={p.s.name}
+      title={p.dueToday ? t('D3 tonight, after dinner') : t('Next dose {0}', shortDay(p.next))}
+      sub={p.phase === 'weekly' ? t('Weekly phase: {0} of {1} taken', p.taken, p.weekly.length) : t('Monthly now: every {0} days, on Sunday', p.everyDays)} />
+    {!compact && <div className="hl-dots" aria-label={t('Weekly doses')}>
+      {p.weekly.map(w => <button key={w.day} type="button" className={'hl-dot ' + w.status} disabled={w.status === 'upcoming'}
+        aria-label={`${w.n}: ${shortDay(w.day)}, ${label[w.status]}`} title={`${shortDay(w.day)}: ${label[w.status]}`}
+        onClick={() => onMark?.(w.day, w.status === 'taken' ? null : 'taken')}>{w.n}</button>)}
+    </div>}
+    {!compact && p.monthly.length > 0 && <div className="hl-dim">{t('Monthly doses: {0}', p.monthly.map(m => `${shortDay(m.day)} ${label[m.status].toLowerCase()}`).join(', '))}</div>}
+    {p.dueToday && <div className="hl-row2"><span className="hl-badge"><Icon name="flame" />{t('Requires fat')}</span></div>}
+    {p.missedLast && <div className="hl-flag"><Icon name="warning" /><span>{t('The {0} dose was missed. Do not double up: take the next one on schedule.', shortDay(p.missedLast))}</span></div>}
+    {p.s.warning && <div className="hl-warn" style={{ marginTop: 6 }}>{p.s.warning}</div>}
+  </div>
+}

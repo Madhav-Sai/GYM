@@ -181,6 +181,11 @@ tags:
       Settings → Integrations: outbound webhooks, and Whoop (inbound, OAuth) added by this fork. Off unless the
       server runs with `INTEGRATIONS` (e.g. `INTEGRATIONS=webhook`); then a profile can add
       its own connections. Secrets are sealed at rest and shown once. See docs/INTEGRATIONS.md.
+  - name: health
+    description: >-
+      Diet and supplements, added by this fork: a food log with water and the day's settings, and a
+      supplement list with a per-day taken / skipped log. Stored per profile in
+      `DATA_DIR/health/u-<uid>.json`. Days are the app's own (India time) `YYYY-MM-DD`.
 
 security:
   - cookieAuth: []
@@ -2648,6 +2653,247 @@ paths:
               schema: { type: object }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { description: Whoop is not switched on on this server. }
+
+  /api/health/diet:
+    get:
+      tags: [health]
+      operationId: healthDiet
+      summary: One day of the diet log
+      description: |
+        Entries, water (ml), the day type override and per-meal veg choices, with `totals`. A saturated-fat or omega-3 value nobody knows is `null`; `totals.unknown` counts them.
+      parameters:
+        - { in: query, name: day, schema: { type: string, example: '2026-11-08' } }
+      responses:
+        '200':
+          description: The updated view.
+          content:
+            application/json:
+              schema: { type: object }
+        '400':
+          description: 'A field was refused (`code`: `invalid`, `day`, `too-many`).'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /api/health/diet/log:
+    post:
+      tags: [health]
+      operationId: healthDietLog
+      summary: Log a food
+      description: |
+        `entry`: `name`, `qty`, `unit` (g, ml, piece, slice, tsp, scoop), `slot`, `kcal`, `protein`, `carbs`, `fat`, `fiber`, `satFat` (or null), `omega3` (mg, or null), optional `foodId` and `planKey`. An entry with the `planKey` of one already logged replaces it.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                day: { type: string, example: '2026-11-08' }
+                entry: { type: object }
+      responses:
+        '200':
+          description: The updated view.
+          content:
+            application/json:
+              schema: { type: object }
+        '400':
+          description: 'A field was refused (`code`: `invalid`, `day`, `too-many`).'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /api/health/diet/unlog:
+    post:
+      tags: [health]
+      operationId: healthDietUnlog
+      summary: Remove a logged food
+      description: |
+        `id` is the entry id or its `planKey`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                day: { type: string, example: '2026-11-08' }
+                id: { type: string }
+      responses:
+        '200':
+          description: The updated view.
+          content:
+            application/json:
+              schema: { type: object }
+        '400':
+          description: 'A field was refused (`code`: `invalid`, `day`, `too-many`).'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /api/health/diet/water:
+    post:
+      tags: [health]
+      operationId: healthDietWater
+      summary: Add or take back water
+      description: |
+        `ml` is a change (250, or -250), at most 2000 either way. The total never goes below 0.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                day: { type: string, example: '2026-11-08' }
+                ml: { type: number, example: 250 }
+      responses:
+        '200':
+          description: The updated view.
+          content:
+            application/json:
+              schema: { type: object }
+        '400':
+          description: 'A field was refused (`code`: `invalid`, `day`, `too-many`).'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /api/health/diet/day:
+    post:
+      tags: [health]
+      operationId: healthDietDay
+      summary: Set the day type or per-meal veg
+      description: |
+        `dayType` is training, cardio, rest, or null for the weekday default. `vegMeals` maps a meal slot to true / false (null clears it).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                day: { type: string, example: '2026-11-08' }
+                dayType: { type: string, nullable: true }
+                vegMeals: { type: object }
+      responses:
+        '200':
+          description: The updated view.
+          content:
+            application/json:
+              schema: { type: object }
+        '400':
+          description: 'A field was refused (`code`: `invalid`, `day`, `too-many`).'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /api/health/diet/prefs:
+    post:
+      tags: [health]
+      operationId: healthDietPrefs
+      summary: Set the global veg preference
+      description: |
+        `veg` true swaps every non-veg plan item for its protein-matched veg alternative.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                veg: { type: boolean }
+      responses:
+        '200':
+          description: The updated view.
+          content:
+            application/json:
+              schema: { type: object }
+        '400':
+          description: 'A field was refused (`code`: `invalid`, `day`, `too-many`).'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /api/health/supplements:
+    get:
+      tags: [health]
+      operationId: healthSupplements
+      summary: The supplement list and its log
+      description: |
+        The first read seeds the owner's supplements. `log` is keyed by day, then by supplement id: `{ status: taken or skipped, at, reason }`.
+      responses:
+        '200':
+          description: The updated view.
+          content:
+            application/json:
+              schema: { type: object }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /api/health/supplements/save:
+    post:
+      tags: [health]
+      operationId: healthSupplementSave
+      summary: Add or edit a supplement
+      description: |
+        No `id` adds one, an `id` on the list edits it (404 `missing` otherwise). `active: false` deactivates it. `schedule.kind` is daily, weekly (`dow`) or phase (`start`, `weeklyDoses`, `everyDays`, `dow`).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                supplement: { type: object }
+      responses:
+        '200':
+          description: The updated view.
+          content:
+            application/json:
+              schema: { type: object }
+        '400':
+          description: 'A field was refused (`code`: `invalid`, `day`, `too-many`).'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /api/health/supplements/mark:
+    post:
+      tags: [health]
+      operationId: healthSupplementMark
+      summary: Mark a supplement taken or skipped
+      description: |
+        `status` is taken (default), skipped (with an optional `reason`) or null to clear the day.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                day: { type: string, example: '2026-11-08' }
+                id: { type: string }
+                status: { type: string, nullable: true }
+                reason: { type: string }
+      responses:
+        '200':
+          description: The updated view.
+          content:
+            application/json:
+              schema: { type: object }
+        '400':
+          description: 'A field was refused (`code`: `invalid`, `day`, `too-many`).'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
 
   /api/integrations/connect:
     post:

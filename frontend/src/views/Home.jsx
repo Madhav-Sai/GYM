@@ -29,6 +29,7 @@ import { SeasonDeco } from '../components/Seasonal.jsx'
 import { WrappedHomeCard } from '../components/WrappedEntry.jsx'
 import RecoveryHint from '../components/RecoveryHint.jsx'
 import { WhoopHomeCard } from './WhoopSheets.jsx'
+import { HealthHomeCards } from './HealthCards.jsx'
 import { visitOn, withVisit } from '../lib/gym-visits.js'
 import { ChallengesCard } from '../components/Challenges.jsx'
 import { isOn } from '../lib/modules.js'
@@ -129,6 +130,8 @@ export default function Home() {
     <div className="hdr">
       <SeasonDeco spot="header-bats" />
       <div><h1>{user ? t('Hi {0}', user.name) : 'myGym'}</h1><div className="sub">{today.toLocaleDateString(dateLocale(), { weekday: 'long', day: 'numeric', month: 'long' })}</div></div>
+      {user && <button className="iconbtn" onClick={() => nav('/diet')} aria-label={t('Diet')}><Icon name="leaf" /></button>}
+      {user && <button className="iconbtn" onClick={() => nav('/supplements')} aria-label={t('Supplements')}><Icon name="pill" /></button>}
       <button className="iconbtn" data-tour="settings-gear" onClick={() => nav('/settings')} aria-label={trouble ? t('Settings') + ', ' + t('Connection problem') : t('Settings')}><Icon name="gear" />{trouble && <span className="tab-dot" aria-hidden="true" />}</button>
     </div>
 
@@ -207,6 +210,9 @@ export default function Home() {
 
     {/* Whoop (our addition): recovery, sleep and steps, only once this profile connected it. */}
     <WhoopHomeCard />
+
+    {/* Diet and supplements (our addition): today's macros and water, what is left to take. */}
+    <HealthHomeCards />
 
     {/* This month's three challenges and how far you are (lib/challenges.js). */}
     <ChallengesCard S={S} />
