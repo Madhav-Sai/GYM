@@ -58,6 +58,7 @@ import { altAppIcons, trimmedSettings } from '../lib/fork-flags.js'
 import { AnimationQualityRow } from '../components/Animations.jsx'
 import { ServerSyncSection, KeptChangesRows, leaveServer, connectServer, passkeySignIn } from '../components/ServerSync.jsx'
 import { passwordOn, PasswordRow, openPasswordSignIn, openPasswordRegister } from '../components/PasswordAuth.jsx'
+import { TwoFactorRow } from '../components/TwoFactor.jsx'
 import { usePasskeys, PasskeysRow, DeviceLinkRow, openDeviceLinkRedeem, PairSheet } from '../components/Passkeys.jsx'
 import { DeleteAccountRow } from '../components/DeleteAccount.jsx'
 import { warmupAutoOf } from '../lib/warmup-ramp.js'
@@ -1179,6 +1180,9 @@ export default function Settings({ page = null, find = null, via = null, entryKe
           {user.admin && <Row icon="crown" iconTint="var(--indigo)" title={t('Admin dashboard')} accessory="chevron" onClick={() => nav('/admin')} />}
           {/* A code to sign in on a computer (#551), behind the same proof as in a browser. */}
           {!trimmedSettings() && <DeviceLinkRow state={passkeys.st} />}
+          {/* Two-factor sign-in, in both Settings layouts: it reads its own status, and a server
+              without password sign-in has no such route, which leaves the row out. */}
+          <TwoFactorRow />
           <AccountIdRow id={user.id} />
           <Row icon="signOut" iconTint="var(--red)" title={t('Disconnect')} danger onClick={disconnect} />
         </>}
@@ -1208,6 +1212,8 @@ export default function Settings({ page = null, find = null, via = null, entryKe
               onClick={() => useUI.getState().openSheet(close => <PairSheet close={close} />)} />
           </>}
           {pwOn && <PasswordRow version={credsV} />}
+          {/* Not behind trimmedSettings(): both layouts offer it. */}
+          <TwoFactorRow />
           <Row icon="signOut" iconTint="var(--red)" title={t('Sign out')} danger onClick={signOutHere} />
           <Row icon="shield" iconTint="var(--red)" title={t('Sign out everywhere')} subtitle={t('Ends this profile’s sessions on all your devices.')} danger onClick={signOutEverywhere} />
           <AccountIdRow id={user.id} />

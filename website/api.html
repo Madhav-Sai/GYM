@@ -247,7 +247,7 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
   <p class="api-facts">
     <span>OpenAPI 3.1.0</span>
     <span>openGym v1.4.3</span>
-    <span>97 endpoints</span>
+    <span>101 endpoints</span>
     <span>AGPL-3.0-or-later</span>
   </p>
 
@@ -1028,6 +1028,7 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
   </summary>
   <div class="ep-body">
 <p>Only a profile that has set a password can sign in this way. The identifier is the profile's display name or the e-mail address it added (<code>POST /api/account/email</code>), compared trimmed, NFKC-normalised and case-insensitively. Send it as <code>identifier</code> (what the app sends), <code>name</code> (the original field, still accepted) or <code>email</code>. In <code>identifier</code> and <code>name</code>, a value with an <code>@</code> is looked up as an e-mail first and then as a name; <code>email</code> is looked up only as an e-mail. A wrong password, an unknown name and a name whose profile has no password all get the same <code>401</code> after the same scrypt work, so neither the answer nor its timing says which names exist. So does a password that was right when its check started but was changed, reset or removed before the check finished. Five wrong passwords for an account are free and the sixth pauses it, whichever identifier they named it by (see <i>Throttling</i>); passkey sign-in is never paused by this. Sets the same session cookie as <code>/api/login/verify</code>. <b>Not</b> CSRF-exempt.</p>
+<p>When the profile has two-factor sign-in on (<code>/api/2fa/*</code>), the right password alone gets <code>401</code> with <code>code: 2fa-required</code> and no session. Send the same request again with <code>code</code>: the six digits from the authenticator app (accepted one 30 s step either side, each step once) or one of the recovery codes (each works once). A wrong code is <code>401</code> with <code>code: bad-2fa-code</code> and counts like a wrong password toward the same pause.</p>
     <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Public: no authentication required.</span></p>
 
 <p class="ep-h">Request body <span class="p-hint">(JSON)</span></p><div class="ptab">
@@ -1051,6 +1052,11 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
     <span class="p-type">string <span class="p-hint">(&le; 256 chars)</span></span>
     <span class="p-desc"></span>
   </div>
+  <div class="prow">
+    <span class="p-name">code</span>
+    <span class="p-type">string</span>
+    <span class="p-desc">Only with two-factor sign-in on: a six-digit code from the authenticator app, or a recovery code.</span>
+  </div>
 </div>
     <p class="ep-h">Responses</p>
     <div class="ptab">
@@ -1064,7 +1070,7 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
   </div>
   <div class="prow rrow">
     <span class="r-code s4">401</span>
-    <span class="p-desc">Wrong name or password. Deliberately one answer for every cause.<span class="r-sig"><code>{&quot;error&quot;:&quot;wrong name or password&quot;}</code></span></span>
+    <span class="p-desc">Wrong name or password (<code>bad-credentials</code>), deliberately one answer for every cause. With two-factor sign-in on and the right password: no code yet (<code>2fa-required</code>) or a wrong one (<code>bad-2fa-code</code>).<span class="r-sig"><code>{&quot;error&quot;:&quot;wrong name or password&quot;}</code> &middot; <code>{&quot;error&quot;:&quot;enter the code from your authenticator app&quot;}</code> &middot; <code>{&quot;error&quot;:&quot;that code is not right&quot;}</code></span></span>
   </div>
   <div class="prow rrow">
     <span class="r-code s4">403</span>
@@ -1090,7 +1096,7 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
     <span class="ep-sum">Sign a phone in with a profile name and a password (this fork)</span>
   </summary>
   <div class="ep-body">
-<p>The same password check, throttling and lockout as <code>POST /api/login/password</code>, for the phone app. The answer is a <b>bearer token</b> for the app to keep in its own secure storage, and <b>no cookie is set</b>, so no web page can ride on it. For that reason it is CSRF-exempt, like <code>/api/pair/redeem</code>. Only available while <code>PASSWORD_LOGIN</code> is on. Send the token as <code>Authorization: Bearer &lt;token&gt;</code>.</p>
+<p>The same password check, throttling and lockout as <code>POST /api/login/password</code>, for the phone app. The answer is a <b>bearer token</b> for the app to keep in its own secure storage, and <b>no cookie is set</b>, so no web page can ride on it. For that reason it is CSRF-exempt, like <code>/api/pair/redeem</code>. Only available while <code>PASSWORD_LOGIN</code> is on. Send the token as <code>Authorization: Bearer &lt;token&gt;</code>. Two-factor sign-in applies here exactly as on <code>/api/login/password</code>: <code>401</code> with <code>code: 2fa-required</code> until the request carries a valid <code>code</code>.</p>
     <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Public: no authentication required.</span></p>
 
 <p class="ep-h">Request body <span class="p-hint">(JSON)</span></p><div class="ptab">
@@ -1108,6 +1114,11 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
     <span class="p-name">password<em class="p-req" title="required">required</em></span>
     <span class="p-type">string <span class="p-hint">(&le; 256 chars)</span></span>
     <span class="p-desc"></span>
+  </div>
+  <div class="prow">
+    <span class="p-name">code</span>
+    <span class="p-type">string</span>
+    <span class="p-desc">Only with two-factor sign-in on: a six-digit code, or a recovery code.</span>
   </div>
 </div>
     <p class="ep-h">Responses</p>
@@ -1271,6 +1282,175 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
   <div class="prow rrow">
     <span class="r-code s5">503</span>
     <span class="p-desc">Every password check slot and the short queue behind them are taken.<span class="r-sig"><code>{&quot;error&quot;:&quot;the server is busy, try again in a moment&quot;}</code></span></span>
+  </div>
+    </div>
+  </div>
+</details>
+
+<details class="ep" id="op-getTwoFactorStatus">
+  <summary>
+    <span class="m get">GET</span>
+    <span class="ep-path"><code>/api/2fa/status</code></span>
+    <span class="ep-chev" aria-hidden="true"></span>
+    <span class="ep-sum">Whether two-factor sign-in is on for this profile</span>
+  </summary>
+  <div class="ep-body">
+<p>Only while <code>PASSWORD_LOGIN</code> is on. Two-factor guards the password sign-in; passkey sign-in is unaffected.</p>
+    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Requires a session: the cookie set at sign-in, or <code>Authorization: Bearer &lt;token&gt;</code> from mobile-app pairing.</span></p>
+
+
+    <p class="ep-h">Responses</p>
+    <div class="ptab">
+  <div class="prow rrow">
+    <span class="r-code s2">200</span>
+    <span class="p-desc">The profile's two-factor state.<span class="r-sig">{ enabled: boolean, since: string | null, recoveryLeft: integer, pending: boolean, password: boolean }</span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">401</span>
+    <span class="p-desc">No session, expired/revoked session, or a disabled account.<span class="r-sig"><code>{&quot;error&quot;:&quot;not signed in&quot;}</code></span></span>
+  </div>
+    </div>
+  </div>
+</details>
+
+<details class="ep" id="op-setupTwoFactor">
+  <summary>
+    <span class="m post">POST</span>
+    <span class="ep-path"><code>/api/2fa/setup</code></span>
+    <span class="ep-chev" aria-hidden="true"></span>
+    <span class="ep-sum">Start setting up two-factor sign-in</span>
+  </summary>
+  <div class="ep-body">
+<p>Proof first, like any change to how the account signs in: <code>password</code> (the current one) or a passkey assertion (<code>cid</code>, <code>credential</code>). Answers a fresh secret (20 random bytes, base32) and its <code>otpauth://</code> URI (issuer <code>myGym</code>, SHA-1, 6 digits, 30 s) for the authenticator app. It is not in force until <code>POST /api/2fa/enable</code> confirms it with a code, within ten minutes. Stored sealed (AES-256-GCM, key derived from <code>DATA_DIR/secret</code>).</p>
+    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Requires a session: the cookie set at sign-in, or <code>Authorization: Bearer &lt;token&gt;</code> from mobile-app pairing.</span></p>
+
+<p class="ep-h">Request body <span class="p-hint">(JSON)</span></p><div class="ptab">
+  <div class="prow">
+    <span class="p-name">password</span>
+    <span class="p-type">string</span>
+    <span class="p-desc">The current password.</span>
+  </div>
+  <div class="prow">
+    <span class="p-name">cid</span>
+    <span class="p-type">string</span>
+    <span class="p-desc"></span>
+  </div>
+  <div class="prow">
+    <span class="p-name">credential</span>
+    <span class="p-type">object</span>
+    <span class="p-desc"></span>
+  </div>
+</div>
+    <p class="ep-h">Responses</p>
+    <div class="ptab">
+  <div class="prow rrow">
+    <span class="r-code s2">200</span>
+    <span class="p-desc">A pending secret.<span class="r-sig">{ secret: string, uri: string, expires: integer }</span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">401</span>
+    <span class="p-desc">No session, expired/revoked session, or a disabled account.<span class="r-sig"><code>{&quot;error&quot;:&quot;not signed in&quot;}</code></span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">403</span>
+    <span class="p-desc">The proof was refused (<code>current-required</code>, <code>current-wrong</code>, <code>passkey</code>).</span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">409</span>
+    <span class="p-desc">Already on (<code>2fa-on</code>), or the profile has no password (<code>no-password</code>).</span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">429</span>
+    <span class="p-desc">Paused by the sign-in throttle (see <i>Throttling</i> in the description). The request was not looked at; try again after <code>Retry-After</code> seconds.<span class="r-sig"><code>{&quot;error&quot;:&quot;too many attempts, try again later&quot;}</code></span></span>
+  </div>
+    </div>
+  </div>
+</details>
+
+<details class="ep" id="op-enableTwoFactor">
+  <summary>
+    <span class="m post">POST</span>
+    <span class="ep-path"><code>/api/2fa/enable</code></span>
+    <span class="ep-chev" aria-hidden="true"></span>
+    <span class="ep-sum">Confirm the setup with a code and turn two-factor sign-in on</span>
+  </summary>
+  <div class="ep-body">
+<p>The first code from the app turns it on. The answer carries ten recovery codes, each good for one sign-in; they are stored hashed and shown this once only. The step that confirmed the setup is spent and does not sign in again.</p>
+    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Requires a session: the cookie set at sign-in, or <code>Authorization: Bearer &lt;token&gt;</code> from mobile-app pairing.</span></p>
+
+<p class="ep-h">Request body <span class="p-hint">(JSON)</span></p><div class="ptab">
+  <div class="prow">
+    <span class="p-name">code<em class="p-req" title="required">required</em></span>
+    <span class="p-type">string</span>
+    <span class="p-desc">Six digits.</span>
+  </div>
+</div>
+    <p class="ep-h">Responses</p>
+    <div class="ptab">
+  <div class="prow rrow">
+    <span class="r-code s2">200</span>
+    <span class="p-desc">On.<span class="r-sig">{ ok: boolean, recoveryCodes: string[], enabled: boolean, recoveryLeft: integer }</span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">400</span>
+    <span class="p-desc">The code is not right (<code>bad-2fa-code</code>).</span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">401</span>
+    <span class="p-desc">No session, expired/revoked session, or a disabled account.<span class="r-sig"><code>{&quot;error&quot;:&quot;not signed in&quot;}</code></span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">409</span>
+    <span class="p-desc">Already on (<code>2fa-on</code>), or no setup pending (<code>2fa-expired</code>).</span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">429</span>
+    <span class="p-desc">Paused by the sign-in throttle (see <i>Throttling</i> in the description). The request was not looked at; try again after <code>Retry-After</code> seconds.<span class="r-sig"><code>{&quot;error&quot;:&quot;too many attempts, try again later&quot;}</code></span></span>
+  </div>
+    </div>
+  </div>
+</details>
+
+<details class="ep" id="op-disableTwoFactor">
+  <summary>
+    <span class="m post">POST</span>
+    <span class="ep-path"><code>/api/2fa/disable</code></span>
+    <span class="ep-chev" aria-hidden="true"></span>
+    <span class="ep-sum">Turn two-factor sign-in off</span>
+  </summary>
+  <div class="ep-body">
+<p>Needs the current <code>password</code> and a <code>code</code> (from the app, or a recovery code). A wrong one of either counts like a wrong password toward the sign-in pause. Already off answers <code>200</code>. An admin's password reset (<code>POST /api/admin/user/password-reset</code>) also turns it off.</p>
+    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Requires a session: the cookie set at sign-in, or <code>Authorization: Bearer &lt;token&gt;</code> from mobile-app pairing.</span></p>
+
+<p class="ep-h">Request body <span class="p-hint">(JSON)</span></p><div class="ptab">
+  <div class="prow">
+    <span class="p-name">password<em class="p-req" title="required">required</em></span>
+    <span class="p-type">string</span>
+    <span class="p-desc"></span>
+  </div>
+  <div class="prow">
+    <span class="p-name">code<em class="p-req" title="required">required</em></span>
+    <span class="p-type">string</span>
+    <span class="p-desc"></span>
+  </div>
+</div>
+    <p class="ep-h">Responses</p>
+    <div class="ptab">
+  <div class="prow rrow">
+    <span class="r-code s2">200</span>
+    <span class="p-desc">Off.<span class="r-sig">{ ok: boolean, enabled: boolean }</span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">401</span>
+    <span class="p-desc">No session, expired/revoked session, or a disabled account.<span class="r-sig"><code>{&quot;error&quot;:&quot;not signed in&quot;}</code></span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">403</span>
+    <span class="p-desc">Wrong or missing password (<code>current-required</code>, <code>current-wrong</code>), or a wrong code (<code>bad-2fa-code</code>).</span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">429</span>
+    <span class="p-desc">Paused by the sign-in throttle (see <i>Throttling</i> in the description). The request was not looked at; try again after <code>Retry-After</code> seconds.<span class="r-sig"><code>{&quot;error&quot;:&quot;too many attempts, try again later&quot;}</code></span></span>
   </div>
     </div>
   </div>

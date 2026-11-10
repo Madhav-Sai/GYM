@@ -63,6 +63,10 @@ export function passwordError(e) {
     case 'reset-invalid': return t('That reset code is wrong or has expired. Ask your admin for a new one.')
     case 'disabled': return t('This account has been disabled.')
     case 'busy': return t('The server is busy. Try again in a moment.')
+    case '2fa-required': return t('Enter the 6-digit code from your authenticator app.')
+    case 'bad-2fa-code': return t('That code is not right. Check the time on your phone and try the newest code.')
+    case '2fa-expired': return t('That took too long. Start the setup again.')
+    case 'no-password': return t('Set a password first. Two-factor sign-in protects your password.')
   }
   return e?.message || t('Sign-in failed')
 }
@@ -82,6 +86,34 @@ async function signedIn(u, close) {
 const field = { autoCapitalize: 'none', autoCorrect: 'off', spellCheck: false }
 const codeStyle = { letterSpacing: '.14em', fontWeight: 600, textAlign: 'center' }
 
+/* Two-factor sign-in (api/totp.js): the server answers the right password with `2fa-required`
+   while the profile has it on, and the sign-in is sent again with `code`. Both sign-in screens
+   (this sheet and the one-screen sign-in in views/Login.jsx) use the field below for that step. */
+export const askedForCode = e => e?.code === '2fa-required' || e?.data?.code === '2fa-required'
+// Six digits from the app, or a recovery code ("Use a recovery code"). Spaces are fine either way.
+export const codeProblem = (code, recovery) => {
+  const c = String(code || '').replace(/\s/g, '')
+  if (!c) return recovery ? t('Enter a recovery code.') : t('Enter the 6-digit code.')
+  if (!recovery && !/^\d{6}$/.test(c)) return t('The code has 6 digits.')
+  return null
+}
+export function SecondFactorField({ code, setCode, recovery, setRecovery, autoFocus = true }) {
+  const ref = useRef(null)
+  useEffect(() => { if (autoFocus) setTimeout(() => ref.current?.focus(), 50) }, [recovery])
+  return <>
+    <div className="muted small" style={{ marginBottom: 10 }}>{recovery
+      ? t('Enter one of the recovery codes you saved when you turned on two-factor sign-in. Each one works once.')
+      : t('Enter the 6-digit code from your authenticator app')}</div>
+    <input ref={ref} className="input" name="one-time-code" autoComplete="one-time-code" aria-label={recovery ? t('Recovery code') : t('6-digit code')}
+      placeholder={recovery ? t('Recovery code') : '123456'} inputMode={recovery ? 'text' : 'numeric'} maxLength={recovery ? 20 : 7}
+      value={code} onChange={e => setCode(recovery ? e.target.value.toUpperCase() : e.target.value.replace(/[^\d ]/g, ''))} {...field} style={codeStyle} />
+    <button type="button" className="linkish dim small" style={{ marginTop: 8, background: 'none', border: 0, padding: 4, cursor: 'pointer', textDecoration: 'underline', color: 'inherit' }}
+      onClick={() => { setCode(''); setRecovery(!recovery) }}>
+      {recovery ? t('Use the code from your app') : t('Use a recovery code')}
+    </button>
+  </>
+}
+
 /* Sign in with name (or the profile's sign-in e-mail) and password, or — one tap away — redeem a reset code from the admin, which
    sets a new password and signs in. `onPasskey`, when given, offers the passkey instead. The
    inputs carry the autocomplete names password managers look for, inside a real form. */
@@ -94,6 +126,10 @@ export function PasswordSignInSheet({ close, onPasskey }) {
   const [again, setAgain] = useState('')
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState(null)
+  // Two-factor sign-in's second step: the server asked for a code after the right password.
+  const [second, setSecond] = useState(false)
+  const [otp, setOtp] = useState('')
+  const [recovery, setRecovery] = useState(false)
   const nameRef = useRef(null)
   useEffect(() => { setTimeout(() => nameRef.current?.focus(), 250) }, [])
   const reset = mode === 'reset'
@@ -103,6 +139,7 @@ export function PasswordSignInSheet({ close, onPasskey }) {
     const n = name.trim()
     const bad = !n ? t('Enter your name or e-mail.')
       : !reset && !pw ? t('Enter your password.')
+      : !reset && second ? codeProblem(otp, recovery)
       : reset && !code.trim() ? t('Enter the reset code.')
       : reset && length(next) < MIN_PASSWORD ? t('Use at least {0} characters.', MIN_PASSWORD)
       // A typo here is only found at the next sign-in, and fixing it takes another code.
@@ -110,10 +147,26 @@ export function PasswordSignInSheet({ close, onPasskey }) {
       : null
     if (bad) { setErr(bad); return }
     setBusy(true); setErr(null)
-    try { await signedIn(reset ? await passwordResetRedeem(n, code.trim(), next) : await passwordLogin(n, pw), close) }
-    catch (e) { setErr(passwordError(e)) }
-    finally { setBusy(false) }
+    try {
+      const u = reset ? await passwordResetRedeem(n, code.trim(), next)
+        : second ? await passwordLogin(n, pw, otp.replace(/\s/g, '')) : await passwordLogin(n, pw)
+      await signedIn(u, close)
+    } catch (e) {
+      if (!reset && !second && askedForCode(e)) { setSecond(true); return }
+      setErr(passwordError(e))
+    } finally { setBusy(false) }
   }
+  if (second && !reset) return <>
+    <h3>{t('Two-factor sign-in')}</h3>
+    <form onSubmit={submit} noValidate>
+      <SecondFactorField code={otp} setCode={setOtp} recovery={recovery} setRecovery={setRecovery} />
+      {err && <div className="small" role="alert" style={errStyle}>{err}</div>}
+      <div style={{ height: 12 }} />
+      <Button type="submit" variant="primary" disabled={busy}>{t('Sign in')}</Button>
+    </form>
+    <div style={{ height: 8 }} />
+    <Button type="button" variant="ghost" className="dim" onClick={() => { setErr(null); setOtp(''); setSecond(false) }}>{t('Back')}</Button>
+  </>
   return <>
     <h3>{reset ? t('Reset your password') : t('Sign in with password')}</h3>
     <div className="muted small" style={{ marginBottom: 14 }}>{reset

@@ -1947,8 +1947,9 @@ export const useStore = create((set, get) => {
       return get()._afterConnect(url, await connect(url, code), ask)   // throws on a bad URL/expired code — caller shows it
     },
     // Name + password (this fork, lib/server-preset.js): ends in the same place as a pairing.
-    async connectToServerPassword(url, name, password, ask) {
-      return get()._afterConnect(url, await connectPassword(url, name, password), ask)
+    // `code`: the two-factor code, on the second try after the server asked for one.
+    async connectToServerPassword(url, name, password, ask, code) {
+      return get()._afterConnect(url, await connectPassword(url, name, password, code), ask)
     },
     async _afterConnect(url, user, ask) {
       // The account first, the address after: a copy another account still owed is kept aside

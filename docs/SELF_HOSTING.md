@@ -450,6 +450,16 @@ a LAN-only address, see [SELF_HOSTING_HTTPS.md](./SELF_HOSTING_HTTPS.md).
 - Passwords need 10 to 256 characters and may not be one of a short built-in list of the
   passwords guessing scripts try first (`Password123!`, `qwerty…`, the profile's own name with
   digits). A long passphrase is the point.
+- **Two-factor sign-in** (optional, per profile, in Settings → Account): after the password the
+  app also asks for the 6-digit code from an authenticator app (TOTP: SHA-1, 30 seconds, one step
+  of clock drift either way, each code once), or one of ten recovery codes shown when it was
+  turned on. A wrong code counts like a wrong password toward the pause above. The secret is
+  stored in `db.json` sealed with a key derived from `./data/secret` (replace that file and the
+  codes stop working; the recovery codes still do), the recovery codes only as salted hashes.
+  Passkey sign-in does not ask for a code. Someone who lost their phone and their recovery codes
+  is helped the usual way: an admin's password reset also turns two-factor off for that profile.
+  The admin from `ADMIN_NAME`/`ADMIN_PASSWORD` has no admin above them, so keep those recovery
+  codes somewhere safe.
 
 **Which address counts as one visitor.** The throttle needs the visitor's address. With the
 bundled `docker-compose.yml` it reads the one the web container passes on: the compose file sets

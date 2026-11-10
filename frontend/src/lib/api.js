@@ -343,13 +343,18 @@ export async function pairRedeem(serverBase, code, { probeMs = PROBE_MS } = {}) 
 
 // Name + password for the phone app (this fork): POST /api/login/device, answered with a bearer token and never a
 // cookie. The failures a person can act on are worded here, in the UI language; the server says them in English.
-export async function deviceLogin(serverBase, name, password, { probeMs = PROBE_MS } = {}) {
+// With two-factor sign-in on, the right password alone is answered 401 `2fa-required`; the caller
+// asks for the code and calls again with `code` (six digits, or a recovery code).
+export async function deviceLogin(serverBase, name, password, { probeMs = PROBE_MS, code } = {}) {
   let data
   try {
     data = await request(serverBase + '/api/login/device', {
-      method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, accessFor(serverBase)), body: JSON.stringify({ name, password })
+      method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, accessFor(serverBase)),
+      body: JSON.stringify({ name, password, ...(code ? { code } : {}) })
     }, TIMEOUT_GET_MS)
   } catch (e) {
+    if (e && e.status === 401 && e.data?.code === '2fa-required') throw failure(t('Enter the 6-digit code from your authenticator app.'), '2fa-required', 401)
+    if (e && e.status === 401 && e.data?.code === 'bad-2fa-code') throw failure(t('That code is not right. Check the time on your phone and try the newest code.'), 'bad-2fa-code', 401)
     if (e && e.status === 401) throw failure(t('Wrong name or password.'), 'bad-credentials', 401)
     if (e && e.status === 403) throw failure(t('This account has been disabled.'), 'disabled', 403)
     if (e && e.status === 429) throw failure(t('Too many attempts. Wait a few minutes and try again.'), 'locked', 429)
@@ -443,8 +448,9 @@ const post = (path, body) => api(path, { method: 'POST', body: JSON.stringify(bo
 // `name` is whatever was typed in "Name or e-mail": it goes in the original `name` field, which
 // the server matches against the profile's sign-in e-mail when it holds an "@" and against the
 // name otherwise — so the app and a server a version apart still understand each other.
-export async function passwordLogin(name, password) {
-  return (await post('/api/login/password', { name, password })).user
+// `code`: the second step of two-factor sign-in, sent only once the server asked for it.
+export async function passwordLogin(name, password, code) {
+  return (await post('/api/login/password', { name, password, ...(code ? { code } : {}) })).user
 }
 // `email` is optional, and sent only when there is one: a server from before the field would
 // otherwise ignore it without a word, which is the same thing.
