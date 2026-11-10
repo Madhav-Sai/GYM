@@ -11,7 +11,7 @@ import { createRoot } from 'react-dom/client'
 import { DEF, useStore } from './store/useStore.js'
 import { useUI } from './store/useUI.js'
 import { todayISO } from './lib/format.js'
-import { visitOn } from './lib/gym-visits.js'
+import { visitOn, visitOf, checkInDay } from './lib/gym-visits.js'
 import { RecapHomeCard } from './components/Recap.jsx'
 import { exercisePicker, workoutDetailSheet, calendarSheet } from './sheets.jsx'
 import Library from './views/Library.jsx'
@@ -109,15 +109,29 @@ describe('Home: the streak card and check-in', () => {
   it('check-in is a real button that checks in today and takes it back; no codes saved, no codes button', () => {
     const host = mount()
     const card = host.querySelector('.checkin-card')
+    const day = checkInDay() // today, rolling over at 04:00 (lib/gym-visits.js)
     expect(card.classList.contains('tap-host')).toBe(false)
     expect([...card.querySelectorAll('button')].map(nameOf)).toEqual(['Check in'])
+    expect(card.textContent).toMatch(/\d+ visits? this month/) // the workout logged today is a gym day
     act(() => card.querySelectorAll('button')[0].click())
-    expect(visitOn(useStore.getState().S, todayISO())).toBe(true)
+    expect(visitOn(useStore.getState().S, day)).toBe(true)
     expect(navSpy).not.toHaveBeenCalled()
+    // checked in: Undo, and the centre and note one tap away (this fork)
     const again = [...host.querySelectorAll('.checkin-card button')]
-    expect(again.map(nameOf)).toEqual(['Undo'])
-    act(() => again[0].click())
-    expect(visitOn(useStore.getState().S, todayISO())).toBe(false)
+    expect(again.map(nameOf)).toEqual(['Undo', 'Add centre or note'])
+    act(() => again[1].click())
+    const sheet = renderTop()
+    act(() => {
+      const input = sheet.querySelector('#visit-centre')
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(input, 'Cult HSR')
+      input.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+    act(() => [...sheet.querySelectorAll('button')].find(b => nameOf(b) === 'Save').click())
+    expect(visitOf(useStore.getState().S, day)).toEqual({ on: true, centre: 'Cult HSR' })
+    const undo = [...host.querySelectorAll('.checkin-card button')]
+    expect(undo.map(nameOf)).toEqual(['Undo', 'Edit centre or note'])
+    act(() => undo[0].click())
+    expect(visitOn(useStore.getState().S, day)).toBe(false)
   })
   it('with a saved membership code, a second button opens the codes page', () => {
     useStore.setState(s => ({ S: { ...s.S, gymCards: [{ id: 'c1', name: 'Gym', value: '123', fmt: 'qr' }] } }))

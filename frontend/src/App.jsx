@@ -99,6 +99,9 @@ const Library = lazyView(() => import('./views/Library.jsx'))
 const Muscles = lazyView(() => import('./views/Muscles.jsx'))
 const Diet = lazyView(() => import('./views/Diet.jsx'))
 const Supplements = lazyView(() => import('./views/Supplements.jsx'))
+// The daily timing plan and the how-to guide (this fork, views/Schedule.jsx, views/Guide.jsx).
+const Schedule = lazyView(() => import('./views/Schedule.jsx'))
+const Guide = lazyView(() => import('./views/Guide.jsx'))
 const SettingsRoute = lazyView(() => import('./views/Settings.jsx').then(m => ({ default: m.SettingsRoute })))
 // The app tour's overlay (components/Tour.jsx): fetched when it opens, never before.
 const Tour = lazy(() => import('./components/Tour.jsx'))
@@ -362,6 +365,8 @@ function Shell() {
       {/* Diet and supplements (our addition): their log lives on the server, so they ask for sign-in themselves. */}
       <Route path="/diet" element={<Diet />} />
       <Route path="/supplements" element={<Supplements />} />
+      <Route path="/schedule" element={<Schedule />} />
+      <Route path="/guide" element={<Guide />} />
       <Route path="/settings" element={<SettingsRoute />} />
       <Route path="/settings/:page" element={<SettingsRoute />} />
       {/* The Coach screens gate themselves on the instance config; the routes exist whenever the

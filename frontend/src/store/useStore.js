@@ -101,6 +101,10 @@ export const DEF = {
   // Manual gym check-ins (this fork, lib/gym-visits.js): { [iso]: { on: true, _ts } }. A checked-in day counts
   // towards the streak and shows on the calendar; each day merges on its own stamp like dayNotes.
   gymVisits: {},
+  // The daily timing plan (this fork, lib/day-schedule.js) and the Home arrangement (lib/home-layout.js):
+  // null until changed (the defaults show), then one setting each, stamped whole when changed.
+  daySchedule: null,
+  homeLayout: null,
   // Body measurements (#82, #699): one check-in per day; canonical cm, kg or % according to
   // the field's unit (lib/measurements.js); merged like weigh-ins (lib/sync-merge.js).
   measurements: [], measurementEnabled: null, customMeasurements: [],

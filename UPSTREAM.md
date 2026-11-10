@@ -16,5 +16,7 @@ Imported at commit `8fb98b16861a2728652302a7e6e30c50548493a0` (shallow clone, 20
 - **Whoop integration**: `api/integrations/providers/whoop.js`, `whoop-service.js`, `whoop-data.js`; UI in `frontend/src/views/WhoopSheets.jsx`, `lib/whoop.js`. See `docs/WHOOP.md`.
 - **Admin from the environment**: `ADMIN_NAME` + `ADMIN_PASSWORD` (`bootstrapEnvAdmin()` in `api/server.js`).
 - **Manual gym check-in that counts towards the streak and shows on the calendar**: `frontend/src/lib/gym-visits.js`, the Home check-in card, `streak.js`, the calendar in `sheets.jsx`; synced like day notes (`gymVisits` in the stamped-map lists on both sides). The QR membership codes page is unchanged.
+  Later: the check-in day rolls over at 04:00, a visit can carry the gym centre and a note (`components/GymVisit.jsx`), a missed day is checked in from the calendar's day sheet, and the card shows the visits this month.
+- **Home as a hub**: the Now strip and the tiles (`components/HomeHub.jsx`), Customize Home (`lib/home-layout.js`, synced setting `homeLayout`), the daily timing plan (`lib/day-schedule.js`, synced setting `daySchedule`, `views/Schedule.jsx`, phone reminders in `lib/schedule-reminders.js` on ids 5000 to 5199) and the how-to guide (`views/Guide.jsx`).
 - **Hosting**: `deploy/` (Caddy, Railway), `web/10-resolver-auto.envsh`, and the `VOLUME` line removed from `api/Dockerfile` (Railway rejects it).
 - `reference/spec-v1/` is an earlier standalone build kept for its seed data and rules.

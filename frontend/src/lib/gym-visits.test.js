@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { canCheckIn, visitOn, visitDays, withVisit } from './gym-visits.js'
+import { canCheckIn, visitOn, visitDays, withVisit, visitOf, withVisitDetails, checkInDay, monthVisits, recentCentres } from './gym-visits.js'
+import { mergeStates, stampEdits, stampChange } from './sync-merge.js'
 import { streakInfo } from './streak.js'
 
 const TODAY = '2026-11-09' // a Monday
@@ -63,5 +64,83 @@ describe('a check-in counts towards the streak', () => {
   it('a check-in in a week that has not started yet cannot count (and cannot be made)', () => {
     const S = { ...base, gymVisits: { '2026-11-20': { on: true, _ts: 1 } } }
     expect(streakInfo(S, TODAY).current).toBe(0)
+  })
+})
+
+describe('which Cult centre, and a note', () => {
+  it('details check the day in, and empty text clears one', () => {
+    const m = withVisitDetails({}, TODAY, { centre: ' Cult Indiranagar ', note: 'Leg day, packed' }, 10, TODAY)
+    expect(visitOf({ gymVisits: m }, TODAY)).toEqual({ on: true, centre: 'Cult Indiranagar', note: 'Leg day, packed' })
+    const m2 = withVisitDetails(m, TODAY, { centre: 'Cult Indiranagar', note: '' }, 11, TODAY)
+    expect(visitOf({ gymVisits: m2 }, TODAY)).toEqual({ on: true, centre: 'Cult Indiranagar' })
+    expect(withVisitDetails(m, '2026-12-01', { centre: 'x' }, 12, TODAY)).toBe(m)
+  })
+  it('checking in again keeps the details; taking it back drops them', () => {
+    const m = withVisitDetails({}, TODAY, { centre: 'Cult HSR' }, 10, TODAY)
+    expect(withVisit(m, TODAY, true, 20, TODAY)[TODAY]).toEqual({ on: true, centre: 'Cult HSR', _ts: 20 })
+    const off = withVisit(m, TODAY, false, 30, TODAY)
+    expect(off[TODAY]).toEqual({ _ts: 30 })
+    expect(visitOf({ gymVisits: off }, TODAY)).toBe(null)
+    expect(withVisit(off, TODAY, true, 40, TODAY)[TODAY]).toEqual({ on: true, _ts: 40 })
+  })
+  it('suggests recent centres, newest first, each once', () => {
+    const S = { gymVisits: {
+      '2026-11-01': { on: true, centre: 'Cult HSR', _ts: 1 }, '2026-11-03': { on: true, centre: 'cult hsr', _ts: 1 },
+      '2026-11-05': { on: true, centre: 'Cult Koramangala', _ts: 1 }, '2026-11-06': { _ts: 2, centre: 'Old' },
+    } }
+    expect(recentCentres(S)).toEqual(['Cult Koramangala', 'cult hsr'])
+  })
+})
+
+describe('the check-in day rolls over at 04:00', () => {
+  it('a check-in at 01:30 is still the evening before', () => {
+    expect(checkInDay(new Date(2026, 10, 10, 1, 30))).toBe('2026-11-09')
+    expect(checkInDay(new Date(2026, 10, 10, 4, 0))).toBe('2026-11-10')
+    expect(checkInDay(new Date(2026, 10, 10, 23, 59))).toBe('2026-11-10')
+  })
+})
+
+describe('visits this month', () => {
+  it('check-ins and logged workouts, each day once, this month only, nothing after today', () => {
+    const S = {
+      workouts: [{ d: '2026-11-02' }, { d: '2026-11-03' }, { d: '2026-10-30' }],
+      gymVisits: { '2026-11-03': { on: true, _ts: 1 }, '2026-11-05': { on: true, _ts: 1 }, '2026-11-06': { _ts: 1 }, '2026-11-20': { on: true, _ts: 1 } },
+    }
+    expect(monthVisits(S, TODAY)).toEqual({ days: 3, checkIns: 2 })
+    expect(monthVisits({}, TODAY)).toEqual({ days: 0, checkIns: 0 })
+  })
+})
+
+describe('a check-in survives reload and sync', () => {
+  // A device's change goes through the store the way useStore.update does it: stampEdits + stampChange.
+  const change = (prev, fn, wall) => {
+    const next = JSON.parse(JSON.stringify(prev))
+    fn(next)
+    stampEdits(prev, next, wall)
+    stampChange(prev, next, wall)
+    return next
+  }
+  const base = { weekStart: 1, workouts: [], gymVisits: {}, _ts: 1 }
+  it('a reload (the stored JSON) reads the same', () => {
+    const a = change(base, s => { s.gymVisits = withVisitDetails(s.gymVisits, TODAY, { centre: 'Cult HSR' }, 100, TODAY) }, 100)
+    const back = JSON.parse(JSON.stringify(a))
+    expect(visitOf(back, TODAY)).toEqual({ on: true, centre: 'Cult HSR' })
+    expect(streakInfo(back, TODAY).thisWeekDone).toBe(true)
+  })
+  it('two devices: each keeps the other\'s day, and the later undo of the same day wins', () => {
+    const phone = change(base, s => { s.gymVisits = withVisit(s.gymVisits, TODAY, true, 100, TODAY) }, 100)
+    const laptop = change(base, s => { s.gymVisits = withVisit(s.gymVisits, '2026-11-07', true, 150, TODAY) }, 150)
+    const m = mergeStates(phone, laptop)
+    expect(visitDays(m)).toEqual(['2026-11-07', TODAY])
+    const undone = change(laptop, s => { s.gymVisits = withVisit(s.gymVisits, TODAY, false, 300, TODAY) }, 300)
+    const m2 = mergeStates(phone, undone)
+    expect(visitOn(m2, TODAY)).toBe(false)
+    expect(visitOn(m2, '2026-11-07')).toBe(true)
+    expect(visitOn(mergeStates(undone, phone), TODAY)).toBe(false)
+  })
+  it('a back-dated day merges like any other', () => {
+    const a = change(base, s => { s.gymVisits = withVisitDetails(s.gymVisits, '2026-11-04', { note: 'forgot to tap' }, 100, TODAY) }, 100)
+    const m = mergeStates(base, a)
+    expect(visitOf(m, '2026-11-04')).toEqual({ on: true, note: 'forgot to tap' })
   })
 })
