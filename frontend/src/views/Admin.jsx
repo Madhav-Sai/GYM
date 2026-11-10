@@ -10,6 +10,7 @@ import { confirmSheet } from '../sheets.jsx'
 import Icon from '../components/Icon.jsx'
 import { Button } from '../components/ui.jsx'
 import AdminCoach from './AdminCoach.jsx'
+import { downloadExport } from './AdminData.jsx'
 import '../admin.css'
 
 // Admin-only operator dashboard (owner passkey + admin flag; guarded again server-side).
@@ -308,6 +309,56 @@ function AuditCard({ tick, owner }) {
   </div>
 }
 
+// Whoop on this account: the connection's state, a way to sign in to Whoop again when its token
+// has lapsed, and a sync on demand. Absent from the card when the server has no Whoop (404).
+function WhoopRow() {
+  const toast = useUI(s => s.toast)
+  const [s, setS] = useState(undefined)   // undefined loading, null not on this server
+  const [busy, setBusy] = useState(false)
+  const load = () => api('/api/whoop/summary').then(setS).catch(e => setS(e?.status === 404 ? null : { error: e?.message || 'Could not load' }))
+  useEffect(() => { load() }, [])
+  if (s === null) return <div className="item"><div className="grow"><div className="tt">Whoop</div><div className="ss">Not set up on this server (INTEGRATIONS has no whoop).</div></div></div>
+  const state = s === undefined ? 'Loading…' : s.error ? s.error : !s.connected ? 'Not connected' : s.status === 'attention' ? 'Needs attention: sign in to Whoop again' : 'Connected'
+  const pill = !s || s.error || !s.connected ? '' : s.status === 'attention' ? 'bad' : 'ok'
+  const sync = async () => {
+    setBusy(true)
+    try { await api('/api/integrations/whoop/sync', { method: 'POST', body: '{}' }); toast('Synced'); load() }
+    catch (e) { toast(e?.message || 'Sync failed') }
+    finally { setBusy(false) }
+  }
+  return <div className="item" style={{ flexWrap: 'wrap', gap: 8 }}>
+    <div className="grow"><div className="tt">Whoop {pill && <span className={'adm-pill ' + pill} style={{ marginInlineStart: 4 }}>{pill === 'ok' ? 'connected' : 'attention'}</span>}</div>
+      <div className="ss">{state}{s?.syncedAt ? ' · last sync ' + rel(s.syncedAt) : ''}</div></div>
+    <Button size="sm" onClick={() => import('./WhoopSheets.jsx').then(m => m.connectWhoop(toast))}>Connect again</Button>
+    {s?.connected && <Button size="sm" variant="tinted" disabled={busy} onClick={sync}>{busy ? 'Syncing…' : 'Sync now'}</Button>}
+  </div>
+}
+
+// Everything an admin edits, in one place: the instance-wide tools here, and links to the screens
+// where the exercise library and the workout templates are already edited.
+function ToolsCard() {
+  const nav = useNavigate()
+  const toast = useUI(s => s.toast)
+  const link = (title, sub, to) => <div className="item" onClick={() => nav(to)}>
+    <div className="grow"><div className="tt">{title}</div><div className="ss">{sub}</div></div><Icon name="chevronRight" className="chev" />
+  </div>
+  return <div className="card">
+    <h2 style={{ margin: 0 }}>Data and tools</h2>
+    <div className="adm-lead">The food database, a read-only look at the data files, an export of everything, and the screens where exercises and workouts are edited.</div>
+    <div className="list">
+      {link('Foods', 'Add, edit, hide or restore the foods on the Diet screen', '/admin/foods')}
+      {link('Data browser', 'The data files, read-only, secrets left out', '/admin/data')}
+      <div className="item" onClick={() => downloadExport(toast)}>
+        <div className="grow"><div className="tt">Export everything</div><div className="ss">One JSON file with every user’s data, secrets left out</div></div><Icon name="download" className="chev" />
+      </div>
+      <WhoopRow />
+      {link('Exercise library', 'Your own exercises, photos and videos', '/library')}
+      {link('Routines', 'Workout templates and the week plan', '/plan')}
+      {link('Programmes', 'Multi-week programmes', '/plan/programmes')}
+    </div>
+  </div>
+}
+
 export default function Admin() {
   const nav = useNavigate()
   // Opened from Settings → AI Coach (the hosted app's way to the Coach, which is the server's):
@@ -390,6 +441,8 @@ export default function Admin() {
     <div ref={coachRef} className="adm-coach-anchor"><AdminCoach /></div>
 
     <InvitesCard invites={invites} reload={loadInvites} inviteOnly={inviteOnly} />
+
+    <ToolsCard />
 
     <div className="card">
       <h2 style={{ margin: 0 }}>Users</h2>

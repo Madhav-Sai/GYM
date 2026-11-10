@@ -16,11 +16,18 @@ const supps = {
   log: {},
 }
 const post = async (path, body) => { posts.push([path, body]); return {} }
-vi.mock('./health-data.js', () => ({
+// The latest weight the screen sees: 72.9 kg (an InBody scan), or none.
+let weight = { kg: 72.9, date: '2026-11-05', source: 'inbody' }
+vi.mock('./health-data.js', async () => {
+  const { dietTargets } = await import('../lib/diet-targets.js')
+  return {
+  useDietTargets: prefs => dietTargets({ prefs, weight }),
+  useFoods: () => 0,
   useHealthOn: () => true,
   useDietDay: () => ({ data: diet, error: false, load() {}, post }),
   useSupplements: () => ({ data: supps, error: false, load() {}, post }),
-}))
+  }
+})
 vi.mock('../lib/ist.js', async orig => ({ ...(await orig()), healthDay: () => '2026-11-08', healthMinutes: () => 21 * 60 }))
 
 import Diet from './Diet.jsx'
@@ -37,7 +44,7 @@ function render(el) {
 }
 const buttonWith = (host, text) => [...host.querySelectorAll('button')].filter(b => b.textContent.includes(text))
 
-beforeEach(() => { posts.length = 0 })
+beforeEach(() => { posts.length = 0; weight = { kg: 72.9, date: '2026-11-05', source: 'inbody' } })
 afterEach(() => { for (const [r, h] of mounted.splice(0)) { act(() => r.unmount()); h.remove() } })
 
 describe('Diet screen', () => {
@@ -48,6 +55,25 @@ describe('Diet screen', () => {
     expect(host.textContent).toContain('Fibre is under 25 g by 20:00')
     expect(host.textContent).toContain('Protein is under 140 g by 20:00')
     expect(host.textContent).toContain('Rest')
+  })
+
+  test('the protein target comes from body weight, and says how', () => {
+    const host = render(<Diet />)
+    expect(host.textContent).toContain('160 g = 2.2 g/kg x 72.9 kg')
+    expect(host.textContent).toContain('/ 160 g')
+    expect(host.textContent).toContain('Protein per kg')
+    expect(host.textContent).toContain('Calorie target')
+  })
+
+  test('a heavier body raises the target and the evening floor; no weight falls back to 160 g', () => {
+    weight = { kg: 90, date: '2026-11-08', source: 'weigh-in' }
+    let host = render(<Diet />)
+    expect(host.textContent).toContain('200 g = 2.2 g/kg x 90.0 kg')
+    expect(host.textContent).toContain('Protein is under 170 g by 20:00')
+    weight = null
+    host = render(<Diet />)
+    expect(host.textContent).toContain('No body weight yet')
+    expect(host.textContent).toContain('Protein is under 140 g by 20:00')
   })
 
   test('tapping a plan item logs it with its plan key; a water tap adds 250 ml', () => {

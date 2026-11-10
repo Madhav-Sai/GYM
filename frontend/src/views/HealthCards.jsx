@@ -6,7 +6,7 @@ import { healthDay } from '../lib/ist.js'
 import { TARGETS, dayTypeOf } from '../lib/diet-plan.js'
 import { checklist, pendingCount, phaseOf } from '../lib/supplements.js'
 import { syncSupplementReminders } from '../lib/supp-reminders.js'
-import { useDietDay, useSupplements, useHealthOn } from './health-data.js'
+import { useDietDay, useSupplements, useHealthOn, useDietTargets } from './health-data.js'
 import { Totals, Flags, litres, D3Card } from '../components/HealthParts.jsx'
 import Icon from '../components/Icon.jsx'
 import CardHead from '../components/CardHead.jsx'
@@ -18,18 +18,20 @@ import './health.css'
 function DietHomeCard({ day }) {
   const nav = useNavigate()
   const d = useDietDay(day)
+  // Protein from body weight, the same helper as the Diet screen (lib/diet-targets.js).
+  const targets = useDietTargets(d.data?.prefs)
   if (!d.data) return null
   const s = d.data
   return <div className="card tap-host">
     <CardHead icon="leaf" tint="var(--green)" eyebrow={t('Diet')} title={t('Today’s macros')} open={{ onClick: () => nav('/diet') }}
       action={<Icon name="chevronRight" className="chev" />} />
-    <Totals totals={s.totals} compact />
+    <Totals totals={s.totals} targets={targets} compact />
     <div className="hl-bar-h" style={{ marginTop: 10 }}>
       <span className="hl-l"><Icon name="drop" /> {t('Water')}</span>
       <span className="hl-v">{litres(s.water)}<small> / {TARGETS.waterMin / 1000} to {TARGETS.waterMax / 1000} L</small></span>
     </div>
     <div className="hl-track"><div className={'hl-fill' + (s.water >= TARGETS.waterMin ? ' ok' : '')} style={{ width: Math.min(100, (s.water / TARGETS.waterMax) * 100).toFixed(1) + '%' }} /></div>
-    <Flags totals={s.totals} />
+    <Flags totals={s.totals} targets={targets} />
   </div>
 }
 

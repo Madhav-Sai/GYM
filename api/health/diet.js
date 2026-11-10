@@ -102,7 +102,28 @@ export function dayView(doc, dayKey) {
   return { day: dayKey, ...day, totals: totals(day.entries), prefs: doc.diet.prefs };
 }
 
-export function setPrefs(doc, { veg } = {}) {
+// The protein target is grams per kg of the latest body weight (frontend/src/lib/diet-targets.js);
+// the kcal target is the plan's own unless one is set here. null puts either back to the default.
+export const PROTEIN_PER_KG = { min: 1.6, max: 2.6 };
+export const KCAL_TARGET = { min: 1000, max: 6000 };
+
+export function setPrefs(doc, { veg, proteinPerKg, kcalTarget } = {}) {
   if (veg !== undefined) doc.diet.prefs.veg = !!veg;
+  if (proteinPerKg !== undefined) {
+    if (proteinPerKg === null) delete doc.diet.prefs.proteinPerKg;
+    else {
+      const v = typeof proteinPerKg === 'number' && Number.isFinite(proteinPerKg) ? Math.round(proteinPerKg * 10) / 10 : NaN;
+      if (!(v >= PROTEIN_PER_KG.min && v <= PROTEIN_PER_KG.max)) throw bad(`proteinPerKg must be ${PROTEIN_PER_KG.min} to ${PROTEIN_PER_KG.max}`);
+      doc.diet.prefs.proteinPerKg = v;
+    }
+  }
+  if (kcalTarget !== undefined) {
+    if (kcalTarget === null) delete doc.diet.prefs.kcalTarget;
+    else {
+      const v = typeof kcalTarget === 'number' && Number.isFinite(kcalTarget) ? Math.round(kcalTarget) : NaN;
+      if (!(v >= KCAL_TARGET.min && v <= KCAL_TARGET.max)) throw bad(`kcalTarget must be ${KCAL_TARGET.min} to ${KCAL_TARGET.max}`);
+      doc.diet.prefs.kcalTarget = v;
+    }
+  }
   return doc.diet.prefs;
 }

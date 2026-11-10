@@ -3165,9 +3165,11 @@ paths:
     post:
       tags: [health]
       operationId: healthDietPrefs
-      summary: Set the global veg preference
+      summary: Set the diet preferences
       description: |
-        `veg` true swaps every non-veg plan item for its protein-matched veg alternative.
+        `veg` true swaps every non-veg plan item for its protein-matched veg alternative. `proteinPerKg` (1.6 to 2.6)
+        sets the protein target as grams per kg of the latest body weight; `kcalTarget` (1000 to 6000) replaces the
+        plan's calories. `null` puts either back to its default (2.2 g/kg, the plan's kcal).
       requestBody:
         required: true
         content:
@@ -3176,6 +3178,8 @@ paths:
               type: object
               properties:
                 veg: { type: boolean }
+                proteinPerKg: { type: number, nullable: true, minimum: 1.6, maximum: 2.6 }
+                kcalTarget: { type: integer, nullable: true, minimum: 1000, maximum: 6000 }
       responses:
         '200':
           description: The updated view.
@@ -3187,6 +3191,22 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /api/health/foods:
+    get:
+      tags: [health]
+      operationId: healthFoods
+      summary: The food database's changes on this instance
+      description: >-
+        What an admin changed on top of the app's built-in food list: `added` (whole foods), `edited` (`{ id: fields }`
+        on a built-in food) and `hidden` (ids left out of the pick list). The app merges them onto its own list.
+      responses:
+        '200':
+          description: '`{ v, added, edited, hidden, at }`'
+          content:
+            application/json:
+              schema: { type: object }
         '401': { $ref: '#/components/responses/Unauthorized' }
 
   /api/health/supplements:
@@ -3936,6 +3956,166 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Ok' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /api/admin/data/files:
+    get:
+      tags: [admin]
+      operationId: adminDataFiles
+      summary: 'Admin: list the data files'
+      description: >-
+        Read-only data browser (this fork). Every file under `DATA_DIR` with its size and mtime, leaving out the secrets:
+        `secret`, `vapid.json`, `integrations/`, `coach-auth-*`, anything named token, secret, key or pem, the
+        `db.json` copies, dot files and symlinks.
+      responses:
+        '200':
+          description: '`{ files: [{ path, size, mtime }], max }`; `max` is the largest file the browser opens, in bytes.'
+          content:
+            application/json:
+              schema: { type: object }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /api/admin/data/file:
+    get:
+      tags: [admin]
+      operationId: adminDataFile
+      summary: 'Admin: read one data file'
+      description: >-
+        Read-only. `path` is relative to `DATA_DIR` and must resolve inside it (no `..`, no absolute path, no symlink).
+        A JSON file comes back parsed with every secret field replaced by `[redacted]` (in `db.json` the passkeys,
+        device links, password hashes, reset codes, two-factor secrets and push keys); any other text file as text.
+        At most 2 MB.
+      parameters:
+        - { name: path, in: query, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: "`{ path, size, mtime, kind: 'json' | 'text', json | text }`"
+          content:
+            application/json:
+              schema: { type: object }
+        '400':
+          description: The path is missing, absolute or leaves the data folder.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404':
+          description: No such file.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '413':
+          description: The file is over 2 MB.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '415':
+          description: Not a text file (a photo or video upload).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /api/admin/export:
+    get:
+      tags: [admin]
+      operationId: adminExport
+      summary: 'Admin: export every data file'
+      description: >-
+        One JSON download (`Content-Disposition: attachment`) of every file the data browser shows, for every user,
+        with the same exclusions and redactions: `{ exported, files: { path: content }, skipped: [{ path, why }] }`.
+        Binary uploads are listed under `skipped`.
+      responses:
+        '200':
+          description: The export.
+          content:
+            application/json:
+              schema: { type: object }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /api/admin/foods/save:
+    post:
+      tags: [admin]
+      operationId: adminFoodsSave
+      summary: 'Admin: add or edit a food'
+      description: >-
+        The food database's per-instance changes (this fork), kept in `DATA_DIR/health/foods.json`. With `builtin: true`
+        the fields sent are stored as an edit of the app's own food `food.id`; otherwise `food` is a whole added food
+        (a new id is made when none is sent). Values are per `per` of `unit`; omega-3 in mg; `satFat` and `omega3`
+        may be null.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                builtin: { type: boolean }
+                food:
+                  type: object
+                  properties:
+                    id: { type: string }
+                    name: { type: string }
+                    unit: { type: string, enum: [g, ml, piece, slice, tsp, scoop] }
+                    per: { type: number }
+                    kcal: { type: number }
+                    protein: { type: number }
+                    carbs: { type: number }
+                    fat: { type: number }
+                    fiber: { type: number }
+                    satFat: { type: number, nullable: true }
+                    omega3: { type: number, nullable: true }
+                    veg: { type: boolean }
+                    vegAlt: { type: string, nullable: true }
+                    cat: { type: string }
+                    note: { type: string, nullable: true }
+      responses:
+        '200':
+          description: '`{ food, added, edited, hidden }`'
+          content:
+            application/json:
+              schema: { type: object }
+        '400':
+          description: A field was refused.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /api/admin/foods/delete:
+    post:
+      tags: [admin]
+      operationId: adminFoodsDelete
+      summary: 'Admin: hide, restore or reset a food'
+      description: >-
+        Hides `id` from the pick list (a plan item or an old entry naming it still resolves). `restore: true` offers it
+        again; `reset: true` drops the edits made to a built-in food.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [id]
+              properties:
+                id: { type: string }
+                restore: { type: boolean }
+                reset: { type: boolean }
+      responses:
+        '200':
+          description: '`{ added, edited, hidden }`'
+          content:
+            application/json:
+              schema: { type: object }
+        '400':
+          description: The id is missing.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
 

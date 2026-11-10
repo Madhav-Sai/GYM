@@ -1,12 +1,15 @@
 // The Diet and Supplements screens' data (our addition): GET and POST /api/health/*, through api()
 // so a paired phone's bearer token works the same as the website's cookie. Every write answers with
 // the new view, which replaces what is on screen.
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useStore } from '../store/useStore.js'
 import { useUI } from '../store/useUI.js'
 import { api } from '../lib/api.js'
 import { DEMO } from '../lib/demo.js'
 import { t } from '../lib/i18n.js'
+import { dietTargets, latestWeightKg } from '../lib/diet-targets.js'
+import { setFoodOverrides, foodsVersion } from '../lib/diet-foods.js'
+import { useMedical } from '../components/MedicalHome.jsx'
 
 /** Signed in to a server (not a guest, not the demo): the only place the log lives. */
 export function useHealthOn() {
@@ -43,3 +46,45 @@ function useResource(path, enabled) {
 
 export const useDietDay = (day, enabled = true) => useResource('/api/health/diet?day=' + encodeURIComponent(day), enabled)
 export const useSupplements = (enabled = true) => useResource('/api/health/supplements', enabled)
+
+/**
+ * The day's targets (lib/diet-targets.js): protein from the newest weigh-in or InBody scan, and the
+ * g/kg and kcal target from the diet prefs. The Diet screen and the Home card both use this.
+ */
+export function useDietTargets(prefs) {
+  const bodyweight = useStore(s => s.bodyweight)
+  const unit = useStore(s => s.unit)
+  const medical = useMedical()
+  const inbody = medical.data?.inbody
+  return useMemo(() => dietTargets({ prefs, weight: latestWeightKg(bodyweight, unit, inbody || []) }),
+    [prefs, bodyweight, unit, inbody])
+}
+
+/* The food database's per-instance changes (GET /api/health/foods), fetched once per app start and
+   applied to lib/diet-foods.js. Offline, or before it answers, the built-in list is used. */
+let foodsLoad = null
+const foodListeners = new Set()
+export function loadFoods({ force = false } = {}) {
+  if (!foodsLoad || force) {
+    foodsLoad = api('/api/health/foods')
+      .then(d => { setFoodOverrides(d); for (const l of foodListeners) l(foodsVersion()); return d })
+      .catch(() => { foodsLoad = null; return null })
+  }
+  return foodsLoad
+}
+/** Apply an answer that already holds the changes (an Admin save) without fetching again. */
+export function applyFoods(d) {
+  setFoodOverrides(d)
+  foodsLoad = Promise.resolve(d)
+  for (const l of foodListeners) l(foodsVersion())
+}
+/** Re-renders when the merged food list changes; returns its version. */
+export function useFoods(enabled = true) {
+  const [v, setV] = useState(foodsVersion)
+  useEffect(() => {
+    foodListeners.add(setV)
+    if (enabled) loadFoods()
+    return () => { foodListeners.delete(setV) }
+  }, [enabled])
+  return v
+}
