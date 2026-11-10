@@ -29,6 +29,7 @@ import { SeasonDeco } from '../components/Seasonal.jsx'
 import { WrappedHomeCard } from '../components/WrappedEntry.jsx'
 import RecoveryHint from '../components/RecoveryHint.jsx'
 import { WhoopHomeCard } from './WhoopSheets.jsx'
+import { LoadMyPlanButton, TodayCardioCard } from '../components/MyPlan.jsx'
 import { visitOn, withVisit } from '../lib/gym-visits.js'
 import { ChallengesCard } from '../components/Challenges.jsx'
 import { isOn } from '../lib/modules.js'
@@ -208,6 +209,9 @@ export default function Home() {
     {/* Whoop (our addition): recovery, sleep and steps, only once this profile connected it. */}
     <WhoopHomeCard />
 
+    {/* The owner's plan (our addition, lib/cardio-plans.js): today's treadmill table, on a day of the plan. */}
+    {!S.active && <TodayCardioCard routines={todayRoutines} />}
+
     {/* This month's three challenges and how far you are (lib/challenges.js). */}
     <ChallengesCard S={S} />
 
@@ -231,7 +235,8 @@ export default function Home() {
     {!S.routines.length && !S.active && (
       <div className="card">
         <CardHead icon="calendar" title={t('Welcome!')} sub={t('Set up your weekly routine to get going, or grab a ready-made starter plan.')} />
-        <Button variant="primary" icon="clipboard" onClick={starterPlanSheet}>{t('Load starter plan')}</Button>
+        <LoadMyPlanButton />
+        <div style={{ height: 8 }} /><Button variant="tinted" icon="clipboard" onClick={starterPlanSheet}>{t('Load starter plan')}</Button>
         <div style={{ height: 8 }} /><Button onClick={() => nav('/plan')}>{t('Build my own plan')}</Button>
       </div>
     )}

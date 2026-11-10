@@ -2442,6 +2442,26 @@ export const PT_BR_OVERRIDES = {
   "Your watch stops getting workouts while Watch is off. It stays paired.": "Seu relógio para de receber treinos enquanto “Relógio” estiver desligado. Continua pareado.",
   "Your webhooks stop sending while Integrations is off. They stay set up.": "Seus webhooks param de enviar enquanto “Integrações” estiver desligado. Continuam configurados.",
   "{0} stops syncing while Health is off. Nothing is disconnected, and it catches up once Health is back.": "{0} para de sincronizar enquanto “Saúde” estiver desligado. Nada fica desconectado, e ele se atualiza quando “Saúde” voltar.",
+  // --- our addition: my plan, treadmill tables, Whoop in the workout ---
+  "Load my plan": "Carregar meu plano",
+  "My plan": "Meu plano",
+  "Green. Push for a PR today.": "Verde. Vá atrás de um recorde hoje.",
+  "Yellow. Hit targets, do not force new weight.": "Amarelo. Cumpra as metas, não force peso novo.",
+  "Red. Drop to last week's weight or make it a cardio day.": "Vermelho. Volte ao peso da semana passada ou faça cardio.",
+  "Steady cardio": "Cardio contínuo",
+  "Treadmill after lifting": "Esteira depois do treino",
+  "Warm up": "Aquecimento",
+  "Recover": "Recuperar",
+  "Cool down": "Desaquecimento",
+  "under {0} bpm": "abaixo de {0} bpm",
+  "Treadmill plan": "Plano de esteira",
+  "Never above {0} bpm": "Nunca acima de {0} bpm",
+  "Round 4 unlocks in week {0}.": "A rodada 4 chega na semana {0}.",
+  "Strain": "Esforço",
+  "Average HR": "FC média",
+  "Max HR": "FC máxima",
+  "Missed reps last time. Same weight again.": "Você falhou repetições da última vez. O mesmo peso de novo.",
+  "Every rep last time, but this lift already went up this week. Same weight again.": "Todas as repetições da última vez, mas este exercício já subiu esta semana. O mesmo peso de novo.",
 }
 
 export default { ...pt, ...PT_BR_OVERRIDES }

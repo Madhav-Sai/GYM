@@ -71,6 +71,7 @@ import { setTrendOn, setTrendsFor, trendGlyph, trendLabel } from '../lib/set-tre
 import { formulaOf } from '../lib/onerm.js'
 import { setNoteOf } from '../lib/set-notes.js'
 import { isOn } from '../lib/modules.js'
+import { RecoveryBanner, TreadmillPlanButton } from '../components/MyPlan.jsx'
 
 // How long after a key starts a hold the same key is not yet its "Done" (#133). A USB button
 // that bounces, or a double press, sends two presses a moment apart: the first starts the hold,
@@ -2424,6 +2425,9 @@ function ActiveWorkout() {
     </div>
     {editing && <p className="muted small">{t('Editing a saved workout. Date and duration stay unchanged.')}</p>}
     {A.backfill && <div className="muted small" style={{ marginBottom: 8 }}>{t('Logging a past workout, so no rest timers.')}</div>}
+    {/* Our addition: today's Whoop recovery band, and the treadmill table of a plan routine. */}
+    {!editing && !A.backfill && <RecoveryBanner />}
+    {!editing && !A.backfill && <TreadmillPlan A={A} routines={S.routines} />}
 
     {A.entries.length ? (listMode ? (
       <div className="workout-list" data-testid="workout-list" ref={listRef}>
@@ -2599,6 +2603,11 @@ let lastTouchAt = 0
 if (typeof document !== 'undefined') document.addEventListener('pointerdown', () => { lastTouchAt = Date.now() }, true)
 // Test seam: a fresh launch, nobody has touched anything yet.
 export function _resetHintQuiet() { lastTouchAt = 0 }
+
+function TreadmillPlan({ A, routines }) {
+  const mine = (routines || []).filter(r => (A.routineIds || [A.routineId]).includes(r.id))
+  return <TreadmillPlanButton routines={mine} style={{ margin: '0 0 10px' }} />
+}
 
 export default function Workout() {
   const active = useStore(s => s.S.active)

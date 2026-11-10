@@ -18,11 +18,12 @@
 
 import { modeOf, repStep, rerampWarmups, isBw, isPerSide, entryExcluded, entryRoutineId, lastAcrossRoutines } from './history.js'
 import { EXIDX, isAssisted, isLoadedEq, defaultIncrement } from './exercises.js'
-import { isWarmupRow, isSideSet, syncSideAggregate, makeSideSet } from './workout-model.js'
+import { isWarmupRow, isSideSet, syncSideAggregate, makeSideSet, isFailureSet } from './workout-model.js'
 import { normalizeRepRange } from './rep-range.js'
 import { isPyramid } from './pyramid.js'
 import { backoffAt } from './backoff.js'
 import { ownedWeightsFor, ownedKindFor, ownedUp, ownedDeload, ownedAround } from './dumbbells.js'
+import { todayISO, weekKey, weekStartOf } from './format.js'
 
 export const POLICIES = ['off', 'linear', 'greyskull', 'double', 'triple', 'time']
 
@@ -356,7 +357,9 @@ function sessionsIn(S, exId, fallback, rid) {
     if (entryExcluded(w, entry)) return
     if (!entry.sets.some(s => s.done && !isWarmupRow(s))) return
     const slot = entryRoutineId(w, entry)
-    out.push({ d: w.d, ...(slot ? { rid: slot } : {}), ...(entry.planned ? { planned: entry.planned } : {}), ...readSession(entry, fallback) })
+    // A set marked as failed (the weekly rule, lib/my-plan.js), only when there is one.
+    const failed = entry.sets.some(isFailureSet)
+    out.push({ d: w.d, ...(slot ? { rid: slot } : {}), ...(entry.planned ? { planned: entry.planned } : {}), ...readSession(entry, fallback), ...(failed ? { failed: true } : {}) })
   })
   return out
 }
@@ -448,9 +451,12 @@ export function stallCount(sessions, policy) {
  * planned sessions from the last session, in which case the rows keep last time's (see
  * startsFromLast in session-start.js).
  */
-export function nextPrescription(S, cfg, routine) {
+export function nextPrescription(S, cfg, routine, { today } = {}) {
   const mode = modeOf(cfg)
   const policy = policyFor(cfg, routine, mode, profileRule(S))
+  // The weekly rule (our addition, lib/my-plan.js): linear progression read across every routine
+  // that trains the lift, at most one step a calendar week, and a miss simply repeats.
+  const weekly = policy === 'linear' && mode === 'reps' && cfg?.weeklyStep === true
   const unit = S.unit || 'kg'
   const inc = mode === 'time'
     ? (cfg.inc > 0 ? cfg.inc : DEFAULT_SEC_INCREMENT)
@@ -481,7 +487,7 @@ export function nextPrescription(S, cfg, routine) {
 
   // The routine's own sessions of this exercise, or the exercise's whole history when the
   // routine has none yet (issue #216) — see sessionsFor.
-  const sessions = sessionsFor(S, cfg.id, cfg, routine?.id).filter(s => s.mode === mode)
+  const sessions = sessionsFor(S, cfg.id, cfg, weekly ? null : routine?.id).filter(s => s.mode === mode)
   const last = sessions[sessions.length - 1]
   // Triple progression starts a cycle at the base sets and the bottom of the range, so its first
   // session does too; the weight is still the plan's.
@@ -506,7 +512,7 @@ export function nextPrescription(S, cfg, routine) {
   // simply the last one: one line of progress across routines, so only an edit of this routine's
   // own plan restarts it. Held against the other routine's plan, Monday's 3 × 5 would restart
   // Thursday's 3 × 8 every single week.
-  const across = lastAcrossRoutines(S)
+  const across = lastAcrossRoutines(S) || weekly
   const borrowed = !!routine?.id && !across && last.rid !== routine.id
   const ownPlan = !across || !routine?.id || last.rid === routine.id
   if (last.planned && ownPlan ? planChanged(last.planned, cfg) : borrowed) {
@@ -727,6 +733,13 @@ export function nextPrescription(S, cfg, routine) {
     return { policy, kind: 'hold', weight: w, reps: aim, why: ['Same weight, aim for {0} reps this time.', aim] }
   }
 
+  if (weekly) {
+    if (!last.ok || last.failed) return { policy, kind: 'hold', weight: w, why: ['Missed reps last time. Same weight again.'] }
+    if (steppedThisWeek(sessions, today || S.active?.d || todayISO(), weekStartOf(S), assisted)) {
+      return { policy, kind: 'hold', weight: w, why: ['Every rep last time, but this lift already went up this week. Same weight again.'] }
+    }
+  }
+
   // linear + greyskull
   if (last.ok) {
     // Greyskull's final set is taken to failure: double the target reps there and you have
@@ -759,6 +772,20 @@ export function nextPrescription(S, cfg, routine) {
     }
   }
   return { policy, kind: 'hold', weight: w, why: ['Missed reps last time. Same weight again ({0} of {1} to go).', deloadAt - stalls, deloadAt] }
+}
+
+/**
+ * Whether the weekly rule already spent this week's step: a session in the week of `today` was
+ * lifted at a heavier weight (less help, on an assistance machine) than the last session before
+ * that week. With nothing before it, the week's first session is the baseline.
+ */
+export function steppedThisWeek(sessions, today, ws, assisted = false) {
+  const wk = weekKey(today, ws)
+  const before = sessions.filter(s => s.weight > 0 && weekKey(s.d, ws) < wk)
+  const inWeek = sessions.filter(s => s.weight > 0 && weekKey(s.d, ws) === wk)
+  if (!inWeek.length) return false
+  const base = before.length ? before[before.length - 1].weight : inWeek[0].weight
+  return inWeek.some(s => (assisted ? s.weight < base - 1e-9 : s.weight > base + 1e-9))
 }
 
 /**
