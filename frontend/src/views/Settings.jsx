@@ -854,6 +854,11 @@ export default function Settings({ page = null, find = null, via = null, entryKe
         <Row icon="clipboard" iconTint="var(--orange)" title={t('Load my plan')} accessory="chevron" onClick={loadMyPlan} />
         <Row icon="clipboard" iconTint="var(--green)" title={t('Load starter plan')} accessory="chevron" onClick={starterPlanSheet} />
       </Section>
+      {/* This fork: the day hour by hour (views/Schedule.jsx) and the how-to guide (views/Guide.jsx). */}
+      <Section>
+        <Row icon="clock" iconTint="var(--teal)" title={t('Daily timing plan')} subtitle={t('Wake, meals, gym, work and sleep')} accessory="chevron" onClick={() => nav('/schedule')} />
+        <Row icon="lightbulb" iconTint="var(--yellow)" title={t('How to build a workout and a plan')} accessory="chevron" onClick={() => nav('/guide')} />
+      </Section>
     </>,
 
     units: () => <>

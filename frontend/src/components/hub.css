@@ -1,0 +1,77 @@
+/* Home as a hub (this fork): the Now strip, the tiles, Customize Home, the Schedule and Guide
+   screens. Subtle motion only: a press scale and a count-up, both off with reduced motion. */
+
+.now-strip{display:flex;align-items:center;gap:12px;width:100%;text-align:start;border:0;color:inherit;font:inherit;cursor:pointer;
+  transition:transform var(--fast) var(--ease)}
+.now-strip:active{transform:scale(var(--press-scale-card))}
+.now-strip:focus-visible{outline:2.5px solid var(--acc-ink);outline-offset:2px}
+.now-dot{flex:none;width:40px;height:40px;border-radius:12px;display:grid;place-items:center;color:#fff;font-size:20px}
+.now-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.now-eyebrow{font-size:var(--fs-caption);color:var(--label-2);text-transform:uppercase;letter-spacing:.04em;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.now-title{font-size:var(--fs-body);font-weight:650;line-height:1.2;overflow-wrap:anywhere}
+.now-next{font-size:var(--fs-footnote);color:var(--label-2);overflow-wrap:anywhere}
+.now-left{flex:none;display:flex;flex-direction:column;align-items:flex-end;line-height:1.1}
+.now-left b{font-size:var(--fs-title3);font-variant-numeric:tabular-nums}
+.now-left small{font-size:var(--fs-caption);color:var(--label-2)}
+
+.hub-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:12px}
+@media (min-width:560px){.hub-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (min-width:900px){.hub-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.hub-cell{min-width:0;display:flex}
+.hub-tile{flex:1;min-width:0;min-height:92px;display:flex;flex-direction:column;align-items:flex-start;gap:1px;padding:10px 12px;
+  border:0;border-radius:var(--r-card);background:var(--surface);color:inherit;font:inherit;text-align:start;cursor:pointer;
+  position:relative;overflow:hidden;transition:transform var(--fast) var(--ease)}
+.hub-tile::before{content:"";position:absolute;inset:0;background:var(--tile-tint);opacity:.08;pointer-events:none}
+.hub-tile:active{transform:scale(.96)}
+.hub-tile:focus-visible{outline:2.5px solid var(--acc-ink);outline-offset:2px}
+.hub-ico{position:absolute;top:10px;inset-inline-end:10px;width:28px;height:28px;border-radius:8px;display:grid;place-items:center;font-size:15px;color:#fff;background:var(--tile-tint)}
+.hub-label{padding-inline-end:34px;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hub-label{font-size:var(--fs-caption);color:var(--label-2);font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.hub-value{margin-top:auto;font-size:var(--fs-title3);font-weight:700;line-height:1.15;font-variant-numeric:tabular-nums;max-width:100%;
+  overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow-wrap:anywhere}
+.hub-value small{font-size:var(--fs-footnote);font-weight:500;color:var(--label-2)}
+.hub-sub{font-size:var(--fs-footnote);color:var(--label-2);max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hub-tools{display:flex;justify-content:flex-end;margin:-4px 0 8px}
+
+.cust-row{gap:4px}
+.cust-row.off .tt{color:var(--label-3)}
+.cust-row .iconbtn{width:32px;height:32px}
+.cust-row .iconbtn:disabled{opacity:.3}
+
+.checkin-foot{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-top:8px}
+
+/* Schedule */
+.sched-plans{margin:0 0 10px}
+.sched-days{display:flex;gap:6px;flex-wrap:wrap;margin:4px 0 12px}
+.sched-day{min-width:40px;height:34px;padding:0 8px;border-radius:17px;border:var(--hair) solid var(--sep-op);background:transparent;color:var(--label-2);font:inherit;font-size:var(--fs-footnote);font-weight:600;cursor:pointer}
+.sched-day.on{background:var(--acc);border-color:var(--acc);color:var(--on-acc)}
+.sched-line{position:relative;padding-inline-start:18px}
+.sched-line::before{content:"";position:absolute;inset-block:6px;inset-inline-start:6px;width:2px;background:var(--sep-op);border-radius:1px}
+.sched-row{position:relative;display:flex;align-items:center;gap:10px;width:100%;padding:10px 10px;margin:2px 0;border:0;border-radius:12px;
+  background:transparent;color:inherit;font:inherit;text-align:start;cursor:pointer;transition:transform var(--fast) var(--ease),background var(--fast) var(--ease)}
+.sched-row:active{transform:scale(.98)}
+.sched-row::before{content:"";position:absolute;inset-inline-start:-16px;top:50%;width:10px;height:10px;margin-top:-5px;border-radius:50%;background:var(--row-tint);box-shadow:0 0 0 3px var(--surface)}
+.sched-row.cur{background:var(--surface-2);background:color-mix(in srgb,var(--acc) 14%,transparent)}
+.sched-row.past{opacity:.6}
+.sched-time{flex:none;width:52px;font-variant-numeric:tabular-nums;font-weight:650}
+.sched-ico{flex:none;width:28px;height:28px;border-radius:8px;display:grid;place-items:center;color:#fff;background:var(--row-tint);font-size:15px}
+.sched-txt{flex:1;min-width:0}
+.sched-txt .tt{display:block;font-weight:600;overflow-wrap:anywhere}
+.sched-txt .ss{display:block;font-size:var(--fs-footnote);color:var(--label-2);overflow-wrap:anywhere}
+.sched-now{position:relative;height:0;margin:4px 0;border-top:2px solid var(--red)}
+.sched-now span{position:absolute;inset-inline-start:-18px;top:-10px;font-size:var(--fs-caption);font-weight:700;color:#fff;background:var(--red);border-radius:8px;padding:1px 6px}
+.sched-kinds{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 12px}
+.sched-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.sched-actions>*{flex:1 1 140px;white-space:nowrap}
+
+/* Guide */
+.guide-step{display:flex;gap:12px;align-items:flex-start}
+.guide-num{flex:none;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:var(--acc);color:var(--on-acc);font-weight:700;font-size:var(--fs-footnote)}
+.guide-body{flex:1;min-width:0}
+.guide-body h3{margin:2px 0 4px;font-size:var(--fs-body)}
+.guide-body ol{margin:4px 0 10px;padding-inline-start:18px;color:var(--label-2);font-size:var(--fs-subhead);line-height:1.45}
+
+@media (prefers-reduced-motion: reduce){
+  .now-strip,.hub-tile,.sched-row{transition:none}
+  .now-strip:active,.hub-tile:active,.sched-row:active{transform:none}
+}

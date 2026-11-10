@@ -215,7 +215,8 @@ describe('Card dismiss pass', () => {
     expect(src('views/Home.jsx')).toMatch(/className="card tap-host streak-card"/)
     // This fork: the check-in card holds two plain buttons (Check in, Membership codes), so it is not a
     // stretched-primary card any more; card-dismiss.test.jsx covers it, and nothing in it is nested.
-    expect(src('views/Home.jsx')).toMatch(/className="card checkin-card"/)
+    // (Its markup moved to components/GymVisit.jsx with the centre and note, still not a tap-host.)
+    expect(src('components/GymVisit.jsx')).toMatch(/className="card checkin-card"/)
     for (const f of ['views/Library.jsx', 'components/MuscleExplorer.jsx', 'sheets.jsx', 'views/RoutineEdit.jsx']) expect(src(f), f).toMatch(/className="grow item-open tap-main"/)
     expect(src('components/CardHead.jsx')).toMatch(/className="card-head-main tap-main"/)
     // with nothing nested, no control has to stop its click from reaching a card any more

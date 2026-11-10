@@ -432,3 +432,20 @@ test('an unstamped push keeps the Coach lines another device added, and an Undo 
   assert.deepEqual(next.coach.log.map(e => e.id), ['l1', 'r1']);
   assert.deepEqual(next.coach.snapshots.map(x => x.proposalId), ['p1']);   // p2 was undone
 });
+
+// This fork's Home hub: the daily timing plan (frontend lib/day-schedule.js) and the Home layout
+// (lib/home-layout.js) are plain settings, stamped whole like restSec on both sides; a gym visit's
+// centre and note ride on its stamped day (gymVisits, STAMPED_MAPS).
+test('daySchedule and homeLayout are stamped as settings, a visit\'s centre rides on its day', () => {
+  const cur = stored();
+  const next = clone(cur);
+  delete next.edited; delete next._rev;
+  next.daySchedule = { plans: [{ id: 'shift', name: 'Shift', days: [1], rows: [{ id: 'r1', time: '10:00', label: 'Wake up', kind: 'wake' }] }] };
+  next.homeLayout = { tiles: { order: ['stats'], hidden: [] }, cards: { order: [], hidden: ['checkin'] } };
+  next.gymVisits = { '2026-10-02': { on: true, centre: 'Cult HSR', _ts: NOW - 10 } };
+  stampPut(cur, next, { overRead: true, stamped: false, now: NOW });
+  assert.ok(next.edited.daySchedule >= NOW);
+  assert.ok(next.edited.homeLayout >= NOW);
+  assert.equal(next.edited.gymVisits, undefined);
+  assert.equal(next.gymVisits['2026-10-02'].centre, 'Cult HSR');
+});
