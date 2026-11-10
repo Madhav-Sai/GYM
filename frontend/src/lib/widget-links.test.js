@@ -13,6 +13,18 @@ describe('parseWidgetLink', () => {
     expect(parseWidgetLink('opengym://start')).toEqual({ action: 'start', ids: [] })
   })
 
+  it('reads myGym’s health widget links', () => {
+    expect(parseWidgetLink('opengym://whoop')).toEqual({ to: '/settings/whoop' })
+    expect(parseWidgetLink('opengym://diet')).toEqual({ to: '/diet' })
+    expect(parseWidgetLink('opengym://supplements')).toEqual({ to: '/supplements' })
+    expect(parseWidgetLink('opengym://medical')).toEqual({ to: '/medical' })
+    expect(parseWidgetLink('opengym://day')).toEqual({ to: '/' })
+    expect(parseWidgetLink('OPENGYM://Diet/')).toEqual({ to: '/diet' })
+    const nav = vi.fn()
+    expect(runWidgetLink(parseWidgetLink('opengym://supplements'), { getS: () => ({}), nav })).toBe(true)
+    expect(nav).toHaveBeenCalledWith('/supplements')
+  })
+
   it('ignores anything else', () => {
     for (const u of [null, 42, '', 'https://madhav.pentestnotes.tech/stats', 'opengym://settings', 'opengym://stats/../admin', 'javascript:alert(1)']) {
       expect(parseWidgetLink(u), String(u)).toBeNull()

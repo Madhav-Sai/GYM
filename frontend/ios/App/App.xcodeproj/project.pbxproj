@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		02064F156FEC0778B9538C40 /* hi.lproj in Resources */ = {isa = PBXBuildFile; fileRef = 5212B3CCADCFE67ED84301D3 /* hi.lproj */; };
+		0C35B2DDE338D3533E1D7995 /* MyGymWidgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7AF520B479DEBCDFF1F6445 /* MyGymWidgets.swift */; };
 		1A566E949ABCB165C4648FDC /* zh-Hant.lproj in Resources */ = {isa = PBXBuildFile; fileRef = 6D1012A4614F0818EB26B911 /* zh-Hant.lproj */; };
 		269F3282453F81F04652BCEC /* zh-Hans.lproj in Resources */ = {isa = PBXBuildFile; fileRef = 2236E4B491BBB0C07CAB56EE /* zh-Hans.lproj */; };
 		2FAD9763203C412B000D30F8 /* config.xml in Resources */ = {isa = PBXBuildFile; fileRef = 2FAD9762203C412B000D30F8 /* config.xml */; };
@@ -194,6 +195,7 @@
 		AF51FD2D460BCFE21FA515B2 /* Pods-App.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-App.release.xcconfig"; path = "Pods/Target Support Files/Pods-App/Pods-App.release.xcconfig"; sourceTree = "<group>"; };
 		B3DE00690E51067D0EDE1571 /* ru.lproj */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = folder; path = ru.lproj; sourceTree = "<group>"; };
 		F51ABE94059111BA3FCA5E92 /* OpenGymWidgets.entitlements */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.entitlements; path = OpenGymWidgets.entitlements; sourceTree = "<group>"; };
+		F7AF520B479DEBCDFF1F6445 /* MyGymWidgets.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MyGymWidgets.swift; sourceTree = "<group>"; };
 		FC68EB0AF532CFC21C3344DD /* Pods-App.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-App.debug.xcconfig"; path = "Pods/Target Support Files/Pods-App/Pods-App.debug.xcconfig"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -332,6 +334,7 @@
 				2F050678269CEC5983F2B6F2 /* uk.lproj */,
 				2236E4B491BBB0C07CAB56EE /* zh-Hans.lproj */,
 				6D1012A4614F0818EB26B911 /* zh-Hant.lproj */,
+				F7AF520B479DEBCDFF1F6445 /* MyGymWidgets.swift */,
 			);
 			name = OpenGymWidgets;
 			path = OpenGymWidgets;
@@ -536,6 +539,7 @@
 				FBE1CA8E71100782DF645232 /* WhoopWidgets.swift in Sources */,
 				77377CB4A68462A442217A72 /* WorkoutActivity.swift in Sources */,
 				82150326E0144C30EBC960D7 /* WidgetViews.swift in Sources */,
+				0C35B2DDE338D3533E1D7995 /* MyGymWidgets.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

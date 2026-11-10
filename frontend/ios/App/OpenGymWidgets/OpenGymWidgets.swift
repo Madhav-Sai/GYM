@@ -19,6 +19,9 @@ struct OpenGymWidgets: WidgetBundle {
         ConfigurableWidget()
         WhoopWidget()
         WhoopStepsWidget()
+        // Macros, Supplements, My day, Whoop metric, Week (MyGymWidgets.swift): one nested bundle,
+        // since a bundle body takes at most ten widgets.
+        MyGymWidgetBundle().body
         WorkoutLiveActivity()
     }
 }
