@@ -56,6 +56,7 @@ RUN npm ci --omit=dev --omit=optional && npm cache clean --force
 COPY server.js push-messages.js nudge.js nudge-copy.js wrapped.js wrapped-copy.js verify-error.js password.js rate-limit.js passkeys-store.js device-link.js watch-relay.js media.js queue.js sync-stamps.js durable.js admin-socket.js recover.js net-guard.js ./
 COPY coach ./coach
 COPY integrations ./integrations
+COPY medical ./medical
 ENV NODE_ENV=production
 ENV PORT=3000
 EXPOSE 3000

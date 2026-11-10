@@ -29,6 +29,7 @@ import { SeasonDeco } from '../components/Seasonal.jsx'
 import { WrappedHomeCard } from '../components/WrappedEntry.jsx'
 import RecoveryHint from '../components/RecoveryHint.jsx'
 import { WhoopHomeCard } from './WhoopSheets.jsx'
+import { MedicalHomeCard } from '../components/MedicalHome.jsx'
 import { visitOn, withVisit } from '../lib/gym-visits.js'
 import { ChallengesCard } from '../components/Challenges.jsx'
 import { isOn } from '../lib/modules.js'
@@ -207,6 +208,9 @@ export default function Home() {
 
     {/* Whoop (our addition): recovery, sleep and steps, only once this profile connected it. */}
     <WhoopHomeCard />
+
+    {/* Medical (this fork): the goal bars and, 12 weeks after a blood test, the retest flag. */}
+    <MedicalHomeCard />
 
     {/* This month's three challenges and how far you are (lib/challenges.js). */}
     <ChallengesCard S={S} />

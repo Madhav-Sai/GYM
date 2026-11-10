@@ -176,6 +176,11 @@ tags:
     description: >-
       AI Coach: plans, reviews and debriefs. Every route here answers 503 unless the
       instance has the Coach switched on and a provider connected.
+  - name: medical
+    description: >-
+      Medical (added by this fork): blood tests, InBody scans and health goals, kept per profile in
+      `DATA_DIR/medical/u-<uid>.json`, apart from the synced state. The first read seeds the owner's
+      starting record once. Every write answers with the whole record.
   - name: integrations
     description: >-
       Settings → Integrations: outbound webhooks, and Whoop (inbound, OAuth) added by this fork. Off unless the
@@ -2649,6 +2654,205 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { description: Whoop is not switched on on this server. }
 
+  /api/medical:
+    get:
+      tags: [medical]
+      operationId: medicalGet
+      summary: The profile's medical record
+      description: |
+        Blood tests (`labs`, oldest first, each with its markers, reference range and flag), InBody
+        scans (`inbody`), goals and the markers followed closely (`tracked`). A value that was not
+        measured is `null` (draw a dash, never 0). The first read of a profile with no record seeds
+        the owner's starting data, once.
+      responses:
+        '200':
+          description: The record.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MedicalRecord' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /api/medical/labs/save:
+    post:
+      tags: [medical]
+      operationId: medicalLabSave
+      summary: Add or edit a blood test
+      description: |
+        With an `id` already in the record it replaces that test, otherwise it adds one. `date` is
+        YYYY-MM-DD; each marker needs a `name` and a `value` (or a `text` for a qualitative result).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/MedicalLab' }
+      responses:
+        '200':
+          description: The whole record after the change.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MedicalRecord' }
+        '400':
+          description: 'Refused input (`code`: `date`, `markers`, `empty`, `key`, `target`, `too-many`, `body`).'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /api/medical/labs/delete:
+    post:
+      tags: [medical]
+      operationId: medicalLabDelete
+      summary: Delete a blood test
+      description: |
+        Removes the test with this `id`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, required: [id], properties: { id: { type: string, maxLength: 40 } } }
+      responses:
+        '200':
+          description: The whole record after the change.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MedicalRecord' }
+        '400':
+          description: 'Refused input (`code`: `date`, `markers`, `empty`, `key`, `target`, `too-many`, `body`).'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { description: 'No entry with that id in this profile (`code`: `missing`).' }
+
+  /api/medical/inbody/save:
+    post:
+      tags: [medical]
+      operationId: medicalInbodySave
+      summary: Add or edit an InBody scan
+      description: |
+        Every field of the printed sheet, segmental lean mass with its flag (`normal`, `under`, `over`)
+        and the sheet's control targets. At least one value is required.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/MedicalInbody' }
+      responses:
+        '200':
+          description: The whole record after the change.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MedicalRecord' }
+        '400':
+          description: 'Refused input (`code`: `date`, `markers`, `empty`, `key`, `target`, `too-many`, `body`).'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /api/medical/inbody/delete:
+    post:
+      tags: [medical]
+      operationId: medicalInbodyDelete
+      summary: Delete an InBody scan
+      description: |
+        Removes the scan with this `id`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, required: [id], properties: { id: { type: string, maxLength: 40 } } }
+      responses:
+        '200':
+          description: The whole record after the change.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MedicalRecord' }
+        '400':
+          description: 'Refused input (`code`: `date`, `markers`, `empty`, `key`, `target`, `too-many`, `body`).'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { description: 'No entry with that id in this profile (`code`: `missing`).' }
+
+  /api/medical/goals/save:
+    post:
+      tags: [medical]
+      operationId: medicalGoalSave
+      summary: Add or edit a goal
+      description: |
+        `key` is `weight`, `lab:<marker>` or `inbody:<field>`. The target is a band: `lo` alone means
+        that or more, `hi` alone below that, both a range. `by` is the deadline.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/MedicalGoal' }
+      responses:
+        '200':
+          description: The whole record after the change.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MedicalRecord' }
+        '400':
+          description: 'Refused input (`code`: `date`, `markers`, `empty`, `key`, `target`, `too-many`, `body`).'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /api/medical/goals/delete:
+    post:
+      tags: [medical]
+      operationId: medicalGoalDelete
+      summary: Delete a goal
+      description: |
+        Removes the goal with this `id`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, required: [id], properties: { id: { type: string, maxLength: 40 } } }
+      responses:
+        '200':
+          description: The whole record after the change.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MedicalRecord' }
+        '400':
+          description: 'Refused input (`code`: `date`, `markers`, `empty`, `key`, `target`, `too-many`, `body`).'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { description: 'No entry with that id in this profile (`code`: `missing`).' }
+
+  /api/medical/tracked:
+    post:
+      tags: [medical]
+      operationId: medicalTracked
+      summary: Choose the markers followed closely
+      description: |
+        The marker keys shown as cards at the top of Labs. The rest fold away under their panel.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, properties: { keys: { type: array, items: { type: string }, maxItems: 40 } } }
+      responses:
+        '200':
+          description: The whole record after the change.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MedicalRecord' }
+        '400':
+          description: 'Refused input (`code`: `date`, `markers`, `empty`, `key`, `target`, `too-many`, `body`).'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
   /api/integrations/connect:
     post:
       tags: [integrations]
@@ -4112,6 +4316,89 @@ components:
           example: { error: "that code is wrong, used or expired", code: "link-invalid" }
 
   schemas:
+    MedicalMarker:
+      type: object
+      required: [name]
+      properties:
+        key: { type: string, maxLength: 40, example: vitd }
+        name: { type: string, maxLength: 80, example: 'Vitamin D (25-OH)' }
+        panel: { type: string, maxLength: 40, example: Vitamins }
+        value: { type: number, nullable: true, example: 11.8 }
+        text: { type: string, maxLength: 80, description: A qualitative result, e.g. "All normal". }
+        unit: { type: string, maxLength: 20, example: ng/mL }
+        ref:
+          type: object
+          properties:
+            lo: { type: number, nullable: true }
+            hi: { type: number, nullable: true }
+            text: { type: string, example: '30-100' }
+            below: { type: number, description: A second, lower cut-off (vitamin D deficient under 20). }
+            std: { type: boolean, description: A standard range, not one the lab printed. }
+        flag: { type: string, nullable: true, enum: [normal, high, low, deficient] }
+    MedicalLab:
+      type: object
+      required: [date, markers]
+      properties:
+        id: { type: string, maxLength: 40 }
+        date: { type: string, format: date }
+        lab: { type: string, maxLength: 80, example: Orange Health Labs }
+        markers: { type: array, maxItems: 200, items: { $ref: '#/components/schemas/MedicalMarker' } }
+    MedicalInbody:
+      type: object
+      required: [date]
+      properties:
+        id: { type: string, maxLength: 40 }
+        date: { type: string, format: date }
+        weight: { type: number, nullable: true }
+        bodyFatPct: { type: number, nullable: true }
+        bodyFatMass: { type: number, nullable: true }
+        skeletalMuscle: { type: number, nullable: true }
+        leanMass: { type: number, nullable: true }
+        visceralFat: { type: number, nullable: true }
+        whr: { type: number, nullable: true }
+        bmr: { type: number, nullable: true }
+        bmi: { type: number, nullable: true }
+        score: { type: number, nullable: true }
+        tbw: { type: number, nullable: true }
+        protein: { type: number, nullable: true }
+        mineral: { type: number, nullable: true }
+        segmental:
+          type: object
+          description: la, ra, trunk, ll, rl, each { kg, flag }.
+          additionalProperties:
+            type: object
+            properties:
+              kg: { type: number, nullable: true }
+              flag: { type: string, nullable: true, enum: [normal, under, over] }
+        targets:
+          type: object
+          properties:
+            weight: { type: number, nullable: true }
+            fatControl: { type: number, nullable: true }
+            muscleControl: { type: number, nullable: true }
+    MedicalGoal:
+      type: object
+      required: [key, by]
+      properties:
+        id: { type: string, maxLength: 40 }
+        key: { type: string, example: 'lab:vitd' }
+        label: { type: string, maxLength: 60 }
+        unit: { type: string, maxLength: 20 }
+        start: { type: number, nullable: true }
+        lo: { type: number, nullable: true }
+        hi: { type: number, nullable: true }
+        by: { type: string, format: date }
+        from: { type: string, format: date, nullable: true }
+    MedicalRecord:
+      type: object
+      properties:
+        v: { type: integer }
+        profile: { type: object, nullable: true }
+        tracked: { type: array, items: { type: string } }
+        labs: { type: array, items: { $ref: '#/components/schemas/MedicalLab' } }
+        inbody: { type: array, items: { $ref: '#/components/schemas/MedicalInbody' } }
+        goals: { type: array, items: { $ref: '#/components/schemas/MedicalGoal' } }
+        updatedAt: { type: integer }
     IntegrationEvent:
       type: string
       enum: [workout.finished, workout.pr, weighin.logged]

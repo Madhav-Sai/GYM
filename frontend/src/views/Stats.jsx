@@ -862,6 +862,8 @@ export default function Stats() {
       onClick={() => nav('/measurements')} />,
     bodyOn && (workouts.length > 0 || dayPhotosOf(S).length > 0) && <Row key="p" title={t('Progress photos')} accessory="chevron" className="stats-link" onClick={() => nav('/progress-photos')} />,
     workouts.length > 0 && <Row key="b" title={t('Structural balance')} subtitle={t('See which lift is holding back the rest.')} accessory="chevron" className="stats-link" onClick={() => nav('/structural-balance')} />,
+    // Medical (this fork): blood work, InBody and goals, under Body after the pages above.
+    bodyOn && <Row key="med" title={t('Medical')} subtitle={t('Blood work, InBody and goals')} accessory="chevron" className="stats-link" onClick={() => nav('/medical')} />,
     ...wrapped.map(y => <Row key={y} title={t('Your year')} value={y === thisYear ? t('So far') : String(y)} accessory="chevron"
       className="stats-link" onClick={() => openWrapped(y)} />),
   ].filter(Boolean)

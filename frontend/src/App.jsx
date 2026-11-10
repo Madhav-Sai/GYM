@@ -77,6 +77,10 @@ function lazyView(load) {
 const Admin = lazyView(() => import('./views/Admin.jsx'))
 const CoachChat = lazyView(() => import('./views/CoachChat.jsx'))
 const Measurements = lazyView(() => import('./views/Measurements.jsx'))
+// Medical (this fork): blood work, InBody and goals, one chunk for the three screens.
+const MedicalHub = lazyView(() => import('./views/Medical.jsx'))
+const MedicalLabs = lazyView(() => import('./views/Medical.jsx').then(m => ({ default: m.MedicalLabs })))
+const MedicalInbody = lazyView(() => import('./views/Medical.jsx').then(m => ({ default: m.MedicalInbody })))
 const CoachIntake = lazyView(() => import('./views/CoachIntake.jsx'))
 const CoachSetup = lazyView(() => import('./views/CoachSetup.jsx'))
 const StructuralBalance = lazyView(() => import('./views/StructuralBalance.jsx'))
@@ -348,6 +352,9 @@ function Shell() {
       <Route path="/structural-balance" element={<StructuralBalance />} />
       {isOn(S, 'body') && <Route path="/progress-photos" element={<ProgressPhotos />} />}
       {isOn(S, 'body') && <Route path="/measurements" element={<Measurements />} />}
+      <Route path="/medical" element={<MedicalHub />} />
+      <Route path="/medical/labs" element={<MedicalLabs />} />
+      <Route path="/medical/inbody" element={<MedicalInbody />} />
       <Route path="/settings" element={<SettingsRoute />} />
       <Route path="/settings/:page" element={<SettingsRoute />} />
       {/* The Coach screens gate themselves on the instance config; the routes exist whenever the
