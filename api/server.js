@@ -43,6 +43,8 @@ import { createIntegrations } from './integrations/index.js';
 import { integrationRoutes } from './integrations/routes.js';
 import { createMedicalStore } from './medical/store.js';
 import { medicalRoutes } from './medical/routes.js';
+import { createHealthStore } from './health/store.js';
+import { healthRoutes } from './health/routes.js';
 import { excusedOn, nudgeFor, nudgeWindowOpen, toneOf } from './nudge.js';
 import { wrappedPushYear, wrappedSummary, wrappedPushOwed, wrappedPush } from './wrapped.js';
 import {
@@ -135,6 +137,8 @@ const integrations = createIntegrations({ dataDir: DATA, secret: SECRET, version
 const medical = createMedicalStore({ dir: path.join(DATA, 'medical') });
 // Two-factor secrets (totp.js) are sealed with their own key, derived from SECRET the same way.
 const TOTP_KEY = deriveTotpKey(SECRET);
+// Diet and supplements (health/, our addition): one file per profile in DATA_DIR/health/.
+const health = createHealthStore({ dir: path.join(DATA, 'health') });
 
 const dbFile = path.join(DATA, 'db.json');
 // Every account, passkey and invite. Only a missing file starts empty: an unreadable one (a write
@@ -1367,6 +1371,8 @@ function removeAccount(u) {
   try { integrations.removeUser(u.id); } catch (e) { console.error('integrations: could not remove', u.id, e.message); }
   // Their medical record (blood tests, InBody, goals).
   try { medical.removeUser(u.id); } catch (e) { console.error('medical: could not remove', u.id, e.message); }
+  // Their diet and supplement log.
+  try { health.removeUser(u.id); } catch (e) { console.error('health: could not remove', u.id, e.message); }
   saveDb();
 }
 
@@ -3160,6 +3166,9 @@ const routes = {
   /* ---------- medical (this fork) ---------- */
   // medical/routes.js: blood tests, InBody and goals, each profile its own file.
   ...medicalRoutes({ json, readBody, readSession, store: medical }),
+  /* ---------- diet + supplements ---------- */
+  // health/routes.js (our addition), handed the same helpers.
+  ...healthRoutes({ json, readBody, readSession, store: health }),
 
   /* ---------- photos & videos ---------- */
   // Absent, not refusing, when MEDIA_UPLOADS=0: a 404 is what a server from before the feature

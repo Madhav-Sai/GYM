@@ -143,6 +143,7 @@ const TAGS = {
   coach: { title: 'AI Coach', side: 'Plans, reviews, debriefs' },
   integrations: { title: 'Integrations', side: 'Webhooks (INTEGRATIONS)' },
   medical: { title: 'Medical', side: 'Blood tests, InBody, goals' },
+  health: { title: 'Diet &amp; supplements', side: 'Food log, water, supplements' },
   admin: { title: 'Admin', side: 'Users, invites, audit log, Coach' }
 }
 

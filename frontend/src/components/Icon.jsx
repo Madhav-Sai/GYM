@@ -201,6 +201,10 @@ const P = {
   plug: <><path d="M9.2 3.6v4M14.8 3.6v4" /><path d="M6.6 7.6h10.8v3a5.4 5.4 0 0 1-10.8 0Z" /><path d="M12 16v4.4" /></>,
   webhook: <><circle cx="12" cy="6.4" r="2.6" /><circle cx="6.2" cy="16.8" r="2.6" /><circle cx="17.8" cy="16.8" r="2.6" /><path d="M10.7 8.7 7.5 14.5M13.3 8.7l3.2 5.8M8.8 16.8h6.4" /></>,
   ring: <><circle cx="12" cy="13.8" r="6.4" /><path d="m9.7 5.4 2.3-1.8 2.3 1.8-2.3 1.8Z" /></>,
+  // Diet and supplements (our addition): a leaf, a capsule, a water drop.
+  leaf: <><path d="M5 19c0-8 5-13.5 14.5-14.5C19 14 13.5 19 5.5 19Z" /><path d="M5 19 13 11" /></>,
+  pill: <><rect x="3.6" y="8.6" width="16.8" height="6.8" rx="3.4" transform="rotate(-40 12 12)" /><path d="m9.5 9.2 5 5.6" /></>,
+  drop: <path d="M12 3.6c3.4 4 6 7.3 6 10.4a6 6 0 0 1-12 0c0-3.1 2.6-6.4 6-10.4Z" />,
   chat: <path d="M5.6 4.8h12.8a2.2 2.2 0 0 1 2.2 2.2v8a2.2 2.2 0 0 1-2.2 2.2H11l-4.4 3.4v-3.4h-1a2.2 2.2 0 0 1-2.2-2.2V7a2.2 2.2 0 0 1 2.2-2.2Z" />,
 }
 

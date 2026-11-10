@@ -1,0 +1,58 @@
+/* Diet and supplements (our addition). Only the app's own variables, so it follows the theme. */
+.hl-big { font-size: 34px; font-weight: 800; line-height: 1.05; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+.hl-big small, .hl-n small { font-size: var(--fs-footnote); font-weight: 600; color: var(--label-2); margin-inline-start: 3px; letter-spacing: 0; }
+.hl-l { font-size: var(--fs-caption, 12px); color: var(--label-2); font-weight: 600; text-transform: uppercase; letter-spacing: .06em; }
+.hl-n { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+.hl-dim { color: var(--label-2); font-size: var(--fs-footnote); }
+.hl-bars { display: grid; gap: 10px; margin-top: 10px; }
+.hl-bar-h { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.hl-bar-h .hl-v { font-variant-numeric: tabular-nums; font-weight: 700; font-size: var(--fs-subhead); }
+.hl-bar-h .hl-v small { color: var(--label-2); font-weight: 500; font-size: var(--fs-caption); }
+.hl-track { height: 6px; border-radius: 3px; background: var(--surface-3, var(--hair)); overflow: hidden; margin-top: 4px; }
+.hl-fill { height: 100%; border-radius: 3px; background: var(--acc); transition: width .5s var(--ease, ease); }
+.hl-fill.over { background: var(--red); } .hl-fill.ok { background: var(--green); }
+.hl-grid2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px 16px; }
+.hl-grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.hl-flag { display: flex; gap: 8px; align-items: flex-start; margin-top: 8px; font-size: var(--fs-footnote); color: var(--orange); font-weight: 600; }
+.hl-flag .icn { flex: none; margin-top: 2px; }
+.hl-warn { color: var(--orange); font-size: var(--fs-footnote); }
+.hl-meal-h { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+.hl-time { font-variant-numeric: tabular-nums; font-weight: 700; color: var(--acc-ink, var(--acc)); font-size: var(--fs-subhead); min-width: 46px; }
+.hl-meal-t { flex: 1; min-width: 0; }
+.hl-meal-t b { display: block; font-size: var(--fs-subhead); }
+.hl-veg { display: flex; align-items: center; gap: 6px; font-size: var(--fs-caption); color: var(--label-2); }
+.hl-item { display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 2px; border: 0; background: none; color: inherit; font: inherit; text-align: start; border-top: 1px solid var(--hair); cursor: pointer; }
+.hl-item:first-of-type { border-top: 0; }
+.hl-item .hl-ck { width: 22px; height: 22px; flex: none; border-radius: 50%; border: 2px solid var(--label-3); display: grid; place-items: center; color: transparent; }
+.hl-item.on .hl-ck { background: var(--green); border-color: var(--green); color: #fff; }
+.hl-item .hl-m { flex: 1; min-width: 0; }
+.hl-item .hl-nm { display: block; font-weight: 600; }
+.hl-item.on .hl-nm { color: var(--label-2); }
+.hl-item .hl-sub { display: block; font-size: var(--fs-caption); color: var(--label-2); font-variant-numeric: tabular-nums; }
+.hl-item .hl-r { text-align: end; font-variant-numeric: tabular-nums; font-size: var(--fs-footnote); white-space: nowrap; }
+.hl-item .hl-r b { display: block; font-size: var(--fs-subhead); }
+.hl-swap { display: block; font-size: var(--fs-caption); color: var(--teal, var(--blue)); }
+.hl-badge { display: inline-flex; align-items: center; gap: 3px; padding: 1px 7px; border-radius: 99px; font-size: var(--fs-caption2, 11px); font-weight: 700; color: var(--orange); background: rgba(255,159,10,.15); background: color-mix(in srgb, var(--orange) 15%, transparent); white-space: nowrap; }
+.hl-badge.veg { color: var(--green); background: rgba(48,209,88,.15); background: color-mix(in srgb, var(--green) 15%, transparent); }
+.hl-row2 { display: flex; gap: 8px; margin-top: 10px; }
+.hl-row2 > * { flex: 1; }
+.hl-checks { display: grid; gap: 6px; margin-top: 4px; }
+.hl-check { display: flex; align-items: center; gap: 8px; font-size: var(--fs-footnote); }
+.hl-check .icn { color: var(--label-3); } .hl-check.done .icn { color: var(--green); } .hl-check.done span { color: var(--label-2); }
+.hl-dots { display: flex; gap: 6px; margin: 10px 0 4px; flex-wrap: wrap; }
+.hl-dot { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: var(--fs-footnote); font-variant-numeric: tabular-nums; border: 2px solid var(--hair); background: none; color: var(--label-2); }
+.hl-dot.taken { background: var(--green); border-color: var(--green); color: #fff; }
+.hl-dot.missed { border-color: var(--red); color: var(--red); }
+.hl-dot.skipped { border-color: var(--label-3); color: var(--label-3); text-decoration: line-through; }
+.hl-dot.due { border-color: var(--orange); color: var(--orange); }
+.hl-d3 { border: 1px solid var(--orange); border: 1px solid color-mix(in srgb, var(--orange) 55%, transparent); background: var(--bg-el); background: radial-gradient(120% 90% at 0% 0%, color-mix(in srgb, var(--orange) 14%, transparent), transparent 70%), var(--bg-el); }
+.hl-supp { padding: 10px 0; border-top: 1px solid var(--hair); }
+.hl-supp:first-child { border-top: 0; }
+.hl-supp-h { display: flex; align-items: flex-start; gap: 8px; }
+.hl-supp-h .hl-m { flex: 1; min-width: 0; }
+.hl-supp-h b { display: block; }
+.hl-st { font-size: var(--fs-caption); font-weight: 700; }
+.hl-st.taken { color: var(--green); } .hl-st.skipped { color: var(--label-2); }
+.hl-foods { max-height: 46vh; overflow: auto; margin-top: 8px; }
+.hl-field { display: grid; gap: 4px; margin-top: 10px; }
+.hl-field > span { font-size: var(--fs-caption); color: var(--label-2); }
