@@ -12,7 +12,7 @@ import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { boundPort } from './helpers.mjs';
-import { stampPut } from '../sync-stamps.js';
+import { stampPut, STAMPED_MAPS } from '../sync-stamps.js';
 
 const clone = v => JSON.parse(JSON.stringify(v));
 const NOW = 1_800_000_000_000;
@@ -448,4 +448,20 @@ test('daySchedule and homeLayout are stamped as settings, a visit\'s centre ride
   assert.ok(next.edited.homeLayout >= NOW);
   assert.equal(next.edited.gymVisits, undefined);
   assert.equal(next.gymVisits['2026-10-02'].centre, 'Cult HSR');
+});
+
+// Whoop workouts in History (this fork, frontend lib/whoop-import.js): which Whoop ids were
+// imported, linked or skipped is a stamped map, one entry per id, like gymVisits. The switch that
+// turns the import off is a plain setting.
+test('whoopImported rides per Whoop id, the import switch is stamped as a setting', () => {
+  assert.ok(STAMPED_MAPS.includes('whoopImported'));
+  const cur = stored();
+  const next = clone(cur);
+  delete next.edited; delete next._rev;
+  next.whoopImported = { w1: { s: 'whoop-w1', _ts: NOW - 10 }, w2: { s: 'skip', _ts: NOW - 5 } };
+  next.whoopAutoImport = false;
+  stampPut(cur, next, { overRead: true, stamped: false, now: NOW });
+  assert.equal(next.edited.whoopImported, undefined);
+  assert.ok(next.edited.whoopAutoImport >= NOW);
+  assert.equal(next.whoopImported.w2.s, 'skip');
 });

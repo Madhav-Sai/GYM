@@ -101,6 +101,11 @@ export const DEF = {
   // Manual gym check-ins (this fork, lib/gym-visits.js): { [iso]: { on: true, _ts } }. A checked-in day counts
   // towards the streak and shows on the calendar; each day merges on its own stamp like dayNotes.
   gymVisits: {},
+  // Whoop workouts in History (this fork, lib/whoop-import.js): which Whoop ids were imported,
+  // linked to a logged session or skipped, { [whoopId]: { s, _ts } }, merged per id like gymVisits;
+  // and the Settings → Whoop switch that adds them (on unless turned off).
+  whoopImported: {},
+  whoopAutoImport: true,
   // The daily timing plan (this fork, lib/day-schedule.js) and the Home arrangement (lib/home-layout.js):
   // null until changed (the defaults show), then one setting each, stamped whole when changed.
   daySchedule: null,

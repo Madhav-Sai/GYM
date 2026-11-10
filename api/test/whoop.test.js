@@ -367,6 +367,24 @@ test('each day carries when its night began and ended, and null without a sleep'
   assert.equal(first.sleepStart, null); assert.equal(first.sleepEnd, null);
 });
 
+// The app adds Whoop workouts to History (frontend lib/whoop-import.js): it needs every workout of
+// the last 90 days, not only the newest 20.
+test('the summary lists every workout of the last 90 days, newest first, and none older', () => {
+  const now = Date.parse('2026-11-08T12:00:00Z');
+  const r = rig({ now: () => now });
+  const at = d => new Date(now - d * 86400_000).toISOString();
+  const workouts = [];
+  for (let d = 1; d <= 30; d++) workouts.push(W.mapWorkout(workoutRec('w' + d, at(d))));
+  workouts.push(W.mapWorkout(workoutRec('w89', at(89))), W.mapWorkout(workoutRec('w95', at(95))));
+  r.data.upsert('u1', { cycles: [W.mapCycle(cycleRec(3, '2026-11-08T03:00:00.000Z'))], workouts });
+  const s = r.data.summary('u1', now);
+  assert.equal(s.workouts.length, 31, 'all 30 recent ones plus day 89, not day 95');
+  assert.equal(s.workouts[0].id, 'w1');
+  assert.equal(s.workouts[s.workouts.length - 1].id, 'w89');
+  assert.ok(!s.workouts.some(w => w.id === 'w95'));
+  for (const k of ['id', 'day', 'sport', 'start', 'end', 'strain', 'avgHr', 'maxHr', 'kj', 'distanceM', 'zonesMin']) assert.ok(k in s.workouts[0], k);
+});
+
 test('before the first sync the summary is empty, not zeros', () => {
   const r = rig();
   const s = r.data.summary('nobody');

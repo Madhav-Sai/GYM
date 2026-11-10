@@ -52,6 +52,7 @@ import { openDeviceLinkRedeem } from './components/Passkeys.jsx'
 import { useAnimPacksBoot } from './components/Animations.jsx'
 import { useNfcTagLinks } from './components/Nfc.jsx'
 import { useRoutineLinks } from './components/RoutineShare.jsx'
+import { WhoopAutoImport } from './views/WhoopSheets.jsx'
 import Login from './views/Login.jsx'
 import MobileOnboarding from './views/MobileOnboarding.jsx'
 import PermissionSteps from './views/PermissionSteps.jsx'
@@ -411,6 +412,8 @@ function Shell() {
       {authed && !needsMobileOnboarding && !permSteps && <SeasonalLayer hidden={inWorkout || loc.pathname === '/workout'} />}
       {/* Your year in myGym (components/WrappedEntry.jsx): nothing loaded until it is opened. */}
       {authed && isOn(S, 'motivation') && <WrappedLayer ready={setupDone} />}
+      {/* Whoop workouts in History (lib/whoop-import.js): added as the summary arrives. */}
+      {authed && <WhoopAutoImport />}
     </>
   )
 }

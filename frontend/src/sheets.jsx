@@ -16,6 +16,8 @@ import { t, tn, dateLocale, instrFor, instrTranslated, descFor, exerciseNameFor,
 import { nav, closeThenNav, navToWorkout } from './lib/nav.js'
 import { buildStarterPlan, starterPlanDays, starterPlanOptions } from './lib/starter.js'
 import { WhoopMatchSection } from './components/MyPlan.jsx'
+import { WhoopBadge, WhoopSessionSection, cultRenameSheet } from './components/WhoopWorkout.jsx'
+import { isWhoopWorkout, withWhoopSkip } from './lib/whoop-import.js'
 import Media, { Thumb } from './components/Media.jsx'
 import CustomMediaField from './components/CustomMediaField.jsx'
 import WorkoutMediaSection, { workoutMediaCount } from './components/WorkoutMedia.jsx'
@@ -3081,6 +3083,8 @@ function WorkoutDurationEdit({ w, onDone, close }) {
 export const workoutDurationSheet = (w, onDone) => ui().openSheet(close => <WorkoutDurationEdit w={w} onDone={onDone} close={close} />)
 
 function WorkoutDetail({ w, close }) {
+  // Logged by the Whoop band, not set by set (lib/whoop-import.js): nothing to edit or repeat.
+  const fromWhoop = isWhoopWorkout(w)
   const noteRef = useRef(null)
   const onNoteFocus = useSheetKeyboard(noteRef)
   const st = useStore(s => s.S)
@@ -3223,7 +3227,12 @@ function WorkoutDetail({ w, close }) {
   }
   // Matched the way the edits above are, not by id: a workout from before ids has none, and
   // filtering on `x.id !== undefined` took every other one of them with it.
-  const deleteWorkout = () => confirmSheet({ title: t('Delete workout?'), message: t('This removes it from your history for good.') + mediaGoesToo(S().workouts.find(x => sameWorkout(x, w))), confirmText: t('Delete'), danger: true, onConfirm: () => { update(s => { s.workouts = s.workouts.filter(x => !sameWorkout(x, w)) }); close(); toast(t('Workout deleted')) } })
+  const deleteWorkout = () => confirmSheet({ title: t('Delete workout?'), message: t('This removes it from your history for good.') + mediaGoesToo(S().workouts.find(x => sameWorkout(x, w))), confirmText: t('Delete'), danger: true, onConfirm: () => { update(s => {
+    // A workout from Whoop stays deleted: its Whoop id is marked so the next summary skips it.
+    const gone = s.workouts.find(x => sameWorkout(x, w))
+    if (isWhoopWorkout(gone)) s.whoopImported = withWhoopSkip(s.whoopImported, gone.whoop.id)
+    s.workouts = s.workouts.filter(x => !sameWorkout(x, w))
+  }); close(); toast(t('Workout deleted')) } })
   // The once-in-a-while things, in one menu over this sheet: when it happened, keeping it as a
   // routine, getting it out of the app (on paper: the browser's print dialog or the phone's
   // print sheet; .fit for Garmin Connect), and Delete on its own at the end.
@@ -3235,10 +3244,10 @@ function WorkoutDetail({ w, close }) {
         { items: [
           { icon: 'calendar', label: t('Change date & time'), onClick: () => workoutDateSheet(w, close) },
           { icon: 'stopwatch', label: t('Change duration'), onClick: () => workoutDurationSheet(w, close) },
-          { icon: 'plus', label: t('Save as routine'), onClick: saveAsRoutine },
+          !fromWhoop && { icon: 'plus', label: t('Save as routine'), onClick: saveAsRoutine },
         ] },
         { title: t('Share'), items: [
-          { icon: 'person', label: t('Share with a friend'), sub: t('As a routine they can do too'), onClick: shareWithFriend },
+          !fromWhoop && { icon: 'person', label: t('Share with a friend'), sub: t('As a routine they can do too'), onClick: shareWithFriend },
           // The share card is part of Motivation (Settings → Modules).
           isOn(st, 'motivation') && { icon: 'share', label: t('Share as image'), onClick: shareAsImage },
           { icon: 'copy', label: t('Copy as text'), onClick: copyAsText },
@@ -3255,9 +3264,11 @@ function WorkoutDetail({ w, close }) {
   const grouped = groups.length > 1 || (groups[0] && groups[0].rid && (w.routineIds || []).length > 1)
   return <>
     <h3>{w.name}</h3>
-    <div className="muted small" style={{ marginBottom: 12 }}>{[fmtDate(w.d, true), ...durPart(w.end - w.start), fmtVol(sessionVolume(w, st), st.unit), ...(w.bw ? [fmtNum(w.bw) + ' ' + st.unit] : [])].join(' · ')}</div>
-    {/* Our addition: the Whoop workout recorded at the same time (lib/whoop-match.js), when there is one. */}
-    <WhoopMatchSection w={w} />
+    <div className="muted small" style={{ marginBottom: 12 }}>{[fmtDate(w.d, true), ...durPart(w.end - w.start), ...(fromWhoop ? [] : [fmtVol(sessionVolume(w, st), st.unit)]), ...(w.bw ? [fmtNum(w.bw) + ' ' + st.unit] : [])].join(' · ')}</div>
+    {/* Our addition: the Whoop workout recorded at the same time (lib/whoop-match.js), when there is
+        one; for a workout that came from Whoop (lib/whoop-import.js), what Whoop measured. */}
+    {fromWhoop ? <WhoopSessionSection w={w} /> : <WhoopMatchSection w={w} />}
+    {fromWhoop && <><Button icon="pencil" onClick={() => cultRenameSheet(w)}>{t('Rename as Cult class')}</Button><div style={{ height: 12 }} /></>}
     {grouped ? groups.map(g => {
       const r = g.rid ? st.routines.find(x => x.id === g.rid) : null
       const items = g.items.map(i => w.entries[i])
@@ -3280,7 +3291,7 @@ function WorkoutDetail({ w, close }) {
       placeholder={t('How the session went as a whole.')}
       onFocus={onNoteFocus} onChange={e => setNote(e.target.value)} onBlur={saveNote} />
     <div style={{ height: 14 }} />
-    {st.active && <p className="small muted">{t('Finish the current workout first.')}</p>}
+    {!fromWhoop && <>{st.active && <p className="small muted">{t('Finish the current workout first.')}</p>}
     {/* The editor starts from the record as it is, so a note typed here goes in first — the same
         flush the date row does, and the unmount hook then has nothing left to write over it. */}
     <Button icon="pencil" data-tour="wd-edit" disabled={!!st.active} onClick={() => {
@@ -3295,7 +3306,7 @@ function WorkoutDetail({ w, close }) {
       flushNote()
       repeatWorkout(w, close)
     }}>{t('Repeat today')}</Button>
-    <div style={{ height: 10 }} />
+    <div style={{ height: 10 }} /></>}
     {/* Everything else a past workout can do, once in a while each, behind one row (v1.4.4): it
         used to be eight more buttons down the sheet. */}
     <div className="list menu-list">
@@ -3431,7 +3442,11 @@ export function WorkoutRow({ w, onClick, tour }) {
   return <div className="item" data-tour={tour} {...tappable(onClick)}>
     <span className="lrow-i" style={{ width: 34, height: 34, borderRadius: 8, fontSize: 19 }}><Icon name={glyph} /></span>
     <div className="grow"><div className="tt">{w.name}</div>
-      <div className="ss">{[fmtDate(w.d, true), ...durPart(w.end - w.start), tn('{0} set', '{0} sets', setsDone(w)), fmtVol(sessionVolume(w, st), st.unit)].join(' · ')}</div></div>
+      {/* A workout from Whoop (lib/whoop-import.js) has no sets to count: its calories instead. */}
+      <div className="ss">{(isWhoopWorkout(w)
+        ? [fmtDate(w.d, true), ...durPart(w.end - w.start), ...(w.whoop.kcal != null ? [fmtNum(w.whoop.kcal) + ' ' + t('kcal')] : [])]
+        : [fmtDate(w.d, true), ...durPart(w.end - w.start), tn('{0} set', '{0} sets', setsDone(w)), fmtVol(sessionVolume(w, st), st.unit)]).join(' · ')}</div></div>
+    <WhoopBadge w={w} />
     {mediaN > 0 && <span className="wrow-media" title={tn('{0} photo or video', '{0} photos or videos', mediaN)} aria-label={tn('{0} photo or video', '{0} photos or videos', mediaN)}><Icon name="image" />{mediaN}</span>}
     {w.prs && w.prs.length > 0 && <span className="pr"><Icon name="trophy" />{w.prs.length} PR</span>}
     <Icon name="chevronRight" className="chev" />

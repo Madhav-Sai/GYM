@@ -10,6 +10,9 @@ import { atomicWrite } from '../durable.js';
 import { localDay, offsetMin } from './providers/whoop.js';
 
 export const KEEP_DAYS = 400;
+// How far back the summary lists workouts, and at most how many.
+export const WORKOUT_DAYS = 90;
+export const WORKOUT_MAX = 500;
 const DAY = 86400_000;
 
 // Spec 5.2: recovery guidance bands, the heart-rate ceiling, and the weekly zone 4-5 budget.
@@ -141,7 +144,9 @@ export function createWhoopData({ dir, now = Date.now }) {
 
       return {
         ...base, today, days, avg, naps, zone45, hrFlags,
-        workouts: workouts.slice(0, 20),
+        // The last 90 days of workouts, newest first (capped, should a strap log hundreds): the app
+        // adds them to History (frontend lib/whoop-import.js) and matches logged sessions to them.
+        workouts: workouts.filter(w => !(Date.parse(w.start) < nowMs - WORKOUT_DAYS * DAY)).slice(0, WORKOUT_MAX),
         // Steps, labelled with where they came from. null when Whoop did not send one: a dash, not 0.
         steps: { value: latest.steps, day: latest.day, source: 'whoop' },
       };
