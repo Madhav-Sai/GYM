@@ -11,10 +11,11 @@ import { DASH, numOrDash, fmtSleep, fmtSteps, zoneLine, syncMessage, BAND_INK } 
 import { confirmSheet } from '../sheets.jsx'
 import Icon from '../components/Icon.jsx'
 import CardHead from '../components/CardHead.jsx'
-import { Section, Row, Button } from '../components/ui.jsx'
+import { Section, Row, Button, Switch } from '../components/ui.jsx'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { WhoopHomeDash, WhoopDashboard, WhoopSkeleton, WhoopFirstSync } from './WhoopDashboard.jsx'
 import { dayParam } from '../lib/whoop-view.js'
+import { planWhoopImport, applyWhoopImport, whoopImportOn } from '../lib/whoop-import.js'
 import './whoop.css'
 
 /* Whoop (our addition): the sign-in, the manage sheet and the Home card. The numbers come from our
@@ -24,13 +25,42 @@ import './whoop.css'
 const sheet = render => useUI.getState().openSheet(render)
 const errText = (e, fallback) => (e && e.message && !/^HTTP \d/.test(e.message) ? e.message : fallback)
 
+// Whoop workouts in History (lib/whoop-import.js): every summary that arrives, wherever it was
+// asked for, adds the workouts not yet in History, once per summary (its sync time and workouts).
+// Only signed in, with the Settings switch on; nothing is written when there is nothing to add.
+let lastImportKey = null
+export function runWhoopImport(d, { force = false } = {}) {
+  if (!d?.connected || !Array.isArray(d.workouts) || !d.workouts.length) return 0
+  const st = useStore.getState()
+  if (!st.user || DEMO || !whoopImportOn(st.S)) return 0
+  const key = (d.syncedAt || '') + '|' + d.workouts.map(w => w.id + ':' + (w.end || '') + ':' + (w.state || '')).join(',')
+  if (!force && key === lastImportKey) return 0
+  lastImportKey = key
+  const p = planWhoopImport(st.S, d.workouts)
+  if (!p.add.length && !p.link.length) return 0
+  let added = 0
+  st.update(s => { added = applyWhoopImport(s, planWhoopImport(s, d.workouts)) })
+  if (added) useUI.getState().toast?.(added === 1 ? t('Added 1 Whoop workout to History') : t('Added {0} Whoop workouts to History', added))
+  return added
+}
+export const resetWhoopImportMemo = () => { lastImportKey = null }
+
+/** Mounted once in App: loads the summary when Whoop can be on, so the import runs without opening a Whoop screen. */
+export function WhoopAutoImport() {
+  const user = useStore(s => s.user)
+  const config = useStore(s => s.config)
+  const S = useStore(s => s.S)
+  useWhoopSummary(!!user && !DEMO && (config?.integrations?.providers || []).includes('whoop') && isOn(S, 'integrations') && whoopImportOn(S))
+  return null
+}
+
 /** The server's Whoop summary, or null until it is known. `enabled` false: no request at all. */
 export function useWhoopSummary(enabled) {
   const [data, setData] = useState(null)
   const [error, setError] = useState(false)
   const load = useCallback(() => {
     if (!enabled) return Promise.resolve(null)
-    return api('/api/whoop/summary').then(d => { setData(d); setError(false); return d }).catch(() => { setError(true); return null })
+    return api('/api/whoop/summary').then(d => { setData(d); setError(false); runWhoopImport(d); return d }).catch(() => { setError(true); return null })
   }, [enabled])
   useEffect(() => { load() }, [load])
   // Back from Whoop's page (or from the background): the numbers may be new, and a sign-in may have just finished.
@@ -217,6 +247,7 @@ export function WhoopSettingsPage() {
     {s.status === 'attention' && <><div className="whd-card whd-alarm"><div className="whd-alarm-h"><Icon name="warning" /> {t('Whoop needs to be connected again.')}</div></div>
       <div style={{ height: 8 }} /><Button variant="primary" icon="plug" onClick={() => connectWhoop(toast)}>{t('Connect again')}</Button><div style={{ height: 12 }} /></>}
     {s.today ? <WhoopDashboard s={s} initialDay={initialDay} onRefresh={sync} /> : <WhoopFirstSync syncedAt={s.syncedAt} onRefresh={sync} />}
+    <WhoopImportSwitch s={s} />
     <Section>
       {s.profile?.firstName && <Row icon="personCircle" iconTint="var(--blue)" title={t('Connected as {0}', s.profile.firstName)} />}
       <Row icon="clock" iconTint="var(--blue)" title={t('Last sync')} subtitle={t('Syncs every 5 minutes')} value={s.syncedAt ? fmtAgo(s.syncedAt) : t('Not yet')} />
@@ -227,4 +258,19 @@ export function WhoopSettingsPage() {
       </button>
     </div>
   </>
+}
+
+/** Settings → Whoop: whether the workouts Whoop detects are added to History (a synced setting). */
+function WhoopImportSwitch({ s }) {
+  const on = useStore(st => whoopImportOn(st.S))
+  const update = useStore(st => st.update)
+  const set = v => {
+    update(st => { st.whoopAutoImport = v })
+    if (v) runWhoopImport(s, { force: true })
+  }
+  return <Section footer={t('Runs, walks and classes your Whoop detects, Cult classes included, appear in History. Cult has no app link, so they come through Whoop.')}>
+    <Row icon="history" iconTint="var(--red)" title={t('Add Whoop workouts to History')}>
+      <Switch checked={on} aria-label={t('Add Whoop workouts to History')} onChange={set} />
+    </Row>
+  </Section>
 }
