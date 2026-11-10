@@ -39,3 +39,10 @@ test('the integrations directory is copied whole, like coach/', () => {
   assert.ok(lines.some(l => /^COPY\s+integrations\s+\.\/integrations\s*$/.test(l)), 'COPY integrations ./integrations in api/Dockerfile');
   assert.match(read('server.js'), /from '\.\/integrations\/index\.js'/);
 });
+
+test('every directory server.js imports from is copied whole', () => {
+  const lines = read('Dockerfile').split('\n');
+  const dirs = [...new Set([...read('server.js').matchAll(/from '\.\/([a-z0-9_-]+)\/[^']+'/gi)].map(m => m[1]))];
+  const missing = dirs.filter(d => !lines.some(l => new RegExp(`^COPY\\s+${d}\\s+\\./${d}\\s*$`).test(l)));
+  assert.deepEqual(missing, [], `add COPY <dir> ./<dir> to api/Dockerfile for: ${missing.join(', ')}`);
+});
