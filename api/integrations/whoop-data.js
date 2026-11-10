@@ -109,6 +109,8 @@ export function createWhoopData({ dir, now = Date.now }) {
           lightMin: s?.lightMin ?? null, deepMin: s?.deepMin ?? null, remMin: s?.remMin ?? null, awakeMin: s?.awakeMin ?? null,
           performance: s?.performance ?? null, efficiency: s?.efficiency ?? null, consistency: s?.consistency ?? null,
           respRate: s?.respRate ?? null, disturbances: s?.disturbances ?? null,
+          // When the night began and ended, for the bedtime and wake consistency dots.
+          sleepStart: s?.start ?? null, sleepEnd: s?.end ?? null,
         };
       }).reverse();
       // Averages over the last 7 and 30 days (only days Whoop scored count).

@@ -351,6 +351,22 @@ test('the summary carries every scored field per day, averages, naps and calorie
   assert.equal(s.today.cycle.kcal == null || Number.isInteger(s.today.cycle.kcal), true);
 });
 
+test('each day carries when its night began and ended, and null without a sleep', async () => {
+  const now = Date.parse('2026-11-08T12:00:00Z');
+  const fake = fakeWhoop({
+    cycles: [cycleRec(2, '2026-11-07T03:00:00.000Z'), cycleRec(3, '2026-11-08T03:00:00.000Z')], recoveries: [recoveryRec(3, 70)],
+    sleeps: [sleepRec('s3', 3, '2026-11-07T20:00:00.000Z', '2026-11-08T04:00:00.000Z')],
+  });
+  const r = rig({ fake, now: () => now });
+  await connect(r);
+  await r.svc.sync('u1', { force: true });
+  const s = r.svc.summary('u1', now);
+  const last = s.days[s.days.length - 1], first = s.days[0];
+  assert.equal(Date.parse(last.sleepStart), Date.parse('2026-11-07T20:00:00.000Z'));
+  assert.equal(Date.parse(last.sleepEnd), Date.parse('2026-11-08T04:00:00.000Z'));
+  assert.equal(first.sleepStart, null); assert.equal(first.sleepEnd, null);
+});
+
 test('before the first sync the summary is empty, not zeros', () => {
   const r = rig();
   const s = r.data.summary('nobody');
