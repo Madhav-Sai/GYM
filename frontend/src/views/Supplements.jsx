@@ -102,7 +102,8 @@ export default function Supplements() {
 
   return <div className="narrow">
     {head}
-    {phase && <D3Card p={phase} onMark={(d, status) => mark(phase.s.id, status, undefined, d)} />}
+    {phase && <D3Card p={phase} onMark={(d, status) => mark(phase.s.id, status, undefined, d)}
+      onMarkAll={async days => { for (const d of days) await mark(phase.s.id, 'taken', undefined, d) }} />}
 
     <div className="card">
       <CardHead icon="pill" tint="var(--purple)" eyebrow={t('Today')} title={pending ? t('{0} to take', pending) : t('All done today')}

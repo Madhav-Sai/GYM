@@ -56,3 +56,5 @@
 .hl-foods { max-height: 46vh; overflow: auto; margin-top: 8px; }
 .hl-field { display: grid; gap: 4px; margin-top: 10px; }
 .hl-field > span { font-size: var(--fs-caption); color: var(--label-2); }
+.hl-markall { display: flex; align-items: center; gap: 6px; margin-top: 10px; padding: 8px 12px; border-radius: 10px; border: 1px solid var(--hair); background: var(--bg-el); color: var(--acc); font: inherit; font-size: var(--fs-footnote); font-weight: 600; }
+.hl-markall svg { width: 15px; height: 15px; }

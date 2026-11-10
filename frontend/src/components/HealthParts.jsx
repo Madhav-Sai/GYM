@@ -49,7 +49,10 @@ export function Flags({ totals }) {
 export const shortDay = day => new Date(day + 'T12:00:00Z').toLocaleDateString(dateLocale(), { day: 'numeric', month: 'short' })
 
 /** The D3 phase card: which of the weekly doses are done, then the monthly rhythm. */
-export function D3Card({ p, onMark, compact = false }) {
+/** The dose days (weekly and monthly) that read missed: the ones a one-tap catch-up marks taken. */
+export const missedDays = p => [...(p.weekly || []), ...(p.monthly || [])].filter(d => d.status === 'missed').map(d => d.day)
+
+export function D3Card({ p, onMark, onMarkAll, compact = false }) {
   const label = { taken: t('Taken'), skipped: t('Skipped'), missed: t('Missed'), due: t('Today'), upcoming: t('Upcoming') }
   return <div className={'card' + (p.dueToday ? ' hl-d3' : '')}>
     <CardHead icon="sun" tint="var(--orange)" eyebrow={p.s.name}
@@ -62,6 +65,8 @@ export function D3Card({ p, onMark, compact = false }) {
     </div>}
     {!compact && p.monthly.length > 0 && <div className="hl-dim">{t('Monthly doses: {0}', p.monthly.map(m => `${shortDay(m.day)} ${label[m.status].toLowerCase()}`).join(', '))}</div>}
     {p.dueToday && <div className="hl-row2"><span className="hl-badge"><Icon name="flame" />{t('Requires fat')}</span></div>}
+    {!compact && onMarkAll && missedDays(p).length > 0 && <button type="button" className="hl-markall" onClick={() => onMarkAll(missedDays(p))}>
+      <Icon name="check" />{t('I took the past doses: mark {0} as taken', missedDays(p).length)}</button>}
     {p.missedLast && <div className="hl-flag"><Icon name="warning" /><span>{t('The {0} dose was missed. Do not double up: take the next one on schedule.', shortDay(p.missedLast))}</span></div>}
     {p.s.warning && <div className="hl-warn" style={{ marginTop: 6 }}>{p.s.warning}</div>}
   </div>

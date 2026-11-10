@@ -5,8 +5,10 @@
 .med-cards{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 @media (max-width:360px){.med-cards{grid-template-columns:1fr}}
 .med-card{background:var(--surface);border-radius:14px;padding:11px 12px 8px;min-width:0;border-inline-start:3px solid var(--flag,var(--sep))}
-.med-card-h{display:flex;justify-content:space-between;align-items:baseline;gap:6px}
-.med-card-h .med-lbl{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.med-card-h{display:flex;justify-content:space-between;align-items:flex-start;gap:6px}
+/* myGym: full marker names ("Non-HDL cholesterol"), wrapped to two lines rather than cut off */
+.med-card-h .med-lbl{min-width:0;line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
+.med-card-h .med-flag{flex:none;line-height:1.25}
 .med-flag{font-size:var(--fs-caption2);font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--flag)}
 .med-ref{font-size:var(--fs-caption2);color:var(--label-3);font-variant-numeric:tabular-nums}
 .med-refbar{position:relative;height:6px;border-radius:3px;background:var(--surface-3);margin:7px 0 4px}
