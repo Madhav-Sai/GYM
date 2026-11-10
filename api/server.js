@@ -45,6 +45,10 @@ import { createMedicalStore } from './medical/store.js';
 import { medicalRoutes } from './medical/routes.js';
 import { excusedOn, nudgeFor, nudgeWindowOpen, toneOf } from './nudge.js';
 import { wrappedPushYear, wrappedSummary, wrappedPushOwed, wrappedPush } from './wrapped.js';
+import {
+  generateSecret, otpauthUri, verifyTotp, cleanCode, deriveTotpKey, sealSecret, openSecret,
+  generateRecoveryCodes, matchRecovery
+} from './totp.js';
 
 const PORT = +(process.env.PORT || 3000);
 const DATA = process.env.DATA_DIR || '/data';
@@ -129,6 +133,8 @@ const SECRET = fs.readFileSync(secretFile, 'utf8').trim();
 const integrations = createIntegrations({ dataDir: DATA, secret: SECRET, version: '1' });
 // Medical (this fork, medical/): blood tests, InBody scans and goals, DATA_DIR/medical/u-<uid>.json.
 const medical = createMedicalStore({ dir: path.join(DATA, 'medical') });
+// Two-factor secrets (totp.js) are sealed with their own key, derived from SECRET the same way.
+const TOTP_KEY = deriveTotpKey(SECRET);
 
 const dbFile = path.join(DATA, 'db.json');
 // Every account, passkey and invite. Only a missing file starts empty: an unreadable one (a write
@@ -1059,7 +1065,11 @@ const THROTTLED = {
   'POST /api/watch/redeem': 'watch', 'POST /api/watch/pair': null,
   'DELETE /api/account/passkeys': null,
   // Deleting the account: the same, for the password that may prove it.
-  'POST /api/account/delete': null
+  'POST /api/account/delete': null,
+  // Two-factor sign-in: setting it up and turning it on only spend the budget (the password that
+  // proves setup counts its own failures); turning it off checks a password and a code, and a
+  // wrong one of either counts like a wrong password.
+  'POST /api/2fa/setup': null, 'POST /api/2fa/enable': null, 'POST /api/2fa/disable': 'password'
 };
 
 // Which address the throttle counts against. Unlike clientIp() above, which only labels a log
@@ -1390,6 +1400,22 @@ async function passwordLogin(req, res, device) {
     audit(req, 'auth.password.fail', { ok: false, user, msg: 'account-disabled' });
     return json(res, 403, { error: 'this account has been disabled', code: 'disabled' });
   }
+  // Two-factor sign-in: the right password alone is not enough. No code yet says nothing against
+  // the password and nothing for it either (void: the attempt is neither counted nor forgiven);
+  // a wrong code counts exactly like a wrong password, against the account and the address, so
+  // the six digits sit behind the same pause.
+  if (twoFactorOn(user)) {
+    if (body.code == null || body.code === '') {
+      check.void();
+      return json(res, 401, TWO_FA_REQUIRED);
+    }
+    const used = useSecondFactor(user, body.code);
+    if (!used) {
+      check.failed(user, 'bad-2fa-code');
+      return json(res, 401, TWO_FA_WRONG);
+    }
+    if (used === 'recovery') audit(req, 'auth.2fa.recovery', { user, msg: `${user.totp.rc.length} left` });
+  }
   check.ok();
   // A hash made with older parameters is replaced now, while the password is at hand.
   if (needsRehash(rec.h)) {
@@ -1406,6 +1432,138 @@ async function passwordLogin(req, res, device) {
   if (device) return json(res, 200, { user: publicUser(user), token: makeSession(user) });
   json(res, 200, { user: publicUser(user) }, { 'Set-Cookie': sessionCookie(user) });
 }
+
+/* ---------- two-factor sign-in (totp.js) ----------
+   Optional, per profile, and only for the password sign-in: a passkey is already two factors (the
+   device and its unlock), and passkey sign-in is untouched. Kept on the user record in db.json:
+     totp: { s: <sealed base32 secret>, since, last: <last step accepted>, rc: [<recovery hashes>] }
+     totpPending: { s, exp }   (set up, not yet confirmed with a code; ten minutes)
+   The secret is sealed with TOTP_KEY (from DATA_DIR/secret) and bound to the profile's id, so a
+   copy of db.json alone does not hand out anyone's codes. A server whose secret was replaced
+   cannot open it any more; the recovery codes still sign in (they do not depend on it), and the
+   person sets two-factor up again. An admin's password reset turns it off: that reset is the way
+   back in for someone who has lost everything, the phone with the app included. */
+const TOTP_PENDING_MS = 10 * 60000;
+const TWO_FA_REQUIRED = { error: 'enter the code from your authenticator app', code: '2fa-required' };
+const TWO_FA_WRONG = { error: 'that code is not right', code: 'bad-2fa-code' };
+const twoFactorOn = u => !!(u && u.totp && typeof u.totp.s === 'string');
+// Checks a code typed at sign-in or to turn two-factor off, and spends it: six digits are a TOTP
+// code (single use per step: `last` moves past it), anything else is tried as a recovery code
+// (removed once used). Synchronous from check to spend, so two requests carrying the same code
+// cannot both get through. 'totp' | 'recovery' | null.
+function useSecondFactor(user, code) {
+  const t = user.totp;
+  if (typeof code !== 'string' && typeof code !== 'number') return null;
+  if (cleanCode(code)) {
+    const secret = openSecret(TOTP_KEY, t.s, user.id);
+    const step = secret ? verifyTotp(secret, code, { last: Number.isInteger(t.last) ? t.last : null }) : null;
+    if (step == null) return null;
+    t.last = step;
+    saveDb();
+    return 'totp';
+  }
+  const i = matchRecovery(t.rc, code);
+  if (i < 0) return null;
+  t.rc.splice(i, 1);
+  saveDb();
+  return 'recovery';
+}
+const twoFactorStatus = u => ({
+  enabled: twoFactorOn(u),
+  since: u.totp?.since || null,
+  recoveryLeft: twoFactorOn(u) && Array.isArray(u.totp.rc) ? u.totp.rc.length : 0,
+  pending: !twoFactorOn(u) && !!(u.totpPending && u.totpPending.exp > Date.now()),
+  // Two-factor guards the password sign-in, so without a password there is nothing to set up.
+  password: hasPassword(u)
+});
+
+const twoFactorRoutes = {
+  'GET /api/2fa/status': async (req, res) => {
+    const user = readSession(req);
+    if (!user) return json(res, 401, { error: 'not signed in' });
+    json(res, 200, twoFactorStatus(user));
+  },
+
+  // A fresh secret, not yet in force: the app scans it, and /api/2fa/enable with a code it shows
+  // turns it on. Asks the owner's proof first (the current password, or a passkey), like any
+  // change to how the account signs in: a copied session must not put a code only it knows in
+  // front of the owner's password. Asking again replaces a pending secret.
+  'POST /api/2fa/setup': async (req, res) => {
+    const user = readSession(req);
+    if (!user) return json(res, 401, { error: 'not signed in' });
+    const on = () => json(res, 409, { error: 'two-factor sign-in is already on', code: '2fa-on' });
+    if (twoFactorOn(user)) return on();
+    if (!hasPassword(user)) return json(res, 409, { error: 'set a password first: two-factor sign-in guards the password', code: 'no-password' });
+    const body = await readBody(req);
+    const proof = await proveOwner(req, res, user, { ...body, current: body.current ?? body.password }, '2fa-setup');
+    if (!proof) return;
+    // Everything above awaited: the session may have ended, or another tab may have finished.
+    if (readSession(req) !== user) return json(res, 401, { error: 'not signed in' });
+    if (twoFactorOn(user)) return on();
+    const secret = generateSecret();
+    user.totpPending = { s: sealSecret(TOTP_KEY, secret, user.id), exp: Date.now() + TOTP_PENDING_MS };
+    saveDb();
+    json(res, 200, { secret, uri: otpauthUri(secret, user.name), expires: user.totpPending.exp });
+  },
+
+  // The first code from the app proves it holds the secret; two-factor is on from here, and the
+  // ten recovery codes are in this answer and nowhere else, ever. The step that confirmed it is
+  // spent: the same code does not sign in a moment later.
+  'POST /api/2fa/enable': async (req, res) => {
+    const user = readSession(req);
+    if (!user) return json(res, 401, { error: 'not signed in' });
+    const body = await readBody(req);
+    if (twoFactorOn(user)) return json(res, 409, { error: 'two-factor sign-in is already on', code: '2fa-on' });
+    const p = user.totpPending;
+    if (!p || !(p.exp > Date.now())) return json(res, 409, { error: 'start the setup again', code: '2fa-expired' });
+    const secret = openSecret(TOTP_KEY, p.s, user.id);
+    const step = secret ? verifyTotp(secret, body.code) : null;
+    if (step == null) return json(res, 400, TWO_FA_WRONG);
+    const { codes, hashes } = generateRecoveryCodes();
+    user.totp = { s: p.s, since: new Date().toISOString(), last: step, rc: hashes };
+    delete user.totpPending;
+    saveDb();
+    audit(req, 'auth.2fa.enable', { user });
+    json(res, 200, { ok: true, recoveryCodes: codes, ...twoFactorStatus(user) });
+  },
+
+  // Off again: the current password and a code (from the app, or a recovery code). Both are
+  // checked under one attempt of the sign-in throttle, so a wrong one of either counts.
+  'POST /api/2fa/disable': async (req, res) => {
+    const user = readSession(req);
+    if (!user) return json(res, 401, { error: 'not signed in' });
+    const body = await readBody(req);
+    if (!twoFactorOn(user)) {
+      if (user.totpPending) { delete user.totpPending; saveDb(); }
+      return json(res, 200, { ok: true, ...twoFactorStatus(user) });
+    }
+    const pw = typeof body.password === 'string' ? body.password : '';
+    const wrongCurrent = () => json(res, 403, { error: 'your current password is not right', code: 'current-wrong' });
+    if (!pw) return json(res, 403, { error: 'enter your current password', code: 'current-required' });
+    if (!hasPassword(user)) return wrongCurrent();
+    const check = passwordAttempt(req, res, acctKey(user));
+    if (!check) return;
+    const rec = user.pw;
+    if (!(await check.verify(pw, rec.h))) {
+      check.failed(user, 'bad-current', undefined, { ev: 'auth.proof.fail', act: '2fa-disable' });
+      return wrongCurrent();
+    }
+    // Changed while it was being checked, or the session ended meanwhile.
+    if (user.pw !== rec) { check.void(); return wrongCurrent(); }
+    if (readSession(req) !== user) { check.void(); return json(res, 401, { error: 'not signed in' }); }
+    if (!twoFactorOn(user)) { check.void(); return json(res, 200, { ok: true, ...twoFactorStatus(user) }); }
+    if (!useSecondFactor(user, body.code)) {
+      check.failed(user, 'bad-2fa-code', undefined, { ev: 'auth.proof.fail', act: '2fa-disable' });
+      return json(res, 403, TWO_FA_WRONG);
+    }
+    check.ok();
+    delete user.totp;
+    delete user.totpPending;
+    saveDb();
+    audit(req, 'auth.2fa.disable', { user });
+    json(res, 200, { ok: true, ...twoFactorStatus(user) });
+  }
+};
 
 const passwordRoutes = {
   'POST /api/login/password': (req, res) => passwordLogin(req, res, false),
@@ -1601,6 +1759,9 @@ const passwordRoutes = {
     if (nameTaken(u.name, u.id)) return json(res, 409, { error: 'another profile already signs in with this name', code: 'name-taken' });
     const code = makeResetCode();
     delete u.pw;
+    // The reset is the way back in for someone who lost everything, their authenticator included.
+    delete u.totp;
+    delete u.totpPending;
     u.pwReset = { h: hashResetCode(code), exp: Date.now() + RESET_TTL_MS, by: admin.id };
     u.sv = sessionVersion(u) + 1;
     for (const [k, v] of pairings) if (v.uid === u.id) pairings.delete(k);
@@ -2486,6 +2647,8 @@ const routes = {
 
   // Absent entirely while PASSWORD_LOGIN is off, so each of them is a plain 404.
   ...(PASSWORD_LOGIN ? passwordRoutes : {}),
+  // Two-factor guards the password sign-in, so it exists exactly when that does.
+  ...(PASSWORD_LOGIN ? twoFactorRoutes : {}),
 
   // Always there: more passkeys and device links need nothing an instance has to switch on.
   ...passkeyRoutes,

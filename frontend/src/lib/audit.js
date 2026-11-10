@@ -40,6 +40,10 @@ const LABELS = {
   'auth.password.change': 'Changed their password',
   'auth.password.remove': 'Removed their password',
   'auth.password.reset': 'Used a reset code',
+  // Two-factor sign-in (api/totp.js): a wrong code is an auth.password.fail with msg bad-2fa-code.
+  'auth.2fa.enable': 'Turned on two-factor sign-in',
+  'auth.2fa.disable': 'Turned off two-factor sign-in',
+  'auth.2fa.recovery': 'Signed in with a two-factor recovery code',
   // The e-mail a profile may sign in with instead of its name. `msg` is the proof it was set with
   // and the address masked to two characters ("password · a…@e…") — never the address itself.
   'auth.email.set': 'Added a sign-in e-mail',
@@ -100,6 +104,7 @@ const REASONS = {
   'device': 'from the phone app',
   'bad-password': 'wrong password',
   'bad-current': 'wrong current password',
+  'bad-2fa-code': 'right password, wrong two-factor code',
   'unknown-name': 'no profile with a password has that name',
   'unknown-email': 'no profile with a password has that e-mail',
   'email-taken': 'another profile already uses that e-mail',

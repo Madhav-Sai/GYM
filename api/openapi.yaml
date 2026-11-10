@@ -978,6 +978,12 @@ paths:
         account are free and the sixth pauses it, whichever identifier they named it by (see *Throttling*); passkey
         sign-in is never paused by this. Sets the
         same session cookie as `/api/login/verify`. **Not** CSRF-exempt.
+
+        When the profile has two-factor sign-in on (`/api/2fa/*`), the right password alone gets
+        `401` with `code: 2fa-required` and no session. Send the same request again with `code`:
+        the six digits from the authenticator app (accepted one 30 s step either side, each step
+        once) or one of the recovery codes (each works once). A wrong code is `401` with
+        `code: bad-2fa-code` and counts like a wrong password toward the same pause.
       security: []
       requestBody:
         required: true
@@ -992,6 +998,7 @@ paths:
                 name: { type: string, description: 'The original field: a profile name, or an e-mail address.' }
                 email: { type: string, description: An e-mail address only. }
                 password: { type: string, maxLength: 256 }
+                code: { type: string, description: 'Only with two-factor sign-in on: a six-digit code from the authenticator app, or a recovery code.' }
             examples:
               byName: { value: { identifier: "Ada", password: "correct horse battery staple" } }
               byEmail: { value: { identifier: "ada@example.com", password: "correct horse battery staple" } }
@@ -1016,11 +1023,17 @@ paths:
               schema: { $ref: '#/components/schemas/Error' }
               example: { error: "name and password required", code: "missing" }
         '401':
-          description: Wrong name or password. Deliberately one answer for every cause.
+          description: |
+            Wrong name or password (`bad-credentials`), deliberately one answer for every cause.
+            With two-factor sign-in on and the right password: no code yet (`2fa-required`) or a
+            wrong one (`bad-2fa-code`).
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
-              example: { error: "wrong name or password", code: "bad-credentials" }
+              examples:
+                wrong: { value: { error: "wrong name or password", code: "bad-credentials" } }
+                needsCode: { value: { error: "enter the code from your authenticator app", code: "2fa-required" } }
+                wrongCode: { value: { error: "that code is not right", code: "bad-2fa-code" } }
         '403':
           description: The right password for a disabled account.
           content:
@@ -1040,6 +1053,8 @@ paths:
         answer is a **bearer token** for the app to keep in its own secure storage, and **no cookie is set**,
         so no web page can ride on it. For that reason it is CSRF-exempt, like `/api/pair/redeem`. Only
         available while `PASSWORD_LOGIN` is on. Send the token as `Authorization: Bearer <token>`.
+        Two-factor sign-in applies here exactly as on `/api/login/password`: `401` with
+        `code: 2fa-required` until the request carries a valid `code`.
       security: []
       requestBody:
         required: true
@@ -1052,6 +1067,7 @@ paths:
                 identifier: { type: string }
                 name: { type: string }
                 password: { type: string, maxLength: 256 }
+                code: { type: string, description: 'Only with two-factor sign-in on: a six-digit code, or a recovery code.' }
       responses:
         '200':
           description: Signed in.
@@ -1197,6 +1213,154 @@ paths:
         '409': { $ref: '#/components/responses/NameTaken' }
         '429': { $ref: '#/components/responses/TooManyRequests' }
         '503': { $ref: '#/components/responses/Busy' }
+
+  /api/2fa/status:
+    get:
+      tags: [password]
+      operationId: getTwoFactorStatus
+      summary: Whether two-factor sign-in is on for this profile
+      description: Only while `PASSWORD_LOGIN` is on. Two-factor guards the password sign-in; passkey sign-in is unaffected.
+      responses:
+        '200':
+          description: The profile's two-factor state.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  enabled: { type: boolean }
+                  since: { oneOf: [{ type: string }, { type: 'null' }], description: ISO timestamp. }
+                  recoveryLeft: { type: integer, description: Unused recovery codes. }
+                  pending: { type: boolean, description: A setup was started and not yet confirmed. }
+                  password: { type: boolean, description: 'Whether the profile has a password; without one there is nothing to guard.' }
+              example: { enabled: true, since: "2026-11-08T10:00:00.000Z", recoveryLeft: 9, pending: false, password: true }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /api/2fa/setup:
+    post:
+      tags: [password]
+      operationId: setupTwoFactor
+      summary: Start setting up two-factor sign-in
+      description: |
+        Proof first, like any change to how the account signs in: `password` (the current one) or a
+        passkey assertion (`cid`, `credential`). Answers a fresh secret (20 random bytes, base32) and
+        its `otpauth://` URI (issuer `myGym`, SHA-1, 6 digits, 30 s) for the authenticator app. It is
+        not in force until `POST /api/2fa/enable` confirms it with a code, within ten minutes.
+        Stored sealed (AES-256-GCM, key derived from `DATA_DIR/secret`).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                password: { type: string, description: The current password. }
+                cid: { type: string }
+                credential: { type: object }
+      responses:
+        '200':
+          description: A pending secret.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  secret: { type: string }
+                  uri: { type: string }
+                  expires: { type: integer, description: Unix ms. }
+              example: { secret: "JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP", uri: "otpauth://totp/myGym:Ada?secret=JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP&issuer=myGym&algorithm=SHA1&digits=6&period=30", expires: 1793000000000 }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403':
+          description: The proof was refused (`current-required`, `current-wrong`, `passkey`).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '409':
+          description: Already on (`2fa-on`), or the profile has no password (`no-password`).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+
+  /api/2fa/enable:
+    post:
+      tags: [password]
+      operationId: enableTwoFactor
+      summary: Confirm the setup with a code and turn two-factor sign-in on
+      description: |
+        The first code from the app turns it on. The answer carries ten recovery codes, each good
+        for one sign-in; they are stored hashed and shown this once only. The step that confirmed
+        the setup is spent and does not sign in again.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code]
+              properties:
+                code: { type: string, description: Six digits. }
+      responses:
+        '200':
+          description: On.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  recoveryCodes: { type: array, items: { type: string } }
+                  enabled: { type: boolean }
+                  recoveryLeft: { type: integer }
+        '400':
+          description: The code is not right (`bad-2fa-code`).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '409':
+          description: Already on (`2fa-on`), or no setup pending (`2fa-expired`).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+
+  /api/2fa/disable:
+    post:
+      tags: [password]
+      operationId: disableTwoFactor
+      summary: Turn two-factor sign-in off
+      description: |
+        Needs the current `password` and a `code` (from the app, or a recovery code). A wrong one of
+        either counts like a wrong password toward the sign-in pause. Already off answers `200`.
+        An admin's password reset (`POST /api/admin/user/password-reset`) also turns it off.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [password, code]
+              properties:
+                password: { type: string }
+                code: { type: string }
+      responses:
+        '200':
+          description: Off.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  enabled: { type: boolean }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403':
+          description: Wrong or missing password (`current-required`, `current-wrong`), or a wrong code (`bad-2fa-code`).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
 
   /api/account/password:
     get:

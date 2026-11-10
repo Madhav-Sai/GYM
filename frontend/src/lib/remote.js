@@ -61,10 +61,11 @@ export async function connect(rawUrl, code) {
 
 // Name + password instead of a pairing code (this fork): the same end state as connect(), a stored
 // token and a profile, so everything after it (sync, renewal, sign out) is unchanged.
-export async function connectPassword(rawUrl, name, password) {
+// `code`: two-factor sign-in's second step, once the server answered `2fa-required`.
+export async function connectPassword(rawUrl, name, password, code) {
   const base = normalizeServerUrl(rawUrl)
   if (!base) throw new Error('Enter a valid server address')
-  const { token, user } = await deviceLogin(base, String(name || '').trim(), String(password || ''))
+  const { token, user } = await deviceLogin(base, String(name || '').trim(), String(password || ''), code ? { code } : {})
   setRemoteAuth(base, token)
   await saveRemoteFile({ mode: 'remote', base, token, user })
   return user

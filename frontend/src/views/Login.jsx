@@ -9,7 +9,7 @@ import { useState, useRef, useEffect } from 'react'
 import Icon from '../components/Icon.jsx'
 import { Button, Segmented } from '../components/ui.jsx'
 import { askAddDeviceData } from '../sheets.jsx'
-import { passwordOn, PasswordRegisterForm, openPasswordSignIn, passwordError } from '../components/PasswordAuth.jsx'
+import { passwordOn, PasswordRegisterForm, openPasswordSignIn, passwordError, askedForCode, codeProblem, SecondFactorField } from '../components/PasswordAuth.jsx'
 import Logo from '../components/Logo.jsx'
 import { PRESET_SERVER } from '../lib/server-preset.js'
 import { simpleLogin } from '../lib/fork-flags.js'
@@ -147,21 +147,33 @@ function SignIn({ preset }) {
   const [pw, setPw] = useState('')
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
+  // Two-factor sign-in: once the server answers the right password with `2fa-required`, the same
+  // screen asks for the code from the authenticator app (or a recovery code) and signs in again.
+  const [second, setSecond] = useState(false)
+  const [code, setCode] = useState('')
+  const [recovery, setRecovery] = useState(false)
   const submit = async ev => {
     ev.preventDefault()
     if (busy) return
     const n = name.trim()
     if (!n) { setErr(t('Enter your name.')); return }
     if (!pw) { setErr(t('Enter your password.')); return }
+    const bad = second ? codeProblem(code, recovery) : null
+    if (bad) { setErr(bad); return }
+    const c = second ? code.replace(/\s/g, '') : ''
     setBusy(true); setErr('')
     try {
       const st = useStore.getState()
-      if (preset) await st.connectToServerPassword(PRESET_SERVER, n, pw, askAddDeviceData)
-      else { const u = await passwordLogin(n, pw); st.setUser(u, { adopt: true }); await st.adoptProfile(askAddDeviceData) }
+      if (preset) await (c ? st.connectToServerPassword(PRESET_SERVER, n, pw, askAddDeviceData, c) : st.connectToServerPassword(PRESET_SERVER, n, pw, askAddDeviceData))
+      else { const u = await (c ? passwordLogin(n, pw, c) : passwordLogin(n, pw)); st.setUser(u, { adopt: true }); await st.adoptProfile(askAddDeviceData) }
       useUI.getState().toast(t('Welcome back, {0}', n))
-    } catch (e) { setErr(preset ? (e?.message || t('Sign-in failed')) : passwordError(e)) }
+    } catch (e) {
+      if (!second && askedForCode(e)) { setSecond(true); return }
+      setErr(preset ? (e?.message || t('Sign-in failed')) : passwordError(e))
+    }
     finally { setBusy(false) }
   }
+  const back = () => { setSecond(false); setCode(''); setRecovery(false); setErr('') }
   const host = preset ? (() => { try { return new URL(PRESET_SERVER).host } catch { return '' } })() : ''
   const field = { autoCapitalize: 'none', autoCorrect: 'off', spellCheck: false }
   return (
@@ -169,15 +181,18 @@ function SignIn({ preset }) {
       style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: '78vh', textAlign: 'center' }}>
       <div style={{ display: 'flex', justifyContent: 'center' }}><Logo size={84} /></div>
       <h1 className="t-large" style={{ fontWeight: 700, margin: '14px 0 4px' }}>myGym</h1>
-      <div className="muted" style={{ marginBottom: 28 }}>{t('Sign in to continue')}</div>
-      <input className="input" name="username" autoComplete="username" placeholder={t('Name')} aria-label={t('Name')} maxLength={254}
-        enterKeyHint="next" value={name} onChange={e => setName(e.target.value)} {...field} />
-      <div style={{ height: 10 }} />
-      <input className="input" type="password" name="password" autoComplete="current-password" placeholder={t('Password')} aria-label={t('Password')}
-        maxLength={256} enterKeyHint="go" value={pw} onChange={e => setPw(e.target.value)} {...field} />
+      <div className="muted" style={{ marginBottom: 28 }}>{second ? t('Two-factor sign-in') : t('Sign in to continue')}</div>
+      {second ? <SecondFactorField code={code} setCode={setCode} recovery={recovery} setRecovery={setRecovery} /> : <>
+        <input className="input" name="username" autoComplete="username" placeholder={t('Name')} aria-label={t('Name')} maxLength={254}
+          enterKeyHint="next" value={name} onChange={e => setName(e.target.value)} {...field} />
+        <div style={{ height: 10 }} />
+        <input className="input" type="password" name="password" autoComplete="current-password" placeholder={t('Password')} aria-label={t('Password')}
+          maxLength={256} enterKeyHint="go" value={pw} onChange={e => setPw(e.target.value)} {...field} />
+      </>}
       {err && <div role="alert" className="small" style={{ color: 'var(--red)', marginTop: 12, lineHeight: 1.45, overflowWrap: 'anywhere' }}>{err}</div>}
       <div style={{ height: 16 }} />
       <Button variant="primary" type="submit" disabled={busy}>{busy ? t('Signing in…') : t('Sign in')}</Button>
+      {second && <Button type="button" variant="ghost" className="dim" onClick={back}>{t('Back')}</Button>}
       {host && <div className="dim small" style={{ marginTop: 22 }}>{t('Server: {0}', host)}</div>}
     </form>
   )
