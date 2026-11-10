@@ -5,7 +5,7 @@ import { t } from '../lib/i18n.js'
 import { MOBILE } from '../lib/mobile.js'
 import { healthDay, weekdayOf } from '../lib/ist.js'
 import { dayTypeOf } from '../lib/diet-plan.js'
-import { checklist, adherence, phaseOf, pendingCount, ADHERENCE_DAYS } from '../lib/supplements.js'
+import { checklist, adherence, phaseOf, pendingCount, ADHERENCE_DAYS, FAT_SOURCES } from '../lib/supplements.js'
 import { syncSupplementReminders } from '../lib/supp-reminders.js'
 import { useSupplements, useHealthOn } from './health-data.js'
 import Icon from '../components/Icon.jsx'
@@ -77,6 +77,7 @@ export default function Supplements() {
   const nav = useNavigate()
   const on = useHealthOn()
   const [day, setDay] = useState(() => healthDay())
+  const [fatOpen, setFatOpen] = useState(null)
   useEffect(() => { const id = setInterval(() => setDay(healthDay()), 60000); return () => clearInterval(id) }, [])
   const sp = useSupplements(on)
   const data = sp.data
@@ -114,8 +115,15 @@ export default function Supplements() {
             <b>{it.s.name}</b>
             <span className="hl-dim">{it.dose}{it.s.timing ? ' · ' + it.s.timing : ''}</span>
           </div>
-          {it.s.requiresFat && <span className="hl-badge"><Icon name="flame" />{t('Requires fat')}</span>}
+          {it.s.requiresFat && <button type="button" className="hl-badge" aria-expanded={fatOpen === it.s.id}
+            onClick={() => setFatOpen(fatOpen === it.s.id ? null : it.s.id)}><Icon name="flame" />{t('Requires fat')}</button>}
         </div>
+        {fatOpen === it.s.id && <div className="hl-fat">
+          <div className="hl-fat-h">{t('About 5 to 10 g of fat in the same meal is enough. Veg options:')}</div>
+          {FAT_SOURCES.veg.map(([what, g]) => <div key={what} className="hl-fat-r"><span>{t(what)}</span><b>{g}</b></div>)}
+          <div className="hl-fat-h">{t('Non-veg:')}</div>
+          {FAT_SOURCES.nonVeg.map(([what, g]) => <div key={what} className="hl-fat-r"><span>{t(what)}</span><b>{g}</b></div>)}
+        </div>}
         {it.s.warning && <div className="hl-warn">{it.s.warning}</div>}
         {it.s.note && <div className="hl-dim">{it.s.note}</div>}
         {it.status === 'pending' ? <div className="hl-row2">

@@ -315,8 +315,10 @@ function WhoopRow() {
   const toast = useUI(s => s.toast)
   const [s, setS] = useState(undefined)   // undefined loading, null not on this server
   const [busy, setBusy] = useState(false)
-  const load = () => api('/api/whoop/summary').then(setS).catch(e => setS(e?.status === 404 ? null : { error: e?.message || 'Could not load' }))
-  useEffect(() => { load() }, [])
+  const offered = useStore(st => (st.config?.integrations?.providers || []).includes('whoop'))
+  // No request at all when the server has no Whoop: the 404 would only clutter the console.
+  const load = () => (offered ? api('/api/whoop/summary').then(setS).catch(e => setS(e?.status === 404 ? null : { error: e?.message || 'Could not load' })) : setS(null))
+  useEffect(() => { load() }, [offered])
   if (s === null) return <div className="item"><div className="grow"><div className="tt">Whoop</div><div className="ss">Not set up on this server (INTEGRATIONS has no whoop).</div></div></div>
   const state = s === undefined ? 'Loading…' : s.error ? s.error : !s.connected ? 'Not connected' : s.status === 'attention' ? 'Needs attention: sign in to Whoop again' : 'Connected'
   const pill = !s || s.error || !s.connected ? '' : s.status === 'attention' ? 'bad' : 'ok'

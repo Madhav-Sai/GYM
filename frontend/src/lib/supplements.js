@@ -59,3 +59,14 @@ export function phaseOf(list, log, today) {
   const s = (list || []).find(x => x.schedule?.kind === 'phase' && x.active !== false)
   return s ? { s, ...d3Phase(s.schedule, logOf(log, s.id), today) } : null
 }
+
+/** Fat to take a fat-soluble supplement with (omega-3, D3): about 5 to 10 g in the same meal is enough.
+ *  Veg first; amounts are everyday portions with their rough fat. Milk alone (about 3 g a glass) is not. */
+export const FAT_SOURCES = Object.freeze({
+  veg: [
+    ['10 to 12 almonds', '6 g'], ['2 to 3 walnut halves', '5 g'], ['1 tbsp peanut butter', '8 g'],
+    ['1 tbsp pumpkin or flax seeds', '5 g'], ['50 g paneer', '10 g'], ['1 bowl full-fat curd', '5 g'],
+    ['1 tsp ghee or oil (on a chapati, in sabzi or dal)', '5 g'],
+  ],
+  nonVeg: [['3 boiled eggs', '16 g'], ['Fish like mackerel or sardine', '10+ g']],
+})
