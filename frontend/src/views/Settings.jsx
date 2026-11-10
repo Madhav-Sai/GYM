@@ -48,6 +48,7 @@ import { getChannel, gymReminderBuilt } from '../lib/channel.js'
 import { forgetCoach } from '../lib/coach-api.js'
 import { coachAvailable } from '../lib/coach.js'
 import { REST_MAX, REST_PAUSE_MIN, REST_PAUSE_MAX, fmtRest, fmtDuration } from '../lib/duration.js'
+import { loadMyPlan } from '../components/MyPlan.jsx'
 import { starterPlanSheet, confirmSheet, importFromApp, importFromHevy, equipmentProfileSheet, plateInventorySheet, dumbbellInventorySheet, barDefaultsSheet, menuSheet } from '../sheets.jsx'
 import Icon from '../components/Icon.jsx'
 import { durationSheet } from '../components/DurationWheel.jsx'
@@ -848,6 +849,8 @@ export default function Settings({ page = null, find = null, via = null, entryKe
       <Section>
         {/* The target range of weekly sets for each main muscle (lib/muscle-targets.js). */}
         <Row icon="slider" iconTint="var(--teal)" title={t('Weekly sets per muscle')} subtitle={t('The range each muscle aims for')} accessory="chevron" onClick={muscleTargetsSheet} />
+        {/* The owner's plan (our addition, lib/my-plan.js): safe to tap again, it never duplicates. */}
+        <Row icon="clipboard" iconTint="var(--orange)" title={t('Load my plan')} accessory="chevron" onClick={loadMyPlan} />
         <Row icon="clipboard" iconTint="var(--green)" title={t('Load starter plan')} accessory="chevron" onClick={starterPlanSheet} />
       </Section>
     </>,
