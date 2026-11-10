@@ -51,13 +51,13 @@ export const useSupplements = (enabled = true) => useResource('/api/health/suppl
  * The day's targets (lib/diet-targets.js): protein from the newest weigh-in or InBody scan, and the
  * g/kg and kcal target from the diet prefs. The Diet screen and the Home card both use this.
  */
-export function useDietTargets(prefs) {
+export function useDietTargets(prefs, dayType) {
   const bodyweight = useStore(s => s.bodyweight)
   const unit = useStore(s => s.unit)
   const medical = useMedical()
   const inbody = medical.data?.inbody
-  return useMemo(() => dietTargets({ prefs, weight: latestWeightKg(bodyweight, unit, inbody || []) }),
-    [prefs, bodyweight, unit, inbody])
+  return useMemo(() => dietTargets({ prefs, dayType, weight: latestWeightKg(bodyweight, unit, inbody || []) }),
+    [prefs, dayType, bodyweight, unit, inbody])
 }
 
 /* The food database's per-instance changes (GET /api/health/foods), fetched once per app start and

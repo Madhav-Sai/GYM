@@ -34,7 +34,7 @@ import { accentPair, accentValue } from './accent.js'
 import { speedUnitOf } from './speed.js'
 import { isOn } from './modules.js'
 import { viewTarget, exUnitOf, shownWeight } from './ex-unit.js'
-import { TARGETS, dayTypeOf } from './diet-plan.js'
+import { TARGETS, DAY_TARGETS, dayTypeOf } from './diet-plan.js'
 import { checklist } from './supplements.js'
 import { healthDay, healthMinutes } from './ist.js'
 import { DEMO } from './demo.js'
@@ -332,7 +332,7 @@ export function dietWidgetBlock (v) {
   return {
     day: typeof v.day === 'string' ? v.day : null,
     dayType: typeof v.day === 'string' ? dayTypeOf(v.day, v.dayType) : null,
-    kcal: num(tt.kcal), kcalTarget: TARGETS.kcal,
+    kcal: num(tt.kcal), kcalTarget: (DAY_TARGETS[typeof v.day === 'string' ? dayTypeOf(v.day, v.dayType) : 'training'] || DAY_TARGETS.training).kcal,
     protein, proteinTarget: TARGETS.protein,
     proteinLeft: protein == null ? null : Math.max(0, Math.round(TARGETS.protein - protein)),
     fiber: num(tt.fiber), fiberTarget: TARGETS.fiber,

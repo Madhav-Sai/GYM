@@ -3,7 +3,7 @@
 // gives 160 g. The evening flag (diet-flags.js) fires under 1.9 g/kg, about 140 g at that weight.
 // With no weight known it is the plan's own 160 g and 140 g. The kcal target is the plan's unless
 // one is set. The Diet screen and the Home card both read their numbers from dietTargets.
-import { TARGETS } from './diet-plan.js'
+import { TARGETS, DAY_TARGETS } from './diet-plan.js'
 import { weightPoints } from './medical.js'
 
 export const DEFAULT_G_PER_KG = 2.2
@@ -54,15 +54,19 @@ export function proteinFloor(weightKg) {
  * prefs. `weight` is latestWeightKg's answer (or null). Adds proteinFloor, gPerKg, weightKg and
  * kcalOwn (whether the kcal target is the user's own).
  */
-export function dietTargets({ prefs, weight } = {}) {
+export function dietTargets({ prefs, weight, dayType } = {}) {
+  const day = DAY_TARGETS[dayType] || DAY_TARGETS.training
   const gPerKg = gPerKgOf(prefs)
   const kg = isNum(weight?.kg) ? weight.kg : null
   const kcalOwn = isNum(prefs?.kcalTarget) && prefs.kcalTarget >= KCAL_MIN && prefs.kcalTarget <= KCAL_MAX
   return {
     ...TARGETS,
+    carbs: day.carbs,
+    dayType: DAY_TARGETS[dayType] ? dayType : 'training',
     protein: proteinTarget(kg, gPerKg),
     proteinFloor: proteinFloor(kg),
-    kcal: kcalOwn ? Math.round(prefs.kcalTarget) : TARGETS.kcal,
+    kcal: kcalOwn ? Math.round(prefs.kcalTarget) : day.kcal,
+    planKcal: day.kcal,
     kcalOwn,
     gPerKg,
     weightKg: kg,

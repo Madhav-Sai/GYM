@@ -29,7 +29,7 @@ describe('dietWidgetBlock', () => {
     const b = dietWidgetBlock({ day: '2026-11-08', entries: [{}, {}], water: 1250, dayType: null, totals: totals() })
     expect(b).toMatchObject({
       day: '2026-11-08', dayType: 'rest',
-      kcal: 1200, kcalTarget: 2050, protein: 95.5, proteinTarget: 160, proteinLeft: 65,
+      kcal: 1200, kcalTarget: 1800, protein: 95.5, proteinTarget: 160, proteinLeft: 65,
       fiber: 18, fiberTarget: 30, water: 1250, waterTarget: 2500, waterMax: 3000, entries: 2,
     })
   })

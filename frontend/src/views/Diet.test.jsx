@@ -50,7 +50,7 @@ afterEach(() => { for (const [r, h] of mounted.splice(0)) { act(() => r.unmount(
 describe('Diet screen', () => {
   test('a Sunday (rest) plan, totals against targets, and the evening flags', () => {
     const host = render(<Diet />)
-    expect(host.textContent).toContain('Pre-gym meal')
+    expect(host.textContent).toContain('Breakfast')
     expect(host.textContent).toContain('Chicken breast cooked')
     expect(host.textContent).toContain('Fibre is under 25 g by 20:00')
     expect(host.textContent).toContain('Protein is under 140 g by 20:00')

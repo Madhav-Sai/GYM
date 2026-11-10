@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useUI } from '../store/useUI.js'
 import { t, dateLocale } from '../lib/i18n.js'
 import { pickableFoods, foodById, entryFor, amountLabel, macrosFor } from '../lib/diet-foods.js'
-import { SLOTS, TARGETS, planFor, dayTypeOf, nonNegotiables } from '../lib/diet-plan.js'
+import { SLOTS, TARGETS, planFor, dayTypeOf, nonNegotiables, slotsFor } from '../lib/diet-plan.js'
 import { proteinBasis, G_PER_KG_MIN, G_PER_KG_MAX, G_PER_KG_STEP, KCAL_MIN, KCAL_MAX } from '../lib/diet-targets.js'
 import { altsFor, proteinSwap, signed } from '../lib/diet-swap.js'
 import { healthDay } from '../lib/ist.js'
@@ -141,17 +141,17 @@ function LogFoodSheet({ close, slot: slot0, onLog }) {
 }
 
 /* ---------- the calorie target: the plan's, or one of your own ---------- */
-function KcalSheet({ close, value, onSave }) {
+function KcalSheet({ close, value, onSave, planKcal = TARGETS.kcal }) {
   const [v, setV] = useState(value ?? null)
   const ok = v != null && v >= KCAL_MIN && v <= KCAL_MAX
   return <>
     <h3>{t('Calorie target')}</h3>
-    <div className="hl-dim">{t('The plan is {0} kcal a day. Set your own from {1} to {2}, or go back to the plan.', TARGETS.kcal, KCAL_MIN, KCAL_MAX)}</div>
-    <div className="hl-field"><span>kcal</span><NumberField decimal={false} nullable value={v} onChange={setV} placeholder={String(TARGETS.kcal)} /></div>
+    <div className="hl-dim">{t('Today\'s plan is {0} kcal. Set your own from {1} to {2}, or go back to the plan.', planKcal, KCAL_MIN, KCAL_MAX)}</div>
+    <div className="hl-field"><span>kcal</span><NumberField decimal={false} nullable value={v} onChange={setV} placeholder={String(planKcal)} /></div>
     <div style={{ height: 14 }} />
     <Button variant="primary" icon="check" disabled={!ok} onClick={async () => { if (await onSave(Math.round(v))) close() }}>{t('Save')}</Button>
     <div style={{ height: 8 }} />
-    <Button variant="ghost" disabled={value == null} onClick={async () => { if (await onSave(null)) close() }}>{t('Use the plan’s {0} kcal', TARGETS.kcal)}</Button>
+    <Button variant="ghost" disabled={value == null} onClick={async () => { if (await onSave(null)) close() }}>{t('Use the plan’s {0} kcal', planKcal)}</Button>
   </>
 }
 
@@ -167,12 +167,12 @@ function TargetsSection({ targets, prefs, onPrefs }) {
     timer.current = setTimeout(() => onPrefs({ proteinPerKg: v }), 600)
   }
   const basis = proteinBasis({ ...targets, gPerKg: g, protein: targets.weightKg ? Math.round(g * targets.weightKg / 5) * 5 : targets.protein })
-  const openKcal = () => useUI.getState().openSheet(close => <KcalSheet close={close} value={prefs?.kcalTarget ?? null} onSave={kcalTarget => onPrefs({ kcalTarget })} />)
+  const openKcal = () => useUI.getState().openSheet(close => <KcalSheet close={close} value={prefs?.kcalTarget ?? null} planKcal={targets.planKcal} onSave={kcalTarget => onPrefs({ kcalTarget })} />)
   return <Section title={t('Targets')} footer={basis ? t('From your latest weight ({0}). The 20:00 flag fires under {1} g.', targets.weightDate || '', targets.proteinFloor) : t('No body weight yet, so the plan’s {0} g is used. Log a weigh-in to set it from your weight.', TARGETS.protein)}>
     <Row icon="scale" iconTint="var(--green)" title={t('Protein per kg')} subtitle={basis || t('{0} g a day', targets.protein)}>
       <Stepper value={g} step={G_PER_KG_STEP} min={G_PER_KG_MIN} max={G_PER_KG_MAX} onChange={step} ariaLabel={t('Protein per kg')} />
     </Row>
-    <Row icon="target" title={t('Calorie target')} subtitle={targets.kcalOwn ? t('Your own') : t('The plan’s')} value={`${targets.kcal} kcal`} accessory="chevron" onClick={openKcal} />
+    <Row icon="target" title={t('Calorie target')} subtitle={targets.kcalOwn ? t('Your own, every day') : t('Changes with the day: training 2050, cardio 1950, rest 1800')} value={`${targets.kcal} kcal`} accessory="chevron" onClick={openKcal} />
   </Section>
 }
 
@@ -199,7 +199,7 @@ export default function Diet() {
   const veg = !!data?.prefs?.veg
   const plan = useMemo(() => planFor(type, { veg, vegMeals: data?.vegMeals || {} }), [type, veg, data?.vegMeals])
   const entries = data?.entries || []
-  const targets = useDietTargets(data?.prefs)
+  const targets = useDietTargets(data?.prefs, type)
   useFoods(on)
 
   if (!on) return <Shell nav={nav}><div className="empty">{t('Sign in to your server to keep a diet log.')}</div></Shell>
@@ -254,7 +254,7 @@ export default function Diet() {
       </div>
     </div>
 
-    {SLOTS.map(s => <Meal key={s.id} slot={s} items={plan[s.id]} entries={entries}
+    {slotsFor(type).map(s => <Meal key={s.id} slot={s} items={plan[s.id]} entries={entries}
       veg={data.vegMeals?.[s.id] ?? veg}
       onVeg={v => post('day', { vegMeals: { [s.id]: v === veg ? null : v } })}
       onToggle={item => toggle(s.id, item)}

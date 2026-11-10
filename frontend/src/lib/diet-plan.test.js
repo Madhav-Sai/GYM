@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { planFor, planTotals, dayTypeOf, TARGETS, SLOTS, nonNegotiables } from './diet-plan.js'
+import { planFor, planTotals, dayTypeOf, TARGETS, SLOTS, nonNegotiables, DAY_TARGETS, slotsFor } from './diet-plan.js'
 import { FOODS, foodById, macrosFor, amountLabel, entryFor, sumMacros } from './diet-foods.js'
 
 const within = (v, target, pct = 0.05) => Math.abs(v - target) <= target * pct
@@ -36,9 +36,10 @@ describe('the food database', () => {
 })
 
 describe('the default plan', () => {
-  test.each(['training', 'cardio', 'rest'])('%s hits about 2050 kcal and 160 g protein (within 5 %%)', type => {
+  test.each(['training', 'cardio', 'rest'])('%s hits its own kcal and about 160 g protein (within 5 %%)', type => {
     const t = planTotals(planFor(type))
-    expect(within(t.kcal, TARGETS.kcal), `${type} kcal ${t.kcal}`).toBe(true)
+    expect(within(t.kcal, DAY_TARGETS[type].kcal), `${type} kcal ${t.kcal}`).toBe(true)
+    expect(within(t.carbs, DAY_TARGETS[type].carbs, 0.08), `${type} carbs ${t.carbs}`).toBe(true)
     expect(within(t.protein, TARGETS.protein), `${type} protein ${t.protein}`).toBe(true)
     expect(t.fiber).toBeGreaterThanOrEqual(TARGETS.fiber)
     expect(t.satFat).toBeLessThanOrEqual(TARGETS.satFatMax)
@@ -51,8 +52,21 @@ describe('the default plan', () => {
     expect(scoops('rest')).toBe(1)
   })
 
-  test('the plan meets its own non-negotiables', () => {
-    const entries = Object.values(planFor('training')).flat().map(x => entryFor(foodById(x.foodId), x.qty, 'other'))
+  test('the day types really differ: food, energy and meal names', () => {
+    const foods = type => Object.values(planFor(type)).flat().map(x => x.foodId + x.qty).sort().join()
+    expect(foods('training')).not.toBe(foods('cardio'))
+    expect(foods('cardio')).not.toBe(foods('rest'))
+    expect(foods('training')).not.toBe(foods('rest'))
+    const k = type => planTotals(planFor(type)).kcal
+    expect(k('training')).toBeGreaterThan(k('cardio'))
+    expect(k('cardio')).toBeGreaterThan(k('rest'))
+    expect(slotsFor('rest')[0].title).toBe('Breakfast')
+    expect(slotsFor('training')[0].title).toBe('Pre-gym meal')
+    expect(slotsFor('rest').map(s => s.id)).toEqual(SLOTS.map(s => s.id))
+  })
+
+  test.each(['training', 'cardio', 'rest'])('%s meets its own non-negotiables', type => {
+    const entries = Object.values(planFor(type)).flat().map(x => entryFor(foodById(x.foodId), x.qty, 'other'))
     const n = nonNegotiables(entries, 2750)
     expect(n.filter(x => !x.done).map(x => x.id)).toEqual([])
     expect(nonNegotiables([], 0).every(x => !x.done)).toBe(true)

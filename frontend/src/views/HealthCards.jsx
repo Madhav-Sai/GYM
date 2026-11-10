@@ -19,7 +19,7 @@ function DietHomeCard({ day }) {
   const nav = useNavigate()
   const d = useDietDay(day)
   // Protein from body weight, the same helper as the Diet screen (lib/diet-targets.js).
-  const targets = useDietTargets(d.data?.prefs)
+  const targets = useDietTargets(d.data?.prefs, dayTypeOf(day, d.data?.dayType))
   if (!d.data) return null
   const s = d.data
   return <div className="card tap-host">

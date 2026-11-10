@@ -34,22 +34,57 @@ export const dayTypeOf = (day, override) => (DAY_TYPES.includes(override) ? over
 
 const it = (foodId, qty) => ({ foodId, qty })
 
-// Shared by every day type: the non-negotiables (2 bowls dal from about 60 g raw, vegetables twice,
-// 32 g almonds and walnuts, a bowl of curd, 3 eggs, 150 g chicken or fish).
-const base = {
-  pre: [it('oats', 30), it('sids-milk', 100), it('egg', 150), it('banana', 100)],
-  lunch: [it('rice', 100), it('toor', 100), it('chicken', 150), it('bhindi', 150), it('cucumber', 100), it('mustard-oil', 5)],
-  snack1: [it('almonds', 20), it('walnuts', 12), it('orange', 100)],
-  dinner: [it('chapati', 2), it('moong', 100), it('cabbage', 150), it('mustard-oil', 5)],
-  snack2: [it('curd', 150)],
+// One plan per day type, each with its own energy and carbs (protein stays about the same, from body
+// weight): training days carry the carbs around the gym (oats, banana, rice), cardio days a little
+// less, rest days are low-carb (no oats or banana, one chapati at lunch, Greek yogurt at bedtime).
+// Every day keeps the non-negotiables: 2 dals, 2 vegetables, 32 g almonds + walnuts, curd, 3 eggs,
+// 150 g chicken or fish.
+const PLANS = {
+  training: {
+    pre: [it('oats', 30), it('sids-milk', 100), it('banana', 100), it('egg', 150)],
+    post: [it('whey', 1)],
+    lunch: [it('rice', 125), it('toor', 100), it('chicken', 150), it('bhindi', 150), it('cucumber', 100), it('mustard-oil', 5)],
+    snack1: [it('almonds', 20), it('walnuts', 12), it('guava', 100)],
+    dinner: [it('chapati', 2), it('moong', 80), it('cabbage', 150), it('mustard-oil', 5)],
+    snack2: [it('curd', 150)],
+    bed: [it('isabgol', 1), it('whey', 1)],
+  },
+  cardio: {
+    pre: [it('oats', 20), it('sids-milk', 150), it('egg', 150)],
+    post: [it('whey', 1), it('apple', 150)],
+    lunch: [it('rice', 100), it('masoor', 120), it('rohu', 200), it('palak', 150), it('cucumber', 100), it('mustard-oil', 5)],
+    snack1: [it('almonds', 20), it('walnuts', 12)],
+    dinner: [it('chapati', 2), it('moong', 120), it('beans', 150), it('mustard-oil', 5)],
+    snack2: [it('curd', 150)],
+    bed: [it('isabgol', 1), it('greek-yogurt', 200)],
+  },
+  rest: {
+    pre: [it('egg', 150), it('sids-milk', 150), it('guava', 150)],
+    post: [it('whey', 1)],
+    lunch: [it('chapati', 1), it('toor', 120), it('chicken', 150), it('palak', 150), it('cucumber', 100), it('mustard-oil', 5)],
+    snack1: [it('almonds', 20), it('walnuts', 12), it('apple', 100)],
+    dinner: [it('moong', 120), it('cabbage', 150), it('capsicum', 100), it('mustard-oil', 5)],
+    snack2: [it('curd', 150)],
+    bed: [it('isabgol', 1), it('greek-yogurt', 200)],
+  },
 }
 
-const PLANS = {
-  // whey twice: after the gym and at bedtime
-  training: { ...base, post: [it('whey', 1)], bed: [it('isabgol', 1), it('whey', 1)] },
-  // whey once; the bedtime protein is Greek yogurt instead
-  cardio: { ...base, post: [it('whey', 1)], bed: [it('isabgol', 1), it('greek-yogurt', 200)] },
-  rest: { ...base, post: [it('whey', 1)], lunch: [it('rice', 100), it('rajma', 100), ...base.lunch.slice(2)], bed: [it('isabgol', 1), it('greek-yogurt', 200)] },
+/** Energy and carbs by day type; protein comes from body weight (diet-targets.js). */
+export const DAY_TARGETS = Object.freeze({
+  training: { kcal: 2050, carbs: 210 },
+  cardio: { kcal: 1950, carbs: 195 },
+  rest: { kcal: 1800, carbs: 155 },
+})
+
+/** The meal slots of a day type: same ids and times, named for the day (no "pre-gym" on a rest day). */
+const SLOT_NAMES = {
+  training: { pre: ['Pre-gym meal', 'With coffee and the omega-3'], post: ['Post-gym protein'] },
+  cardio: { pre: ['Pre-cardio meal', 'With coffee and the omega-3'], post: ['After cardio'] },
+  rest: { pre: ['Breakfast', 'With coffee and the omega-3'], post: ['Mid-morning protein'] },
+}
+export function slotsFor(dayType) {
+  const names = SLOT_NAMES[dayType] || SLOT_NAMES.training
+  return SLOTS.map(s => names[s.id] ? { ...s, title: names[s.id][0], note: names[s.id][1] } : s)
 }
 
 /**
