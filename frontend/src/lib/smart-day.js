@@ -11,8 +11,9 @@
 // 67 and up, yellow 34 to 66, red under 34). The rule per band:
 //   red     swap the lifting for the easy 20 minutes of cardio (lib/cardio-plans.js) or rest, diet
 //           a rest day, and keep last week's weights if you lift anyway
-//   yellow  train, no new weight
-//   green   train, try progression
+//   yellow  train, no new weight: "Start today's workout", with a "Keep last week's weights" note
+//   green   train, try progression: "Start today's workout", with a "Try a PR today" note
+// (on a rest day neither offers a start, there is nothing planned to start).
 import { addDays } from './ist.js'
 import { cardioForRoutine } from './cardio-plans.js'
 
@@ -62,21 +63,27 @@ const TEXT = {
   },
 }
 const LIFT = { red: 'keep', yellow: 'hold', green: 'progress' }
+const NOTE = { yellow: "Keep last week's weights", green: 'Try a PR today' }
 
 /**
  * The suggestion for today, or null (no band, switched off, or kept for today).
  * `dayType` is the diet's day type now (lib/diet-plan.js dayTypeOf with the day's override).
- * Returns { band, kind, title, text, lift, dietDayType, cardioKey, actions } where actions is a
- * list of 'diet' (switch to dietDayType), 'cardio' (open cardioKey's plan) and 'keep'.
+ * Returns { band, kind, title, text, lift, dietDayType, cardioKey, note, actions } where actions
+ * is a list of 'diet' (switch to dietDayType), 'cardio' (open cardioKey's plan), 'start' (start
+ * today's routine, as Home's today row does) and 'keep'; `note` is a short line for the start.
  */
 export function smartDay({ band, routines, dayType, kept = false, on = true } = {}) {
   if (!on || kept || !BANDS.includes(band)) return null
   const kind = dayKind(routines)
-  const out = { band, kind, title: TITLE[band], text: TEXT[band][kind], lift: kind === 'lift' ? LIFT[band] : null, dietDayType: null, cardioKey: null, actions: [] }
+  const out = { band, kind, title: TITLE[band], text: TEXT[band][kind], lift: kind === 'lift' ? LIFT[band] : null, dietDayType: null, cardioKey: null, note: null, actions: [] }
   if (band === 'red') {
     out.dietDayType = 'rest'
     if (dayType !== 'rest') out.actions.push('diet')
     if (kind !== 'rest') { out.cardioKey = 'postLift'; out.actions.push('cardio') }
+  } else if (kind !== 'rest') {
+    // Yellow and green: go and train. The note says how hard, on a lifting day.
+    out.actions.push('start')
+    if (kind === 'lift') out.note = NOTE[band]
   }
   out.actions.push('keep')
   return out

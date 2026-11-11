@@ -7,7 +7,8 @@ import { createRoot } from 'react-dom/client'
 import { DEF, useStore } from '../store/useStore.js'
 import { useUI } from '../store/useUI.js'
 import { todayISO, isoOf } from '../lib/format.js'
-import { visitOf, visitOn } from '../lib/gym-visits.js'
+import { visitOf, visitOn, checkInDay } from '../lib/gym-visits.js'
+import { CheckInCard } from './GymVisit.jsx'
 import { streakInfo } from '../lib/streak.js'
 import { dayOverrideSheet } from '../sheets.jsx'
 
@@ -51,6 +52,29 @@ describe('check in a missed day from the calendar', () => {
     expect(streakInfo(S, todayISO()).current).toBeGreaterThan(0)
     // it survives a reload: the stored copy reads the same
     expect(visitOn(JSON.parse(JSON.stringify(S)), day)).toBe(true)
+  })
+  it('the card\'s "What did you do?" chips check in with a class and name the day\'s Whoop workout', () => {
+    const day = checkInDay()
+    const S = structuredClone(DEF)
+    S.workouts = [{ id: 'whoop-1', d: day, start: 1, end: 2, name: 'Functional fitness', entries: [], prs: [], source: 'whoop', whoop: { id: '1', sport: 'functional fitness' } }]
+    useStore.setState({ S })
+    const host = document.createElement('div'); document.body.appendChild(host)
+    const root = createRoot(host); mounted.push(root)
+    act(() => root.render(<CheckInCard />))
+    const chips = [...host.querySelectorAll('[data-testid="visit-classes"] button')].map(b => b.textContent)
+    expect(chips).toEqual(['Gym floor (my plan)', 'HRX', 'Strength & Conditioning', 'Boxing', 'Dance Fitness', 'Yoga', 'Spin', 'Burn', 'HIIT', 'Other'])
+    const chip = name => [...host.querySelectorAll('[data-testid="visit-classes"] button')].find(b => b.textContent === name)
+    act(() => chip('HRX').click())
+    let st = useStore.getState().S
+    expect(visitOf(st, day)).toEqual({ on: true, cls: 'HRX' })
+    expect(st.workouts[0].name).toBe('Cult: HRX')
+    expect(chip('HRX').getAttribute('aria-pressed')).toBe('true')
+    act(() => chip('HRX').click())
+    st = useStore.getState().S
+    expect(visitOf(st, day)).toEqual({ on: true })
+    expect(st.workouts[0].name).toBe('Functional fitness')
+    act(() => chip('Other').click())
+    expect(useUI.getState().sheets).toHaveLength(1)
   })
   it('a future day has no check-in row', () => {
     const d = new Date(); d.setDate(d.getDate() + 3)

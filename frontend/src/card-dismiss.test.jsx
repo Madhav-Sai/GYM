@@ -111,13 +111,13 @@ describe('Home: the streak card and check-in', () => {
     const card = host.querySelector('.checkin-card')
     const day = checkInDay() // today, rolling over at 04:00 (lib/gym-visits.js)
     expect(card.classList.contains('tap-host')).toBe(false)
-    expect([...card.querySelectorAll('button')].map(nameOf)).toEqual(['Check in'])
+    expect([...card.querySelectorAll('button')].filter(b => !b.closest('.visit-classes')).map(nameOf)).toEqual(['Check in'])
     expect(card.textContent).toMatch(/\d+ visits? this month/) // the workout logged today is a gym day
     act(() => card.querySelectorAll('button')[0].click())
     expect(visitOn(useStore.getState().S, day)).toBe(true)
     expect(navSpy).not.toHaveBeenCalled()
     // checked in: Undo, and the centre and note one tap away (this fork)
-    const again = [...host.querySelectorAll('.checkin-card button')]
+    const again = [...host.querySelectorAll('.checkin-card button')].filter(b => !b.closest('.visit-classes'))
     expect(again.map(nameOf)).toEqual(['Undo', 'Add centre or note'])
     act(() => again[1].click())
     const sheet = renderTop()
@@ -128,7 +128,7 @@ describe('Home: the streak card and check-in', () => {
     })
     act(() => [...sheet.querySelectorAll('button')].find(b => nameOf(b) === 'Save').click())
     expect(visitOf(useStore.getState().S, day)).toEqual({ on: true, centre: 'Cult HSR' })
-    const undo = [...host.querySelectorAll('.checkin-card button')]
+    const undo = [...host.querySelectorAll('.checkin-card button')].filter(b => !b.closest('.visit-classes'))
     expect(undo.map(nameOf)).toEqual(['Undo', 'Edit centre or note'])
     act(() => undo[0].click())
     expect(visitOn(useStore.getState().S, day)).toBe(false)
@@ -137,7 +137,7 @@ describe('Home: the streak card and check-in', () => {
     useStore.setState(s => ({ S: { ...s.S, gymCards: [{ id: 'c1', name: 'Gym', value: '123', fmt: 'qr' }] } }))
     const host = mount()
     const card = host.querySelector('.checkin-card')
-    expect([...card.querySelectorAll('button')].map(nameOf)).toEqual(['Check in', 'Membership codes'])
+    expect([...card.querySelectorAll('button')].filter(b => !b.closest('.visit-classes')).map(nameOf)).toEqual(['Check in', 'Membership codes'])
     act(() => [...card.querySelectorAll('button')].find(b => nameOf(b) === 'Membership codes').click())
     expect(navSpy).toHaveBeenCalledWith('/checkin')
   })

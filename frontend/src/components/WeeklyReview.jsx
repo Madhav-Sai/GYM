@@ -55,6 +55,9 @@ export function useWeeklyReview(from, { enabled = true } = {}) {
 const sign = n => (n > 0 ? '+' + n : String(n))
 const pct = n => (Number.isFinite(n) ? Math.round(n) + '%' : DASH)
 
+// Sessions you logged, Whoop's imported workouts left out (shown on their own line).
+const logged = r => Math.max(0, r.workouts.sessions - (r.workouts.whoop || 0))
+
 /** The headline tiles, shared by the card and the sheet. */
 function tilesOf(r) {
   const out = [
@@ -123,7 +126,11 @@ export function WeeklyReviewView({ r, unit = 'kg' }) {
     <div className="list">
       <div className="item"><div className="grow"><div className="tt">{t('Workouts')}</div>
         <div className="ss">{r.workouts.planned ? t('{0} of {1} planned days trained', r.workouts.plannedDone, r.workouts.planned) : t('No plan this week')}</div></div>
-        <div className="wr-val">{r.workouts.sessions === 1 ? t('1 session') : t('{0} sessions', r.workouts.sessions)}</div></div>
+        <div className="wr-val">{logged(r) === 1 ? t('1 session') : t('{0} sessions', logged(r))}</div></div>
+      {/* Whoop workouts (a Cult class, a run) are sessions too, but never a planned day trained. */}
+      {r.workouts.whoop > 0 && <div className="item" data-testid="wr-whoop-sessions"><div className="grow"><div className="tt">{t('Whoop and Cult')}</div>
+        <div className="ss">{t('Not counted as planned days')}</div></div>
+        <div className="wr-val">{r.workouts.whoop === 1 ? t('1 Whoop/Cult session') : t('{0} Whoop/Cult sessions', r.workouts.whoop)}</div></div>}
       <div className="item"><div className="grow"><div className="tt">{t('Gym check-ins')}</div><div className="ss">{r.gym.gymDays === 1 ? t('1 gym day') : t('{0} gym days', r.gym.gymDays)}</div></div>
         <div className="wr-val">{fmtNum(r.gym.checkIns)}</div></div>
       <div className="item"><div className="grow"><div className="tt">{t('PRs')}</div><div className="ss">{r.prs.length ? r.prs.map(p => p.name).join(', ') : t('None this week')}</div></div>

@@ -13,6 +13,7 @@ import { addDays, weekdayOf } from './ist.js'
 import { effectiveRoutineIds } from './history.js'
 import { bestSetOf, formulaOf } from './onerm.js'
 import { visitDays } from './gym-visits.js'
+import { isWhoopWorkout } from './whoop-import.js'
 import { dueOn } from './supplements.js'
 import { EXIDX } from './exercises.js'
 import { exerciseNameText } from './format.js'
@@ -113,11 +114,18 @@ export function liftChanges(S, from) {
   return out.sort((x, y) => y.now.est - x.now.est)
 }
 
-/** Workouts done against the plan: sessions, days trained, planned days and planned days trained. */
+/**
+ * Workouts done against the plan: sessions (every workout, Whoop's included), days trained,
+ * planned days and planned days trained, and `whoop`, the workouts the Whoop band brought in
+ * (lib/whoop-import.js: a Cult class, a run). Only a logged session ticks off a planned lifting
+ * day: a Whoop workout that matched one is linked to it rather than imported, so an imported one
+ * is something else you did, and the card shows it as "N Whoop/Cult sessions" on its own.
+ */
 export function workoutTally(S, from, today) {
   const days = daysOfWeek(from)
   const ws = list(S?.workouts).filter(w => inWeek(w?.d, from))
-  const trained = new Set(ws.map(w => w.d))
+  const whoop = ws.filter(isWhoopWorkout).length
+  const trained = new Set(ws.filter(w => !isWhoopWorkout(w)).map(w => w.d))
   let planned = 0, plannedDone = 0
   for (const d of days) {
     let ids = []
@@ -126,7 +134,7 @@ export function workoutTally(S, from, today) {
     planned++
     if (trained.has(d)) plannedDone++
   }
-  return { sessions: ws.length, days: trained.size, planned, plannedDone }
+  return { sessions: ws.length, days: new Set(ws.map(w => w.d)).size, planned, plannedDone, whoop }
 }
 
 /** The week's PRs: exercise ids a finished session recorded as records (w.prs), each once. */

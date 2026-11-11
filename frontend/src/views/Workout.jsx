@@ -57,6 +57,7 @@ import { glyphOf } from '../lib/glyphs.js'
 import { markAllSetsDone, sessionHistory } from '../lib/backfill.js'
 import { bindWatchActions, markDiscarded } from '../lib/watch-sync.js'
 import { bestSetFor } from '../lib/exercise-history.js'
+import { fillFromLast, lastTimeDiffers, completeLikeLast, repeatTarget, repeatPrevious, lastWorkRows, openWorkRows } from '../lib/quick-log.js'
 import { bindLiveActions } from '../lib/live-activity.js'
 import { isWarmupRow, isFailureSet, toggleFailure, isDropSet, isRestPauseSet, dropsOf, clustersOf, addDrop, addCluster, removeDropAt, removeClusterAt, setDropAt, setClusterAt, nextDropWeight, nextBurstReps, isSideSet, makeSideSet, setSideField, toggleSide, addSideDrop, removeSideDropAt, setSideDropAt, addSideCluster, removeSideClusterAt, setSideClusterAt, WEIGHT_ORIGIN_MANUAL, markWarmupEdited } from '../lib/workout-model.js'
 import { canMoveActiveWorkoutUnit, moveActiveWorkoutUnit, canMoveActiveWorkoutEntry, moveActiveWorkoutEntry } from '../lib/active-workout-order.js'
@@ -768,6 +769,28 @@ function ExerciseBlock({ entryIdx, compact, dense, editing, onToggle, onToggleSi
       {row}
     </SwipeRow>
   }
+  // Quick logging (this fork, lib/quick-log.js). `last` is read in the exercise's own unit, the
+  // same view inEntryUnit hands the update, so the numbers land as they were logged.
+  const quickSrc = lastWorkRows(last, mode).length ? last : null
+  const quickOpen = openWorkRows(entry.sets).length > 0
+  const repeatAt = repeatTarget(entry.sets)
+  const sameAsLast = () => update(s => inEntryUnit(s, entryIdx, e => { e.sets = fillFromLast(e.sets, quickSrc, mode) }), true)
+  const allLikeLast = () => {
+    let lastOpen = -1
+    update(s => inEntryUnit(s, entryIdx, e => {
+      const r = completeLikeLast(e.sets, quickSrc, mode, Date.now())
+      e.sets = r.sets
+      lastOpen = r.lastOpen
+    }), true)
+    // The last one is ticked the normal way, so the rest timer and what comes next run once.
+    if (lastOpen >= 0) onToggle(lastOpen)
+  }
+  const repeatPrev = () => update(s => inEntryUnit(s, entryIdx, e => { e.sets = repeatPrevious(e.sets, mode) }), true)
+  const quickRow = (quickSrc && quickOpen) || repeatAt ? <div className="row quicklog" data-testid="quick-log" style={{ gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
+    {quickSrc && quickOpen && <Button size="sm" variant="tinted" icon="history" disabled={!lastTimeDiffers(entry.sets, quickSrc, mode)} onClick={sameAsLast}>{t('Same as last time')}</Button>}
+    {quickSrc && quickOpen && !editing && <Button size="sm" variant="tinted" icon="check" onClick={allLikeLast}>{t('Do all sets like last time')}</Button>}
+    {repeatAt && <Button size="sm" variant="tinted" icon="copy" onClick={repeatPrev}>{t('Repeat previous set')}</Button>}
+  </div> : null
   return <>
     {/* Animations set to Small: a thumbnail beside the name instead of a strip above it, so the
         first set is on screen without scrolling; a tap brings the full animation back. */}
@@ -910,6 +933,9 @@ function ExerciseBlock({ entryIdx, compact, dense, editing, onToggle, onToggleSi
           </>}
         </div>
       })}
+      {/* Quick logging (lib/quick-log.js): one tap fills the open sets with last time, or does
+          them all like last time, or repeats the set just done in the next one. */}
+      {quickRow}
       <div style={{ height: 8 }} />
       {wc.setShortcuts ? <div className="row" style={{ flexWrap: 'wrap' }}>
         <Button size="sm" icon="sunrise" onClick={onAddWarmup}>{t('Add warm-up set')}</Button>
