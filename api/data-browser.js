@@ -20,8 +20,12 @@ export const REDACTED = '[redacted]';
 const EXCLUDED_DIRS = new Set(['integrations', 'node_modules', 'backups']);
 const EXCLUDED_NAME = [
   /^secret$/i, /secret/i, /token/i, /^vapid\.json$/i, /^coach-auth/i, /\.(key|pem|p12|pfx)$/i,
-  /^db\.json\..+/i, /\.tmp$/i,
+  /^db\.json\..+/i, /\.tmp$/i, /\.partial$/i,
 ];
+// Lab report files (medical/files.js): PDFs and photos of someone's blood work. Their names and
+// sizes are listed, so an admin can see what takes the room; their contents are never served.
+const LISTED_ONLY = /^medical\/files\//;
+export const isListedOnly = rel => LISTED_ONLY.test(String(rel || ''));
 // Field names dropped from every JSON file (case-insensitive, whole name).
 const SECRET_FIELD = /^(pw|pwhash|pwreset|password.*|passwordhash|totp.*|twofa.*|2fa.*|mfa.*|secret.*|.*secret|.*token.*|auth|authkey|apikey|api_key|privatekey|private_key|keys|sealed.*|recovery.*|credential.*|creds)$/i;
 // Whole top-level arrays of db.json that are credentials and nothing else.
@@ -116,6 +120,7 @@ export function createDataBrowser({ dir }) {
   /** One file, read-only: { path, size, mtime, kind: 'json' | 'text', json | text }. Throws 4xx. */
   function read(rel) {
     const f = resolve(rel);
+    if (isListedOnly(f.rel)) throw Object.assign(new Error('a lab report file is listed, never shown'), { status: 403 });
     if (f.size > MAX_FILE_BYTES) throw Object.assign(new Error('file is over 2 MB'), { status: 413 });
     const buf = fs.readFileSync(f.full);
     const meta = { path: f.rel, size: f.size, mtime: f.mtime };
@@ -133,6 +138,7 @@ export function createDataBrowser({ dir }) {
     const skipped = [];
     let total = 0;
     for (const f of list()) {
+      if (isListedOnly(f.path)) { skipped.push({ path: f.path, why: 'lab report file' }); continue; }
       if (total + f.size > MAX_EXPORT_BYTES) { skipped.push({ path: f.path, why: 'export size cap' }); continue; }
       try {
         const buf = fs.readFileSync(path.join(rootReal(), f.path));

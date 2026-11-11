@@ -7,9 +7,10 @@
  * It is a full restore, so it carries the secret material too: db.json with the passkeys,
  * `secret`, `vapid.json` and the sealed tokens in integrations/. That is deliberate; the file sits
  * on the owner's own disk, and a backup without the session secret cannot decrypt the integration
- * tokens or the Coach keys it holds. What it leaves out: the backups folder itself, uploads/ (the
- * photos and videos, large and re-uploaded by the devices), temporary files, symlinks, anything
- * that is not a regular file.
+ * tokens or the Coach keys it holds. The lab report files (medical/files/, PDFs and photos of up
+ * to 10 MB each) go in too, as base64: they exist nowhere else. What it leaves out: the backups
+ * folder itself, uploads/ (the photos and videos, large and re-uploaded by the devices), temporary
+ * files and unfinished uploads (`.partial`), symlinks, anything that is not a regular file.
  *
  * The newest BACKUP_KEEP (14) are kept. BACKUP_DISABLE=1 turns the schedule off.
  *

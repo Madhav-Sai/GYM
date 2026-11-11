@@ -1,6 +1,7 @@
 /* Medical records, per profile: DATA_DIR/medical/u-<uid>.json, written temp-then-rename like every
- * other file here (durable.js). Blood tests, InBody scans and goals. Kept apart from the profile's
- * synced state on purpose: it is health data, it does not ride along in every device's localStorage
+ * other file here (durable.js). Blood tests, InBody scans and goals. A lab result's report file
+ * (PDF or photo) is kept beside it in DATA_DIR/medical/files/<uid>/ (files.js).
+ * Kept apart from the profile's synced state on purpose: it is health data, it does not ride along in every device's localStorage
  * or every backup, and only this profile's session ever reads it.
  *
  * The first read of a profile with no file seeds it (seed.js) and saves, so it happens once. Every
@@ -151,7 +152,23 @@ export function createMedicalStore({ dir, now = Date.now }) {
 
   return {
     get: uid => view(load(uid)),
-    saveLab: (uid, raw) => upsert(uid, 'labs', cleanLab(raw), LIMITS.labs),
+    // An edit keeps the report file attached to the result (files.js); only its own routes change it.
+    saveLab(uid, raw) {
+      const lab = cleanLab(raw);
+      const before = load(uid).labs.find(x => x.id === lab.id);
+      return upsert(uid, 'labs', before?.file ? { ...lab, file: before.file } : lab, LIMITS.labs);
+    },
+    /** One lab result of this profile, or null. */
+    lab: (uid, itemId) => load(uid).labs.find(x => x.id === itemId) || null,
+    /** Attach a report file to a lab result (null takes it off). Returns { doc, old }: old is the file it replaces. */
+    setLabFile(uid, itemId, file) {
+      const d = structuredClone(load(uid));
+      const lab = d.labs.find(x => x.id === itemId);
+      if (!lab) throw Object.assign(new Error('no such entry'), { status: 404, code: 'missing' });
+      const old = lab.file || null;
+      if (file) lab.file = file; else delete lab.file;
+      return { doc: view(write(uid, d)), old };
+    },
     deleteLab: (uid, itemId) => remove(uid, 'labs', itemId),
     saveInbody: (uid, raw) => upsert(uid, 'inbody', cleanInbody(raw), LIMITS.inbody),
     deleteInbody: (uid, itemId) => remove(uid, 'inbody', itemId),

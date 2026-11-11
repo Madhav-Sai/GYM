@@ -11,8 +11,9 @@ import CameraScan from '../components/CameraScan.jsx'
 import { SLOTS, TARGETS, planFor, dayTypeOf, nonNegotiables, slotsFor } from '../lib/diet-plan.js'
 import { proteinBasis, G_PER_KG_MIN, G_PER_KG_MAX, G_PER_KG_STEP, KCAL_MIN, KCAL_MAX } from '../lib/diet-targets.js'
 import { altsFor, proteinSwap, signed } from '../lib/diet-swap.js'
-import { healthDay } from '../lib/ist.js'
-import { useDietDay, useHealthOn, useDietTargets, useFoods, applyFoods } from './health-data.js'
+import { healthDay, addDays } from '../lib/ist.js'
+import { mealFromEntries, mealEntries, copySlot, mealTotals, MEAL_NAME_MAX } from '../lib/diet-meals.js'
+import { useDietDay, useHealthOn, useDietTargets, useFoods, applyFoods, useMeals } from './health-data.js'
 import Icon from '../components/Icon.jsx'
 import CardHead from '../components/CardHead.jsx'
 import { Section, Row, Button, Switch, Segmented, NumberField, TextField, SearchField, Stepper } from '../components/ui.jsx'
@@ -59,7 +60,7 @@ function PlanItem({ item, logged, onToggle }) {
   </button>
 }
 
-function Meal({ slot, items, entries, veg, onVeg, onToggle, onRemove, onAdd }) {
+function Meal({ slot, items, entries, veg, onVeg, onToggle, onRemove, onAdd, onSaveMeal, copyCount = 0, onCopy }) {
   const planKeys = new Set(items.map(i => i.key))
   const extra = entries.filter(e => e.slot === slot.id && !planKeys.has(e.planKey))
   const hasNonVeg = items.some(i => i.swappedFrom || !foodById(i.foodId)?.veg)
@@ -76,6 +77,64 @@ function Meal({ slot, items, entries, veg, onVeg, onToggle, onRemove, onAdd }) {
       <span className="hl-r"><b>{n0(e.kcal)}</b>{n1(e.protein)} g P</span>
     </button>)}
     <Button size="sm" variant="ghost" icon="plus" onClick={onAdd}>{t('Add food')}</Button>
+    {(entries.some(e => e.slot === slot.id) || copyCount > 0) && <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
+      {entries.some(e => e.slot === slot.id) && <Button size="sm" variant="ghost" icon="star" onClick={onSaveMeal}>{t('Save as meal')}</Button>}
+      {copyCount > 0 && <Button size="sm" variant="ghost" icon="copy" onClick={onCopy}>{t("Copy yesterday's {0}", t(slot.title))}</Button>}
+    </div>}
+  </div>
+}
+
+/* ---------- saved meals (lib/diet-meals.js, api/health/meals.js) ---------- */
+function SaveMealSheet({ close, name: name0, entries, onSave }) {
+  const [name, setName] = useState(name0 || '')
+  const meal = mealFromEntries(name, entries)
+  const tot = mealTotals(meal.items)
+  return <>
+    <h3>{t('Save as meal')}</h3>
+    <div className="hl-dim">{t('Saves these {0} items to log again in one tap.', meal.items.length)}</div>
+    <div className="hl-field"><span>{t('Name')}</span><TextField value={name} maxLength={MEAL_NAME_MAX} onChange={e => setName(e.target.value)} aria-label={t('Name')} /></div>
+    <Section>{meal.items.map((it, i) => <Row key={i} title={it.name} subtitle={`${it.qty} ${it.unit} · ${n0(it.kcal)} kcal · ${n1(it.protein)} g P`} />)}</Section>
+    <div className="hl-dim">{t('{0} kcal, {1} g protein', tot.kcal, tot.protein)}</div>
+    <div style={{ height: 14 }} />
+    <Button variant="primary" icon="check" disabled={!meal.name || !meal.items.length} onClick={async () => { if (await onSave(meal)) { useUI.getState().toast(t('Meal saved')); close() } }}>{t('Save meal')}</Button>
+  </>
+}
+
+function MealEditor({ meal, onSave, onDelete, onBack }) {
+  const [name, setName] = useState(meal.name)
+  const [items, setItems] = useState(meal.items)
+  const [sure, setSure] = useState(false)
+  return <>
+    <Section><Row title={t('Edit meal')} value={t('Back')} onClick={onBack} /></Section>
+    <div className="hl-field"><span>{t('Name')}</span><TextField value={name} maxLength={MEAL_NAME_MAX} onChange={e => setName(e.target.value)} aria-label={t('Name')} /></div>
+    <Section>{items.map((it, i) => <Row key={i} title={it.name} subtitle={`${it.qty} ${it.unit} · ${n0(it.kcal)} kcal · ${n1(it.protein)} g P`}
+      value={items.length > 1 ? t('Remove') : null} onClick={items.length > 1 ? () => setItems(items.filter((_, j) => j !== i)) : undefined} />)}</Section>
+    <div style={{ height: 10 }} />
+    <Button variant="primary" icon="check" disabled={!name.trim()} onClick={() => onSave({ id: meal.id, name: name.trim(), items })}>{t('Save')}</Button>
+    <div style={{ height: 8 }} />
+    <Button icon="trash" className="danger" onClick={() => (sure ? onDelete(meal) : setSure(true))}>{sure ? t('Tap again to delete') : t('Delete meal')}</Button>
+  </>
+}
+
+function MyMeals({ slot, onLogMany, close }) {
+  const m = useMeals()
+  const [editing, setEditing] = useState(null)
+  const meals = m.data?.meals
+  if (editing) {
+    return <MealEditor meal={editing} onBack={() => setEditing(null)}
+      onSave={async meal => { if (await m.post('/api/health/meals/save', { meal })) setEditing(null) }}
+      onDelete={async meal => { if (await m.post('/api/health/meals/delete', { id: meal.id })) { useUI.getState().toast(t('Meal deleted')); setEditing(null) } }} />
+  }
+  if (!meals) return <div className="hl-dim" style={{ marginTop: 10 }}>{m.error ? t('Could not reach your server') : t('Loading…')}</div>
+  if (!meals.length) return <div className="hl-dim" style={{ marginTop: 10 }}>{t('No saved meals yet. Log a meal, then tap Save as meal on it.')}</div>
+  return <div className="hl-foods">
+    {meals.map(meal => { const tot = mealTotals(meal.items); return <div key={meal.id} className="row" style={{ gap: 6, alignItems: 'center' }}>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <Row title={meal.name} subtitle={t('{0} items · {1} kcal · {2} g P', meal.items.length, tot.kcal, tot.protein)} value={t('Log it')}
+          onClick={async () => { if (await onLogMany(mealEntries(meal.items, slot))) { useUI.getState().toast(t('Logged {0}', meal.name)); close() } }} />
+      </div>
+      <button type="button" className="iconbtn" onClick={() => setEditing(meal)} aria-label={t('Edit {0}', meal.name)}><Icon name="pencil" /></button>
+    </div> })}
   </div>
 }
 
@@ -112,7 +171,7 @@ function ScannedFood({ food, slot, onLog, onBack, close }) {
 }
 
 /* ---------- log a food: from the database by grams, by barcode, or a custom one ---------- */
-function LogFoodSheet({ close, slot: slot0, onLog }) {
+function LogFoodSheet({ close, slot: slot0, onLog, onLogMany }) {
   const [mode, setMode] = useState('db')
   const [scanned, setScanned] = useState(null)
   const [unknown, setUnknown] = useState(null)
@@ -181,13 +240,14 @@ function LogFoodSheet({ close, slot: slot0, onLog }) {
   const changeMode = v => { setMode(v); setScanned(null); setUnknown(null); if (v === 'custom' && c.barcode) setC({ ...c, barcode: null }) }
   return <>
     <h3>{t('Log food')}</h3>
-    <Segmented options={[{ value: 'db', label: t('From the list') }, { value: 'custom', label: t('Custom') }]} value={mode} onChange={changeMode} />
+    <Segmented options={[{ value: 'db', label: t('From the list') }, ...(onLogMany ? [{ value: 'meals', label: t('My meals') }] : []), { value: 'custom', label: t('Custom') }]} value={mode} onChange={changeMode} />
     <div className="hl-field"><span>{t('Meal')}</span>
       <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
         {slots.map(s => <button key={s.value} type="button" className={'chip' + (slot === s.value ? ' on' : '')} aria-pressed={slot === s.value} onClick={() => setSlot(s.value)}>{s.label}</button>)}
       </div>
     </div>
-    {mode === 'db' && scanned ? <ScannedFood food={scanned} slot={slot} onLog={onLog} close={close} onBack={() => setScanned(null)} />
+    {mode === 'meals' ? <MyMeals slot={slot} onLogMany={onLogMany} close={close} />
+    : mode === 'db' && scanned ? <ScannedFood food={scanned} slot={slot} onLog={onLog} close={close} onBack={() => setScanned(null)} />
     : mode === 'db' ? <>
       {!food ? <>
         <div style={{ height: 10 }} />
@@ -236,7 +296,7 @@ function LogFoodSheet({ close, slot: slot0, onLog }) {
         {keep && <Row title={t('Vegetarian')}><Switch checked={keepVeg} onChange={setKeepVeg} aria-label={t('Vegetarian')} /></Row>}
       </Section>}
     </>}
-    {!(mode === 'db' && scanned) && <>
+    {!(mode === 'db' && scanned) && mode !== 'meals' && <>
       <div style={{ height: 14 }} />
       <Button variant="primary" icon="check" disabled={mode === 'db' && (!food || !qty)} onClick={log}>{t('Log it')}</Button>
     </>}
@@ -298,6 +358,11 @@ export default function Diet() {
   useEffect(() => { const id = setInterval(() => setDay(healthDay()), 60000); return () => clearInterval(id) }, [])
   const d = useDietDay(day, on)
   const data = d.data
+  // Yesterday's log, for "Copy yesterday's lunch"; the saved meals, for "Save as meal".
+  const yday = addDays(day, -1)
+  const y = useDietDay(yday, on)
+  // Only its post: the list itself is read where it is shown (the Log food sheet's My meals).
+  const meals = useMeals(false)
   const type = dayTypeOf(day, data?.dayType)
   const veg = !!data?.prefs?.veg
   const plan = useMemo(() => planFor(type, { veg, vegMeals: data?.vegMeals || {} }), [type, veg, data?.vegMeals])
@@ -314,7 +379,11 @@ export default function Diet() {
     if (logged) return post('unlog', { id: item.key })
     return post('log', { entry: entryFor(foodById(item.foodId), item.qty, slot, item.key) })
   }
-  const openLog = slot => useUI.getState().openSheet(close => <LogFoodSheet close={close} slot={slot} onLog={entry => post('log', { entry })} />)
+  const logMany = entries => (entries.length ? post('log', { entries }) : Promise.resolve(null))
+  const openLog = slot => useUI.getState().openSheet(close => <LogFoodSheet close={close} slot={slot} onLog={entry => post('log', { entry })} onLogMany={logMany} />)
+  const openSaveMeal = s => useUI.getState().openSheet(close => <SaveMealSheet close={close} name={t(s.title)}
+    entries={entries.filter(e => e.slot === s.id)} onSave={meal => meals.post('/api/health/meals/save', { meal })} />)
+  const yEntries = y.data?.day === yday ? y.data.entries || [] : []
   const auto = dayTypeOf(day)
   const checks = nonNegotiables(entries, data.water)
 
@@ -364,7 +433,10 @@ export default function Diet() {
       onVeg={v => post('day', { vegMeals: { [s.id]: v === veg ? null : v } })}
       onToggle={item => toggle(s.id, item)}
       onRemove={e => post('unlog', { id: e.id })}
-      onAdd={() => openLog(s.id)} />)}
+      onAdd={() => openLog(s.id)}
+      onSaveMeal={() => openSaveMeal(s)}
+      copyCount={yEntries.filter(e => e.slot === s.id).length}
+      onCopy={async () => { if (await logMany(copySlot(yEntries, s.id))) useUI.getState().toast(t('Copied from yesterday')) }} />)}
 
     {entries.some(e => e.slot === 'other') && <Section title={t('Other')}>
       {entries.filter(e => e.slot === 'other').map(e => <Row key={e.id} title={e.name} subtitle={`${e.qty} ${e.unit} · ${n0(e.kcal)} kcal · ${n1(e.protein)} g P`} onClick={() => post('unlog', { id: e.id })} value={t('Remove')} />)}

@@ -46,6 +46,8 @@ function useResource(path, enabled) {
 
 export const useDietDay = (day, enabled = true) => useResource('/api/health/diet?day=' + encodeURIComponent(day), enabled)
 export const useSupplements = (enabled = true) => useResource('/api/health/supplements', enabled)
+// Saved meals (api/health/meals.js): { meals }, and every save or delete answers the new list.
+export const useMeals = (enabled = true) => useResource('/api/health/meals', enabled)
 
 /**
  * The day's targets (lib/diet-targets.js): protein from the newest weigh-in or InBody scan, and the

@@ -1,7 +1,7 @@
 // Medical (this fork): the hub with the goals, Labs (blood tests) and InBody. The record is the
 // server's (api/medical/, components/MedicalHome.jsx useMedical); body weight and waist are the
 // profile's own weigh-ins and body measurements, read here rather than copied.
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store/useStore.js'
 import { useUI } from '../store/useUI.js'
@@ -19,6 +19,9 @@ import { Button, NumberField, Row, Section, TextField } from '../components/ui.j
 import { RefBar, TrendChart, WaistWeightChart, GoalBar } from '../components/MedicalCharts.jsx'
 import { useMedical, medicalCall, goalRows, RetestFlag } from '../components/MedicalHome.jsx'
 import { confirmSheet } from '../sheets.jsx'
+import { api, apiBlob, appBase } from '../lib/api.js'
+import { MOBILE, shareExportBlob } from '../lib/mobile.js'
+import { uploadLabFile, labFileProblem, fileSizeLabel, LAB_FILE_ACCEPT } from '../lib/lab-file.js'
 
 const toast = m => useUI.getState().toast(m)
 const sheet = render => useUI.getState().openSheet(render)
@@ -150,6 +153,62 @@ function Panel({ p }) {
   </div>
 }
 
+/* A lab result's report (lib/lab-file.js, api/medical/files.js): open, replace, remove. On the phone
+   the file goes to the system (the share sheet opens it in the PDF viewer or Photos); on the web it
+   opens in a new tab, which carries the session cookie. */
+const REPORT_PROBLEM = {
+  type: 'A report must be a PDF, JPEG or PNG',
+  size: 'A report file is at most 10 MB',
+  empty: 'That file is empty',
+}
+export async function openReport(file) {
+  const path = '/api/medical/labs/file?id=' + encodeURIComponent(file.id)
+  if (MOBILE) {
+    const blob = await apiBlob(path, { expectSize: file.size })
+    await shareExportBlob(new Blob([blob], { type: file.type }), file.name)
+    return
+  }
+  const w = window.open(appBase().replace(/\/$/, '') + path, '_blank', 'noopener')
+  if (w === null && !document.hidden) toast(t('Allow pop-ups for myGym to open the report'))
+}
+
+function LabReport({ lab }) {
+  const input = useRef(null)
+  const [busy, setBusy] = useState(null)
+  const f = lab.file
+  const pick = async e => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    const problem = labFileProblem(file)
+    if (problem) { toast(t(REPORT_PROBLEM[problem])); return }
+    setBusy(0)
+    try {
+      await uploadLabFile(lab.id, file, body => api('/api/medical/labs/file', { method: 'POST', body: JSON.stringify(body), timeout: 120000 }), { onProgress: setBusy })
+      await medicalCall('/api/medical')
+      toast(t('Report saved'))
+    } catch (err) { toast(errText(err)) }
+    finally { setBusy(null) }
+  }
+  const remove = () => confirmSheet({
+    title: t('Remove the report?'), message: t('Deletes {0} from your server. The results stay.', f.name), confirmText: t('Remove'), danger: true,
+    onConfirm: async () => { try { await medicalCall('/api/medical/labs/file/delete', { labId: lab.id }); toast(t('Report removed')) } catch (e) { toast(errText(e)) } },
+  })
+  const open = async () => { try { await openReport(f) } catch (e) { toast(errText(e)) } }
+  return <div className="med-report small">
+    <input ref={input} type="file" accept={LAB_FILE_ACCEPT} hidden onChange={pick} aria-label={t('Report file')} />
+    {busy != null ? <span className="dim">{t('Uploading… {0}%', Math.round(busy * 100))}</span>
+    : f ? <span className="row" style={{ gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+      <span className="dim">{t('Report')}:</span>
+      <button type="button" className="linkbtn" onClick={open} aria-label={t('Open report {0}', f.name)}>{t('open')}</button>
+      <button type="button" className="linkbtn" onClick={() => input.current?.click()}>{t('replace')}</button>
+      <button type="button" className="linkbtn" onClick={remove}>{t('remove')}</button>
+      <span className="dim">{fileSizeLabel(f.size)}</span>
+    </span>
+    : <button type="button" className="linkbtn" onClick={() => input.current?.click()}>{t('Attach report (PDF or photo)')}</button>}
+  </div>
+}
+
 export function MedicalLabs() {
   const m = useMedical()
   const d = m.data
@@ -165,7 +224,7 @@ export function MedicalLabs() {
         <h4 className="sec">{t('Tests')}</h4>
         <div className="card">
           {d.labs.length ? [...d.labs].reverse().map(l => <div className="med-hist" key={l.id}>
-            <div><b>{fmtDate(l.date, false, true)}</b><div className="small dim">{l.lab || DASH} · {t('{0} markers', l.markers.length)}</div></div>
+            <div><b>{fmtDate(l.date, false, true)}</b><div className="small dim">{l.lab || DASH} · {t('{0} markers', l.markers.length)}</div><LabReport lab={l} /></div>
             <div className="row" style={{ gap: 6 }}>
               <button className="iconbtn" onClick={() => labSheet(l, d)} aria-label={t('Edit')}><Icon name="pencil" /></button>
               <button className="iconbtn" onClick={() => confirmSheet({

@@ -43,6 +43,7 @@ import { createIntegrations } from './integrations/index.js';
 import { integrationRoutes } from './integrations/routes.js';
 import { createMedicalStore } from './medical/store.js';
 import { medicalRoutes } from './medical/routes.js';
+import { createLabFiles } from './medical/files.js';
 import { createHealthStore } from './health/store.js';
 import { healthRoutes } from './health/routes.js';
 import { createFoodStore } from './health/foods.js';
@@ -139,6 +140,8 @@ const SECRET = fs.readFileSync(secretFile, 'utf8').trim();
 const integrations = createIntegrations({ dataDir: DATA, secret: SECRET, version: '1' });
 // Medical (this fork, medical/): blood tests, InBody scans and goals, DATA_DIR/medical/u-<uid>.json.
 const medical = createMedicalStore({ dir: path.join(DATA, 'medical') });
+// A lab result's report file (medical/files.js): DATA_DIR/medical/files/<uid>/, sent in pieces under MAX_BODY.
+const labFiles = createLabFiles({ dir: path.join(DATA, 'medical', 'files') });
 // Two-factor secrets (totp.js) are sealed with their own key, derived from SECRET the same way.
 const TOTP_KEY = deriveTotpKey(SECRET);
 // Diet and supplements (health/, our addition): one file per profile in DATA_DIR/health/.
@@ -1384,8 +1387,10 @@ function removeAccount(u) {
   try { MEDIA.removeUser(u.id); } catch (e) { console.error('media: could not remove uploads of', u.id, e.message); }
   // Their integrations: connections, sealed secrets and anything still waiting to be sent.
   try { integrations.removeUser(u.id); } catch (e) { console.error('integrations: could not remove', u.id, e.message); }
-  // Their medical record (blood tests, InBody, goals).
+  // Their medical record (blood tests, InBody, goals) and its report files.
   try { medical.removeUser(u.id); } catch (e) { console.error('medical: could not remove', u.id, e.message); }
+  // Their lab report files.
+  try { labFiles.removeUser(u.id); } catch (e) { console.error('medical: could not remove report files of', u.id, e.message); }
   // Their diet and supplement log.
   try { health.removeUser(u.id); } catch (e) { console.error('health: could not remove', u.id, e.message); }
   saveDb();
@@ -3180,7 +3185,7 @@ const routes = {
 
   /* ---------- medical (this fork) ---------- */
   // medical/routes.js: blood tests, InBody and goals, each profile its own file.
-  ...medicalRoutes({ json, readBody, readSession, store: medical }),
+  ...medicalRoutes({ json, readBody, readSession, store: medical, files: labFiles }),
   /* ---------- diet + supplements ---------- */
   // health/routes.js (our addition), handed the same helpers.
   ...healthRoutes({ json, readBody, readSession, requireAdmin, store: health, foods, barcode, audit }),

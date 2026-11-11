@@ -143,3 +143,21 @@ test('the data browser never lists or reads the backups folder', async t => {
   assert.throws(() => browser.read('backups/backup-2026-11-11.json.gz'), e => e.status === 403);
   assert.ok(!Object.keys(browser.exportAll().files).some(p => p.startsWith('backups')));
 });
+
+test('lab report files go into a backup and come back byte for byte; unfinished uploads do not', async t => {
+  const { root, dir } = dataDir(t);
+  const fdir = path.join(dir, 'medical', 'files', 'u1');
+  fs.mkdirSync(fdir, { recursive: true });
+  const pdf = Buffer.concat([Buffer.from('%PDF-1.7\n'), Buffer.from([0, 1, 2, 255])]);
+  fs.writeFileSync(path.join(fdir, 'aaaaaaaaaaaaaaaaaaaaaaaa.pdf'), pdf, { mode: 0o600 });
+  fs.writeFileSync(path.join(fdir, 'bbbbbbbbbbbbbbbbbbbbbbbb.partial'), 'half');
+  const b = createBackups({ dir, log: silent });
+  const r = await b.run();
+  const gz = fs.readFileSync(path.join(dir, 'backups', r.name));
+  const paths = readBackup(gz).files.map(f => f.path);
+  assert.ok(paths.includes('medical/files/u1/aaaaaaaaaaaaaaaaaaaaaaaa.pdf'));
+  assert.ok(!paths.some(p => p.endsWith('.partial')));
+  const target = path.join(root, 'restored');
+  restoreBackup(gz, target);
+  assert.ok(fs.readFileSync(path.join(target, 'medical/files/u1/aaaaaaaaaaaaaaaaaaaaaaaa.pdf')).equals(pdf));
+});

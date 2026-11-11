@@ -6,6 +6,7 @@ import { validDay, KEEP_DAYS } from './store.js';
 import { addEntry, removeEntry, addWater, setDay, setPrefs, dayView, blankDay } from './diet.js';
 import { saveSupplement, markSupplement } from './supplements.js';
 import { saveFood, hideFood } from './foods.js';
+import { saveMeal, deleteMeal, mealsOf, MAX_MEAL_ITEMS } from './meals.js';
 
 const DAY = 86400_000;
 
@@ -51,7 +52,14 @@ export function healthRoutes({ json, readBody, readSession, requireAdmin, store,
     'POST /api/health/diet/log': guard(async (req, res, user) => {
       const body = await readBody(req);
       const d = dayOf(body.day);
-      const out = store.change(user.id, doc => { const entry = addEntry(dietDay(doc, d), body.entry, new Date(now()).toISOString()); return { entry, ...dayView(doc, d) }; });
+      const at = new Date(now()).toISOString();
+      // `entries` (a saved meal, or yesterday's lunch copied) logs several at once: all or none.
+      if (Array.isArray(body.entries)) {
+        if (!body.entries.length || body.entries.length > MAX_MEAL_ITEMS) throw Object.assign(new Error(`entries must hold 1 to ${MAX_MEAL_ITEMS} items`), { status: 400, code: 'entries' });
+        json(res, 200, store.change(user.id, doc => { const day = dietDay(doc, d); const entries = body.entries.map(e => addEntry(day, e, at)); return { entries, ...dayView(doc, d) }; }));
+        return;
+      }
+      const out = store.change(user.id, doc => { const entry = addEntry(dietDay(doc, d), body.entry, at); return { entry, ...dayView(doc, d) }; });
       json(res, 200, out);
     }),
 
@@ -77,6 +85,22 @@ export function healthRoutes({ json, readBody, readSession, requireAdmin, store,
     'POST /api/health/diet/prefs': guard(async (req, res, user) => {
       const body = await readBody(req);
       json(res, 200, { prefs: store.change(user.id, doc => setPrefs(doc, body)) });
+    }),
+
+    // Saved meals (meals.js): this profile's own, logged again through diet/log with `entries`.
+    'GET /api/health/meals': guard(async (req, res, user) => {
+      json(res, 200, { meals: mealsOf(store.get(user.id)) });
+    }),
+
+    'POST /api/health/meals/save': guard(async (req, res, user) => {
+      const body = await readBody(req);
+      json(res, 200, store.change(user.id, doc => { const meal = saveMeal(doc, body.meal, new Date(now()).toISOString()); return { meal, meals: mealsOf(doc) }; }));
+    }),
+
+    'POST /api/health/meals/delete': guard(async (req, res, user) => {
+      const body = await readBody(req);
+      const id = typeof body.id === 'string' ? body.id.slice(0, 40) : '';
+      json(res, 200, store.change(user.id, doc => { deleteMeal(doc, id); return { meals: mealsOf(doc) }; }));
     }),
 
     'GET /api/health/foods': guard(async (req, res) => {

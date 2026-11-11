@@ -179,7 +179,7 @@ tags:
   - name: medical
     description: >-
       Medical (added by this fork): blood tests, InBody scans and health goals, kept per profile in
-      `DATA_DIR/medical/u-<uid>.json`, apart from the synced state. The first read seeds the owner's
+      `DATA_DIR/medical/u-<uid>.json` (report files in `DATA_DIR/medical/files/<uid>/`), apart from the synced state. The first read seeds the owner's
       starting record once. Every write answers with the whole record.
   - name: integrations
     description: >-
@@ -2873,7 +2873,7 @@ paths:
       operationId: medicalLabDelete
       summary: Delete a blood test
       description: |
-        Removes the test with this `id`.
+        Removes the test with this `id`, and its report file.
       requestBody:
         required: true
         content:
@@ -2892,6 +2892,93 @@ paths:
               schema: { $ref: '#/components/schemas/Error' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { description: 'No entry with that id in this profile (`code`: `missing`).' }
+
+  /api/medical/labs/file:
+    post:
+      tags: [medical]
+      operationId: medicalLabFileUpload
+      summary: Attach a report file to a blood test
+      description: |
+        A PDF, JPEG or PNG of up to 10 MB, kept in `DATA_DIR/medical/files/<uid>/` and named on the
+        result as `file: { id, name, type, size, at }`. There is no multipart: the bytes travel as base64
+        in JSON, in pieces of at most 3 MiB (4 MiB once encoded), so every request stays under the
+        5 MiB body limit of the API and of the web image's nginx. The first piece carries `labId`,
+        `type`, `name` and, when more pieces follow, `size` (the whole file in bytes); it is answered
+        with `{ upload, received, size }`. Each next piece sends `upload`, `offset` (the bytes sent so
+        far) and `data`. A file of one piece leaves `size` out. The answer to the last piece is the
+        whole record with the file attached, replacing (and deleting) the one the result had. The
+        file must start with the magic bytes of its type. An upload with no next piece for 15 minutes
+        is dropped.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [data]
+              properties:
+                labId: { type: string, maxLength: 40 }
+                type: { type: string, enum: [application/pdf, image/jpeg, image/png] }
+                name: { type: string, maxLength: 120 }
+                size: { type: integer, minimum: 1, maximum: 10485760 }
+                upload: { type: string }
+                offset: { type: integer, minimum: 0 }
+                data: { type: string, description: base64 bytes of this piece }
+      responses:
+        '200':
+          description: '`{ upload, received, size }` while pieces are owed, then the whole record plus `file`.'
+          content:
+            application/json:
+              schema: { type: object }
+        '400':
+          description: 'Refused input (`code`: `data`, `size`, `type` when the bytes are not the declared type).'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { description: 'No result with that `labId` in this profile, or no such upload (`code`: `missing`, `upload`).' }
+        '409': { description: 'The piece does not start where the upload stands (`code`: `offset`).' }
+        '413': { description: 'Over 10 MB, or the profile has no room left (`code`: `too-large`, `quota`).' }
+        '415': { description: 'Not a PDF, JPEG or PNG (`code`: `type`).' }
+    get:
+      tags: [medical]
+      operationId: medicalLabFileGet
+      summary: A blood test's report file
+      description: |
+        The file named by `id`, only when one of the signed-in profile's own results names it. Sent with
+        the type it was stored as, `Content-Disposition: inline` and `X-Content-Type-Options: nosniff`.
+      parameters:
+        - { name: id, in: query, required: true, schema: { type: string, pattern: '^[a-f0-9]{24}\.(pdf|jpg|png)$' } }
+      responses:
+        '200':
+          description: The file.
+          content:
+            application/pdf: { schema: { type: string, format: binary } }
+            image/jpeg: { schema: { type: string, format: binary } }
+            image/png: { schema: { type: string, format: binary } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { description: 'No such file in this profile (`code`: `missing`).' }
+
+  /api/medical/labs/file/delete:
+    post:
+      tags: [medical]
+      operationId: medicalLabFileDelete
+      summary: Remove a blood test's report file
+      description: |
+        Takes the file off the result with this `labId` and deletes it.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, required: [labId], properties: { labId: { type: string, maxLength: 40 } } }
+      responses:
+        '200':
+          description: The whole record after the change.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MedicalRecord' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { description: 'No result with that id in this profile (`code`: `missing`).' }
 
   /api/medical/inbody/save:
     post:
@@ -3038,7 +3125,7 @@ paths:
             application/json:
               schema: { type: object }
         '400':
-          description: 'A field was refused (`code`: `invalid`, `day`, `too-many`).'
+          description: 'A field was refused (`code`: `invalid`, `day`, `too-many`, `entries`).'
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
@@ -3051,6 +3138,7 @@ paths:
       summary: Log a food
       description: |
         `entry`: `name`, `qty`, `unit` (g, ml, piece, slice, tsp, scoop), `slot`, `kcal`, `protein`, `carbs`, `fat`, `fiber`, `satFat` (or null), `omega3` (mg, or null), optional `foodId` and `planKey`. An entry with the `planKey` of one already logged replaces it.
+        Or `entries`, 1 to 30 of them at once (a saved meal, a meal copied from yesterday): all are logged, or none.
       requestBody:
         required: true
         content:
@@ -3060,6 +3148,7 @@ paths:
               properties:
                 day: { type: string, example: '2026-11-08' }
                 entry: { type: object }
+                entries: { type: array, maxItems: 30, items: { type: object } }
       responses:
         '200':
           description: The updated view.
@@ -3192,6 +3281,68 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
         '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /api/health/meals:
+    get:
+      tags: [health]
+      operationId: healthMeals
+      summary: The saved meals
+      description: |
+        This profile's saved meals: `{ meals: [{ id, name, items, at }] }`. Each item is a diet entry
+        without its day, slot or plan key. Logged again with `POST /api/health/diet/log` and `entries`.
+      responses:
+        '200':
+          description: The saved meals.
+          content:
+            application/json:
+              schema: { type: object, properties: { meals: { type: array, items: { type: object } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /api/health/meals/save:
+    post:
+      tags: [health]
+      operationId: healthMealSave
+      summary: Save a meal
+      description: |
+        `meal`: `{ name, items }` (1 to 30 items, each checked like a diet entry; a name of up to 60
+        characters). With an `id` it changes that meal; a rename may leave `items` out. At most 100.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, required: [meal], properties: { meal: { type: object } } }
+      responses:
+        '200':
+          description: '`{ meal, meals }`'
+          content:
+            application/json:
+              schema: { type: object }
+        '400':
+          description: 'A field was refused (`code`: `invalid`, `name`, `items`, `too-many`).'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { description: 'No meal with that id in this profile (`code`: `missing`).' }
+
+  /api/health/meals/delete:
+    post:
+      tags: [health]
+      operationId: healthMealDelete
+      summary: Delete a saved meal
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, required: [id], properties: { id: { type: string, maxLength: 40 } } }
+      responses:
+        '200':
+          description: '`{ meals }`'
+          content:
+            application/json:
+              schema: { type: object }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { description: 'No meal with that id in this profile (`code`: `missing`).' }
 
   /api/health/foods:
     get:
