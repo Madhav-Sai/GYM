@@ -25,6 +25,8 @@ struct WhoopBlock: Decodable {
     let respRate: Double?
     let steps: Double?
     let stepGoal: Double?
+    /// Who counted `steps`: "whoop", or "apple-health" when Whoop had none today (lib/steps-source.js).
+    let stepsSource: String?
     let week: [Double?]?
     let strainWeek: [Double?]?
     let weekDays: [String]?
@@ -35,6 +37,11 @@ struct WhoopBlock: Decodable {
 }
 
 private struct WhoopFile: Decodable { let whoop: WhoopBlock? }
+
+extension WhoopBlock {
+    /// "Apple Health" or "Whoop", for the line under the steps.
+    var stepsBy: String { stepsSource == "apple-health" ? "Apple Health" : "Whoop" }
+}
 
 extension WhoopBlock {
     static func load() -> WhoopBlock? {
@@ -352,7 +359,7 @@ struct WhoopStepsView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("\(WH.steps(w?.steps)) steps").font(.headline).widgetAccentable()
                     Gauge(value: WH.frac(w?.steps, goal) ?? 0) { EmptyView() }.gaugeStyle(.accessoryLinearCapacity)
-                    Text("Goal \(WH.steps(goal)) · Whoop").font(.caption2)
+                    Text("Goal \(WH.steps(goal)) · \(w?.stepsBy ?? "Whoop")").font(.caption2)
                 }
             case .accessoryInline:
                 Text("\(WH.steps(w?.steps)) steps")
@@ -364,7 +371,7 @@ struct WhoopStepsView: View {
                         Image(systemName: "figure.walk").font(.system(size: 11, weight: .bold)).foregroundColor(WH.steps)
                     }
                     WRing(frac: WH.frac(w?.steps, goal), color: WH.steps, value: WH.steps(w?.steps), line: 10, font: 20)
-                    Text("of \(WH.steps(goal)) · counted by Whoop").font(.system(size: 9, weight: .medium)).foregroundColor(WH.dim).lineLimit(1).minimumScaleFactor(0.7)
+                    Text("of \(WH.steps(goal)) · counted by \(w?.stepsBy ?? "Whoop")").font(.system(size: 9, weight: .medium)).foregroundColor(WH.dim).lineLimit(1).minimumScaleFactor(0.7)
                 }
             }
         }
@@ -382,7 +389,7 @@ struct WhoopStepsWidget: Widget {
             WhoopStepsView(entry: entry)
         }
         .configurationDisplayName("Steps")
-        .description("Today's steps from Whoop against your 8,000 goal.")
+        .description("Today's steps from Whoop, or from Apple Health when Whoop has none, against your 8,000 goal.")
         .supportedFamilies([.systemSmall, .accessoryCircular, .accessoryRectangular, .accessoryInline])
     }
 }

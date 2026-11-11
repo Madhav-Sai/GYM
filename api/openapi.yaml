@@ -4004,6 +4004,74 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
 
+  /api/admin/backups:
+    get:
+      tags: [admin]
+      operationId: adminBackups
+      summary: 'Admin: list the server backups'
+      description: >-
+        This fork. The daily backups in `DATA_DIR/backups` (`backup-YYYY-MM-DD.json.gz`), newest first. `enabled` is false
+        when `BACKUP_DISABLE=1`; `keep` is how many are kept (`BACKUP_KEEP`, 14 by default).
+      responses:
+        '200':
+          description: '`{ enabled, keep, backups: [{ name, size, date, mtime }] }`'
+          content:
+            application/json:
+              schema: { type: object }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /api/admin/backups/file:
+    get:
+      tags: [admin]
+      operationId: adminBackupFile
+      summary: 'Admin: download one server backup'
+      description: >-
+        This fork. The gzipped JSON file itself. It is a full restore, so it carries every secret on the server (passkeys,
+        the session secret, the push key, sealed integration tokens); the download is audited. `name` must match
+        `backup-YYYY-MM-DD.json.gz` exactly.
+      parameters:
+        - { name: name, in: query, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: The backup, as `application/gzip`.
+          content:
+            application/gzip:
+              schema: { type: string, format: binary }
+        '400':
+          description: Not a backup name.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404':
+          description: No such backup.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /api/admin/backups/run:
+    post:
+      tags: [admin]
+      operationId: adminBackupRun
+      summary: 'Admin: make a server backup now'
+      description: >-
+        This fork. Writes today's backup (replacing an earlier one from the same day) and removes the oldest beyond `keep`.
+      responses:
+        '200':
+          description: '`{ ok, backup: { name, size, date }, files, skipped, removed }`'
+          content:
+            application/json:
+              schema: { type: object }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409':
+          description: Backups are turned off (`BACKUP_DISABLE=1`).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
   /api/admin/data/files:
     get:
       tags: [admin]

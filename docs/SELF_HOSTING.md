@@ -812,6 +812,57 @@ API keys for the HTTPS providers (Anthropic, OpenAI, Gemini, a compatible endpoi
 other way round: they are in `./data/coach.json`, encrypted with `./data/secret`, so they *are*
 in this archive — and unreadable without the secret next to them, like everything else in it.
 
+### Automatic backups on the server
+
+On a host where nobody backs up the volume for you (Railway, for one), the api makes its own.
+Once a day, and when it starts if the newest is more than a day old, it writes
+`data/backups/backup-YYYY-MM-DD.json.gz`: every file in `data/` except `data/backups/` itself and
+`data/uploads/` (the photos and videos). It keeps the newest 14.
+
+| Variable | Default | |
+|---|---|---|
+| `BACKUP_KEEP` | `14` | How many daily backups to keep. |
+| `BACKUP_DISABLE` | unset | `1` turns the daily backup and **Back up now** off. |
+
+Each backup is a full restore, so it carries everything a restore needs: `db.json` with the
+passkeys, `secret`, `vapid.json` and the sealed tokens in `integrations/`. The files are readable
+only by the user the api runs as (mode 0600), the data browser never shows them, and every
+download is in the activity log. A copy on the same volume does not survive losing the volume:
+download one now and then from **Admin → Data and tools → Server backups**, which lists them and
+has **Back up now**, and keep it somewhere private.
+
+A backup is plain gzip around one JSON document, `{ format: "mygym-backup", files: [{ path, mode,
+encoding, data }] }`, so it can be read without myGym. To restore one:
+
+1. Stop the api, so it does not write while files are put back: `docker compose stop api`.
+2. Optional but cleanest: move the current `data/` aside (`mv data data.before-restore`) and make
+   an empty one (`mkdir data`). Restoring over a folder overwrites the files in the backup and
+   leaves any others alone, such as a profile created after the backup was made.
+3. Write the files back. With the api image (it carries `backups.js`):
+
+   ```bash
+   docker compose run --rm --no-deps api \
+     node backups.js restore /data/backups/backup-2026-11-10.json.gz /data
+   ```
+
+   With a backup you downloaded, put it in `data/` first and give that path instead. Without the
+   image, any Node 18 or later does the same:
+
+   ```bash
+   gunzip -c backup-2026-11-10.json.gz > backup.json
+   node -e 'const fs=require("fs"),p=require("path");const[,f,d]=process.argv;for(const e of JSON.parse(fs.readFileSync(f)).files){if(e.path.split("/").includes(".."))continue;const t=p.join(d,e.path);fs.mkdirSync(p.dirname(t),{recursive:true});fs.writeFileSync(t,Buffer.from(e.data,e.encoding),{mode:e.mode})}' backup.json ./data
+   ```
+
+4. Put `data/uploads/` back too if you moved the folder aside (the backup does not have it; an
+   exercise whose file is missing shows a placeholder until a device uploads it again).
+5. Start the api: `docker compose start api`. Everyone stays signed in, since `secret` came back
+   with the rest.
+
+On Railway the volume is only mounted in the running service: open a shell into it
+(`railway ssh`), run the `node backups.js restore …` line above against `/data`, then restart the
+service straight away, before anyone uses the app: the running api still holds the old accounts in
+memory and would write them back on its next change.
+
 ## 7. Notifications
 
 openGym can push two kinds of alert to your phone/desktop, even when the app isn't open:

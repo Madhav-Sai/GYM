@@ -2,6 +2,7 @@ import { memo, useCallback, useEffect, useId, useMemo, useRef, useState } from '
 import { t } from '../lib/i18n.js'
 import { DASH, numOrDash, fmtSleep, fmtSteps, zoneLine } from '../lib/whoop.js'
 import { fmtAgo } from '../lib/format.js'
+import { stepsSourceOf, STEPS_APPLE } from '../lib/steps-source.js'
 import {
   bandOf, pct, trendOf, clockOf, durMin, STEP_GOAL, STRAIN_MAX, ZONE_INK, WH, BAND_COLOR,
   dayView, dayStrip, dayParts, shiftDay, fmtDay, seriesOf, windowTo, statsOf, trendArrow, METRICS, metricDetail,
@@ -377,7 +378,7 @@ export function WhoopHomeDash({ s, onOpen, onDay }) {
       <div><b>{numOrDash(rec?.hrv)}</b><span>{t('HRV ms')}</span></div>
       <div><b>{numOrDash(rec?.rhr)}</b><span>{t('RHR bpm')}</span></div>
       <div><b>{fmtSleep(sl?.asleepMin)}</b><span>{t('Asleep')}</span></div>
-      <div><b>{fmtSteps(s?.steps?.value)}</b><span>{t('Steps')}</span></div>
+      <div><b>{fmtSteps(s?.steps?.value)}</b><span>{stepsSourceOf(s) === STEPS_APPLE ? t('Steps (Apple Health)') : t('Steps')}</span></div>
     </div>
     {week.length > 1 && <div className="whd-week">
       <Chart days={wd} values={wv} max={100} ink={inkRec} height={44} fmt={fmtRec} axis={false} showAvg={false}
@@ -521,7 +522,7 @@ export function WhoopDashboard({ s, initialDay = null, onRefresh }) {
         <div className="whd-kv"><span>{t('Goal')}</span><b>{fmtSteps(STEP_GOAL)}</b></div>
         <div className="whd-kv"><span>{t('7-day average')}</span><b>{fmtSteps(avg.steps?.d7)}</b></div>
         <div className="whd-kv"><span>{t('30-day average')}</span><b>{fmtSteps(avg.steps?.d30)}</b></div>
-        <div className="whd-src">{t('Counted by Whoop')}</div>
+        <div className="whd-src">{v.isToday && stepsSourceOf(s) === STEPS_APPLE ? t('Counted by Apple Health') : t('Counted by Whoop')}</div>
       </div>
     </div>
 

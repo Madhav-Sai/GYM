@@ -865,6 +865,9 @@ h4.sec{
 }
 .chip:active{transform:scale(var(--press-scale))}
 .chip.on{background:var(--acc);color:var(--on-acc);font-weight:500}
+/* Volume by muscle (Stats): the picker sits on a card, so an unpicked chip takes the quiet fill. */
+.mvol-chips{margin:0 -4px 6px}
+.mvol-chips .chip:not(.on){background:var(--surface-2)}
 .chip.on .dim{color:color-mix(in srgb,var(--on-acc) 62%,transparent)}
 @supports not (color: color-mix(in srgb, red 50%, blue)){.chip.on .dim{color:var(--on-acc)}}
 /* A chip with an icon in front (the day note's Sick / Travelling / …): the icon is a block, so

@@ -48,6 +48,7 @@ import { healthRoutes } from './health/routes.js';
 import { createFoodStore } from './health/foods.js';
 import { createBarcodeCache, createBarcodeLookup } from './health/barcode.js';
 import { createDataBrowser } from './data-browser.js';
+import { createBackups } from './backups.js';
 import { excusedOn, nudgeFor, nudgeWindowOpen, toneOf } from './nudge.js';
 import { wrappedPushYear, wrappedSummary, wrappedPushOwed, wrappedPush } from './wrapped.js';
 import {
@@ -148,6 +149,11 @@ const foods = createFoodStore({ file: path.join(DATA, 'health', 'foods.json') })
 const barcode = createBarcodeLookup({ cache: createBarcodeCache({ file: path.join(DATA, 'health', 'barcodes.json') }) });
 // The admin data browser and export (data-browser.js): read-only, secrets never served.
 const dataBrowser = createDataBrowser({ dir: DATA });
+// Daily backups of DATA_DIR into DATA_DIR/backups (backups.js): BACKUP_KEEP of them, BACKUP_DISABLE=1
+// turns the schedule and "Back up now" off. Listing and downloading the ones there still work.
+const BACKUPS_ON = process.env.BACKUP_DISABLE !== '1';
+const backups = createBackups({ dir: DATA, keep: Number(process.env.BACKUP_KEEP) || 14 });
+if (BACKUPS_ON) backups.start();
 
 const dbFile = path.join(DATA, 'db.json');
 // Every account, passkey and invite. Only a missing file starts empty: an unreadable one (a write
@@ -3203,6 +3209,48 @@ const routes = {
     audit(req, 'admin.export', { user: admin });
     const day = new Date().toISOString().slice(0, 10);
     json(res, 200, dataBrowser.exportAll(), { 'Content-Disposition': `attachment; filename="mygym-export-${day}.json"` });
+  },
+
+  /* ---------- server backups (our addition, backups.js) ---------- */
+  // Admin only. A backup carries every secret on purpose (it is a full restore), so it is never
+  // shown in the data browser, and a download is audited.
+  'GET /api/admin/backups': async (req, res) => {
+    if (!requireAdmin(req, res)) return;
+    json(res, 200, { enabled: BACKUPS_ON, keep: backups.keep, backups: backups.list().map(({ name, size, date, mtime }) => ({ name, size, date, mtime })) });
+  },
+
+  'GET /api/admin/backups/file': async (req, res) => {
+    const admin = requireAdmin(req, res); if (!admin) return;
+    const name = new URL(req.url, 'http://x').searchParams.get('name');
+    let f;
+    try { f = backups.resolve(name); }
+    catch (e) {
+      if (!e?.status) throw e;
+      if (e.status === 400) audit(req, 'admin.denied', { ok: false, user: admin, msg: 'backup file' });
+      return json(res, e.status, { error: e.message });
+    }
+    audit(req, 'admin.backup.download', { user: admin, msg: f.name });
+    let fd;
+    try { fd = fs.openSync(f.full, 'r'); } catch { return json(res, 404, { error: 'no such backup' }); }
+    res.writeHead(200, {
+      'Content-Type': 'application/gzip',
+      'Content-Length': String(fs.fstatSync(fd).size),
+      'Cache-Control': 'private, no-store',
+      'X-Content-Type-Options': 'nosniff',
+      'Content-Security-Policy': "default-src 'none'; sandbox",
+      'Content-Disposition': `attachment; filename="${f.name}"`,
+      'Access-Control-Expose-Headers': 'Content-Length'
+    });
+    try { await pipeline(fs.createReadStream(null, { fd }), res); }
+    catch { res.destroy(); }
+  },
+
+  'POST /api/admin/backups/run': async (req, res) => {
+    const admin = requireAdmin(req, res); if (!admin) return;
+    if (!BACKUPS_ON) return json(res, 409, { error: 'backups are turned off on this server (BACKUP_DISABLE=1)' });
+    const r = await backups.run();
+    audit(req, 'admin.backup.run', { user: admin, msg: r.name });
+    json(res, 200, { ok: true, backup: { name: r.name, size: r.size, date: r.date }, files: r.files, skipped: r.skipped, removed: r.removed });
   },
 
   /* ---------- photos & videos ---------- */

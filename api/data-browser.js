@@ -16,7 +16,8 @@ export const MAX_FILE_BYTES = 2 * 1024 * 1024;
 export const MAX_EXPORT_BYTES = 64 * 1024 * 1024;
 export const REDACTED = '[redacted]';
 
-const EXCLUDED_DIRS = new Set(['integrations', 'node_modules']);
+// backups/ (backups.js) holds full copies of everything, secrets included: never listed, never read.
+const EXCLUDED_DIRS = new Set(['integrations', 'node_modules', 'backups']);
 const EXCLUDED_NAME = [
   /^secret$/i, /secret/i, /token/i, /^vapid\.json$/i, /^coach-auth/i, /\.(key|pem|p12|pfx)$/i,
   /^db\.json\..+/i, /\.tmp$/i,

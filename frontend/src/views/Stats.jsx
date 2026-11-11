@@ -46,6 +46,8 @@ import { tappable } from '../lib/use-sheet-keyboard.js'
 import { isWarmupRow } from '../lib/workout-model.js'
 import { exView, exUnitOf, shownWeight } from '../lib/ex-unit.js'
 import { isOn } from '../lib/modules.js'
+import { muscleVolumeOf, shownMuscles } from '../lib/muscle-volume.js'
+import MuscleVolumeChart, { VOLUME_COLORS } from '../components/MuscleVolumeChart.jsx'
 
 // Set 1 to 5 on the per-set chart — system colours, so each line keeps its hue in dark mode.
 const SET_COLORS = ['var(--blue)', 'var(--green)', 'var(--orange)', 'var(--purple)', 'var(--pink)']
@@ -194,6 +196,30 @@ const SET_STATUS = { below: () => t('room for more'), in: () => t('in range'), a
    (a week, or the weekly average of a longer window), Planned the sets your plan programs in a
    week. This week's plan rides along on the Completed bars as a tick, so the old "11/11 · 100%"
    is still there to read. Fatigue and Strength stay one tap away in the same card. */
+/* Volume by muscle (our addition): weight × reps per muscle per week, the last eight weeks, as
+   stacked bars (lib/muscle-volume.js, components/MuscleVolumeChart.jsx). The five muscles with
+   the most volume are drawn until the chips pick others; a tap on a week gives its numbers. */
+function MuscleVolumeCard({ S }) {
+  const vol = useMemo(() => muscleVolumeOf(S), [S.workouts, S.weekStart, S.volumeWarmups, S.bodyweight, S.unit])
+  const [picked, setPicked] = useState(null)
+  if (!vol.ranked.length) return null
+  const shown = shownMuscles(vol, picked)
+  const toggle = m => setPicked(() => {
+    const cur = shown
+    if (cur.includes(m)) return cur.length > 1 ? cur.filter(x => x !== m) : cur
+    return cur.length >= VOLUME_COLORS.length ? cur : [...cur, m]
+  })
+  return <div className="card" data-muscle-volume-card>
+    <h2>{t('Volume by muscle')} <span className="dim">· {t('last 8 weeks')}</span></h2>
+    <div className="chips mvol-chips">
+      {vol.ranked.map(m => <button type="button" key={m} className={'chip nocap' + (shown.includes(m) ? ' on' : '')}
+        aria-pressed={shown.includes(m)} data-muscle={m} onClick={() => toggle(m)}>{t(MUSCLE_NAME[m] || m)}</button>)}
+    </div>
+    <div className="chart"><MuscleVolumeChart vol={vol} muscles={shown} unit={S.unit || 'kg'} /></div>
+    <div className="small dim" style={{ marginTop: 6 }}>{t('Weight × reps of your work sets. A secondary muscle gets part of the volume.')}</div>
+  </div>
+}
+
 function MusclesCard({ S, planFocus = false }) {
   const nav = useNavigate()
   const [view, setView] = useState('sets')
@@ -1017,6 +1043,7 @@ export default function Stats() {
       </> : <div className="muted small">{t('Finish your first workout and your progress curves will show up here.')}</div>}
     </div>
     {(workouts.length > 0 || Object.keys(loadOfWeeklyPlan(S)).length > 0) && <MusclesCard S={S} planFocus={planFocus} />}
+    {workouts.length > 0 && <MuscleVolumeCard S={S} />}
     {/* Beginner to Elite for the main lifts (lib/strength-level.js); hidden without a weigh-in. */}
     {workouts.length > 0 && on('strength') && <StrengthLevelsCard S={S} />}
     {!effortOn && timeCard && <ExerciseTimeCard S={S} />}

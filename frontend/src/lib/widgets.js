@@ -38,6 +38,7 @@ import { TARGETS, DAY_TARGETS, dayTypeOf } from './diet-plan.js'
 import { checklist } from './supplements.js'
 import { healthDay, healthMinutes } from './ist.js'
 import { DEMO } from './demo.js'
+import { needsStepsFallback, withStepsFallback, stepsSourceOf } from './steps-source.js'
 
 export const WIDGET_SNAPSHOT_VERSION = 2
 // What the weight goal's little curve draws: the last weigh-ins.
@@ -302,7 +303,7 @@ export function whoopWidgetBlock (s) {
     hrv: n(r.hrv), rhr: n(r.rhr), spo2: n(r.spo2), skinTemp: n(r.skinTemp),
     strain: n(c.strain), kcal: n(c.kcal),
     sleepMin: n(sl.asleepMin), sleepNeedMin: n(sl.neededMin), sleepPerf: n(sl.performance), respRate: n(sl.respRate),
-    steps: n(s.steps?.value), stepGoal: 8000,
+    steps: n(s.steps?.value), stepsSource: stepsSourceOf(s), stepGoal: 8000,
     week: week.map(d => n(d.recovery)), strainWeek: week.map(d => n(d.strain)), weekDays: week.map(d => d.day),
     // The configurable "Whoop metric" widget's sparklines (MyGymWidgets.swift), oldest first.
     hrvWeek: week.map(d => n(d.hrv)), rhrWeek: week.map(d => n(d.rhr)), sleepWeek: week.map(d => n(d.sleepMin)),
@@ -429,7 +430,13 @@ export async function startWidgetSync ({ useStore }) {
   const pullWhoop = async (st, api) => {
     if (!(st.config?.integrations?.providers || []).includes('whoop')) return
     try {
-      const next = whoopWidgetBlock(await api('/api/whoop/summary'))
+      let sum = await api('/api/whoop/summary')
+      // Whoop without a step count today: Apple Health's, on the iPhone, when it is on (lib/steps-source.js).
+      if (needsStepsFallback(sum)) {
+        const apple = await import('./health-sync.js').then(m => m.readTodaySteps({ S: st.S })).catch(() => null)
+        sum = withStepsFallback(sum, apple, todayISO())
+      }
+      const next = whoopWidgetBlock(sum)
       if (JSON.stringify(next) !== JSON.stringify(whoop)) { whoop = next; schedule() }
     } catch { /* offline: keep the last numbers */ }
   }
