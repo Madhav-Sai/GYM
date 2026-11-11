@@ -37,6 +37,8 @@ import { NowStrip, HubTiles, customizeHomeSheet } from '../components/HomeHub.js
 import { layoutOf, visibleIds } from '../lib/home-layout.js'
 import { ChallengesCard } from '../components/Challenges.jsx'
 import { isOn } from '../lib/modules.js'
+import { SmartDayBanner } from '../components/SmartDay.jsx'
+import { WeeklyReviewHomeCard } from '../components/WeeklyReview.jsx'
 
 // Home = what to do now + a quick glance. Deep charts & history live in Stats.
 export default function Home() {
@@ -133,6 +135,8 @@ export default function Home() {
   // Each Home card by its id (lib/home-layout.js CARD_IDS), drawn in the order Customize Home keeps.
   const CARDS = {
     now: () => <NowStrip />,
+    // Smart day (lib/smart-day.js): today's Whoop band against the plan, with one-tap actions.
+    smartday: () => <SmartDayBanner />,
     tiles: () => <HubTiles streak={streak} />,
     week: () => <>
         <div className="card">
@@ -196,6 +200,8 @@ export default function Home() {
           <SeasonDeco spot="home-hero" />
         </div>
         </>,
+    // Sunday and Monday: the week in review (lib/weekly-review.js), until its × puts it away.
+    review: () => <WeeklyReviewHomeCard />,
     highlights: () => <>
         {/* Monday: Your week; the 1st: Your month (lib/recap.js). Off in Settings → Look & Home. */}
         <RecapHomeCard S={S} />

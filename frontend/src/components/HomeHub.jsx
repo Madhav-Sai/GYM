@@ -185,7 +185,7 @@ const TILE_NAME = {
   schedule: 'Schedule', stats: 'Stats', history: 'History', library: 'Exercises', plan: 'Plan', guide: 'Guide',
 }
 const CARD_NAME = {
-  now: 'Now strip', tiles: 'Tiles', week: 'Week and today', highlights: 'Recaps and seasonal', recovery: 'Recovery hint',
+  now: 'Now strip', smartday: 'Smart day', tiles: 'Tiles', review: 'Weekly review', week: 'Week and today', highlights: 'Recaps and seasonal', recovery: 'Recovery hint',
   whoop: 'Whoop card', medical: 'Medical card', cardio: 'Today’s cardio', health: 'Diet and supplements cards',
   challenges: 'Challenges', checkin: 'Gym check-in', bodyweight: 'Body weight', streak: 'Streak',
 }

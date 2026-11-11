@@ -8,7 +8,7 @@
 // whole), the newest arrangement wins. All functions are pure.
 
 export const TILE_IDS = ['workout', 'checkin', 'whoop', 'diet', 'supps', 'medical', 'schedule', 'stats', 'history', 'library', 'plan', 'guide']
-export const CARD_IDS = ['now', 'tiles', 'week', 'highlights', 'recovery', 'whoop', 'medical', 'cardio', 'health', 'challenges', 'checkin', 'bodyweight', 'streak']
+export const CARD_IDS = ['now', 'smartday', 'tiles', 'week', 'review', 'highlights', 'recovery', 'whoop', 'medical', 'cardio', 'health', 'challenges', 'checkin', 'bodyweight', 'streak']
 export const GROUPS = { tiles: TILE_IDS, cards: CARD_IDS }
 
 const isMap = v => !!v && typeof v === 'object' && !Array.isArray(v)

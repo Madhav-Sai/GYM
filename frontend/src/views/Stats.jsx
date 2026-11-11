@@ -46,6 +46,7 @@ import { tappable } from '../lib/use-sheet-keyboard.js'
 import { isWarmupRow } from '../lib/workout-model.js'
 import { exView, exUnitOf, shownWeight } from '../lib/ex-unit.js'
 import { isOn } from '../lib/modules.js'
+import { weeklyReviewSheet } from '../components/WeeklyReview.jsx'
 
 // Set 1 to 5 on the per-set chart — system colours, so each line keeps its hue in dark mode.
 const SET_COLORS = ['var(--blue)', 'var(--green)', 'var(--orange)', 'var(--purple)', 'var(--pink)']
@@ -901,6 +902,11 @@ export default function Stats() {
     {workouts.length > 0 && motivationOn && <StreakCard info={streak} />}
     {/* The month's challenges and the trophy shelf (lib/challenges.js), folded to one line. */}
     {workouts.length > 0 && motivationOn && <ChallengesStatsCard S={S} />}
+
+    {/* The weekly review (this fork, components/WeeklyReview.jsx): any week, a week back or forward. */}
+    <div className="sect-b stats-links" data-weekly-review>
+      <Row title={t('Weekly review')} subtitle={t('Workouts, lifts, Whoop, diet and supplements, week by week')} accessory="chevron" className="stats-link" onClick={() => weeklyReviewSheet()} />
+    </div>
 
     <div className="card">
       <SeasonDeco spot="stats-heatmap" />

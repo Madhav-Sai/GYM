@@ -1,0 +1,14 @@
+/* The weekly review card and sheet, and the smart day banner (this fork). */
+.wr-tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin:10px 0 4px}
+.wr-tile{min-width:0;padding:8px 6px;border-radius:12px;background:var(--surface-2);text-align:center}
+.wr-v{font-size:var(--fs-headline);font-weight:700;font-variant-numeric:tabular-nums;line-height:1.15;white-space:nowrap}
+.wr-v small{font-size:var(--fs-caption);font-weight:600}
+.wr-v small.up,.wr-val small.up{color:var(--green)}
+.wr-v small.down,.wr-val small.down{color:var(--red)}
+.wr-l{font-size:var(--fs-caption);color:var(--label-2);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wr-sugg{display:flex;flex-direction:column;gap:6px;margin-top:10px}
+.wr-sugg-row{display:flex;gap:8px;align-items:flex-start;font-size:var(--fs-subhead);line-height:1.35}
+.wr-sugg-row svg{flex:none;color:var(--gold-ink,var(--yellow));margin-top:2px}
+.wr-val{flex:none;font-weight:600;font-variant-numeric:tabular-nums;text-align:end;margin-inline-start:8px}
+.weekly-review .empty{padding:14px 12px}
+.smart-day .btn{width:auto}
