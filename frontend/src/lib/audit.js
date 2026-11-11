@@ -81,6 +81,9 @@ const LABELS = {
   'admin.foods.save': 'Changed a food',
   'admin.foods.delete': 'Hid, restored or reset a food',
   'admin.export': 'Exported all data',
+  // Server backups (api/backups.js); `msg` is the file name.
+  'admin.backup.run': 'Made a server backup',
+  'admin.backup.download': 'Downloaded a server backup',
   // FIRST_USER_ADMIN=1: the first profile on a fresh instance is made admin as it signs up.
   'admin.first-user': 'Became admin as the first profile',
   'admin.denied': 'Blocked from an admin action',

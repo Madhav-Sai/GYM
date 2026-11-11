@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useStore } from '../store/useStore.js'
 import { useUI } from '../store/useUI.js'
-import { api } from '../lib/api.js'
+import { api, apiBlob } from '../lib/api.js'
+import { fmtBytes } from '../lib/admin-data.js'
 import { fmtDate, fmtNum, fmtVol, fmtDur } from '../lib/format.js'
 import { auditCat, auditLine, fmtWhen } from '../lib/audit.js'
 import { workoutVolume, setsDone } from '../lib/history.js'
@@ -336,6 +337,53 @@ function WhoopRow() {
   </div>
 }
 
+// The server's own daily backups (api/backups.js): one gzipped JSON file a day in
+// DATA_DIR/backups, the newest 14 kept. A backup is a full restore, secrets included, so it is
+// downloaded here and never shown in the data browser.
+function BackupRows() {
+  const toast = useUI(s => s.toast)
+  const [d, setD] = useState(null)
+  const [err, setErr] = useState(null)
+  const [busy, setBusy] = useState(false)
+  const load = () => api('/api/admin/backups').then(r => { setD(r); setErr(null) }).catch(e => setErr(e.message || 'Could not load the backups'))
+  useEffect(() => { load() }, [])
+  const runNow = async () => {
+    setBusy(true)
+    try { const r = await api('/api/admin/backups/run', { method: 'POST', body: '{}', timeout: 120000 }); toast(`Backed up ${r.files} files`); load() }
+    catch (e) { toast(e.message || 'Backup failed') }
+    finally { setBusy(false) }
+  }
+  const download = async b => {
+    try {
+      const blob = await apiBlob('/api/admin/backups/file?name=' + encodeURIComponent(b.name), { expectSize: b.size })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = b.name
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      setTimeout(() => URL.revokeObjectURL(url), 10000)
+    } catch (e) { toast(e.message || 'Download failed') }
+  }
+  const list = d?.backups || []
+  return <>
+    <div className="item" style={{ flexWrap: 'wrap', gap: 8 }}>
+      <div className="grow"><div className="tt">Server backups</div>
+        <div className="ss">{err ? err
+          : !d ? 'Loading…'
+          : !d.enabled ? 'Turned off on this server (BACKUP_DISABLE=1)'
+          : `Once a day, the newest ${d.keep} kept. Each one is a full restore, passkeys and secrets included, so keep downloads somewhere safe.`}</div></div>
+      {d?.enabled && <Button size="sm" variant="tinted" disabled={busy} onClick={runNow}>{busy ? 'Backing up…' : 'Back up now'}</Button>}
+    </div>
+    {list.map(b => <div key={b.name} className="item" onClick={() => download(b)}>
+      <div className="grow"><div className="tt">Backup of {b.date}</div><div className="ss">{fmtBytes(b.size)} · {rel(b.mtime)}</div></div>
+      <Icon name="download" className="chev" />
+    </div>)}
+    {d && !list.length && <div className="item"><div className="grow"><div className="ss">No backups yet.</div></div></div>}
+  </>
+}
+
 // Everything an admin edits, in one place: the instance-wide tools here, and links to the screens
 // where the exercise library and the workout templates are already edited.
 function ToolsCard() {
@@ -346,13 +394,14 @@ function ToolsCard() {
   </div>
   return <div className="card">
     <h2 style={{ margin: 0 }}>Data and tools</h2>
-    <div className="adm-lead">The food database, a read-only look at the data files, an export of everything, and the screens where exercises and workouts are edited.</div>
+    <div className="adm-lead">The food database, a read-only look at the data files, an export of everything, the server's daily backups, and the screens where exercises and workouts are edited.</div>
     <div className="list">
       {link('Foods', 'Add, edit, hide or restore the foods on the Diet screen', '/admin/foods')}
       {link('Data browser', 'The data files, read-only, secrets left out', '/admin/data')}
       <div className="item" onClick={() => downloadExport(toast)}>
         <div className="grow"><div className="tt">Export everything</div><div className="ss">One JSON file with every user’s data, secrets left out</div></div><Icon name="download" className="chev" />
       </div>
+      <BackupRows />
       <WhoopRow />
       {link('Exercise library', 'Your own exercises, photos and videos', '/library')}
       {link('Routines', 'Workout templates and the week plan', '/plan')}
