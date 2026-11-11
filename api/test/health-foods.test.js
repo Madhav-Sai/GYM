@@ -18,6 +18,12 @@ test('a whole food is checked; bad values are a 400', () => {
   }
 });
 
+test('a scanned food keeps its barcode; a bad one is a 400', () => {
+  assert.equal(sanitiseFood({ ...sattu, barcode: '8901234567890' }).barcode, '8901234567890');
+  assert.equal('barcode' in sanitiseFood(sattu), false);
+  assert.throws(() => sanitiseFood({ ...sattu, barcode: '12ab' }), e => e.status === 400);
+});
+
 test('save adds with a fresh id, edits a built-in by fields, and hide or restore', () => {
   const doc = blankFoods();
   assert.equal(saveFood(doc, { food: sattu }).id, 'x-sattu');

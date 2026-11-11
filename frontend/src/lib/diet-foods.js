@@ -141,7 +141,7 @@ export function amountLabel(food, qty) {
 /** Sums of a list of entries (or of { food, qty } items). Unknown counts per nullable macro. */
 export function sumMacros(items) {
   const t = Object.fromEntries(MACRO_KEYS.map(k => [k, 0]))
-  const unknown = { satFat: 0, omega3: 0 }
+  const unknown = { satFat: 0, omega3: 0, fiber: 0 }
   for (const it of items || []) {
     const m = it.food ? macrosFor(it.food, it.qty) : it
     for (const k of MACRO_KEYS) {

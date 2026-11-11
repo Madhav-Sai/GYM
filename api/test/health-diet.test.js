@@ -19,8 +19,9 @@ test('an entry keeps its numbers and refuses what is not a number', () => {
   assert.throws(() => sanitiseEntry({ ...chicken, protein: 'lots' }), /protein/);
   assert.throws(() => sanitiseEntry({ ...chicken, qty: 0 }), /amount/);
   assert.throws(() => sanitiseEntry({ ...chicken, name: ' ' }), /name/);
-  // kcal can not be null: only saturated fat and omega-3 may be unknown
+  // kcal can not be null: only saturated fat, omega-3 and fibre may be unknown
   assert.throws(() => sanitiseEntry({ ...chicken, kcal: null }), /kcal/);
+  assert.equal(sanitiseEntry({ ...chicken, fiber: null }).fiber, null);
 });
 
 test('a plan item logs once; unlog by id or by plan key', () => {

@@ -51,7 +51,7 @@ describe('Home hub', () => {
       let l = layoutOf(s)
       l = setHidden(l, 'cards', 'checkin', true)
       l = setHidden(l, 'tiles', 'medical', true)
-      for (let i = 0; i < 12; i++) l = moveItem(l, 'cards', 'streak', -1) // streak to the top
+      for (let i = 0; i < 20; i++) l = moveItem(l, 'cards', 'streak', -1) // streak to the top
       s.homeLayout = l
     })
     mount()

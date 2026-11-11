@@ -7,8 +7,9 @@
 import crypto from 'node:crypto';
 
 export const MACROS = ['kcal', 'protein', 'carbs', 'fat', 'fiber', 'satFat', 'omega3'];
-// Nullable: not every food in the seed has a known saturated-fat or omega-3 value.
-const NULLABLE = new Set(['satFat', 'omega3']);
+// Nullable: not every food in the seed has a known saturated-fat or omega-3 value, and a scanned
+// packaged food (health/barcode.js) often has no fibre on its label.
+const NULLABLE = new Set(['satFat', 'omega3', 'fiber']);
 export const SLOTS = ['pre', 'post', 'lunch', 'snack1', 'dinner', 'snack2', 'bed', 'other'];
 export const DAY_TYPES = ['training', 'cardio', 'rest'];
 export const UNITS = ['g', 'ml', 'piece', 'slice', 'tsp', 'scoop'];
@@ -86,7 +87,7 @@ export function setDay(day, { dayType, vegMeals } = {}) {
 /** Sums of every macro, with how many entries had no value for the nullable ones. */
 export function totals(entries) {
   const t = Object.fromEntries(MACROS.map(k => [k, 0]));
-  const unknown = { satFat: 0, omega3: 0 };
+  const unknown = { satFat: 0, omega3: 0, fiber: 0 };
   for (const e of entries || []) {
     for (const k of MACROS) {
       if (e[k] == null) { if (k in unknown) unknown[k]++; continue; }

@@ -3,11 +3,16 @@ import { useNavigate } from 'react-router-dom'
 import { useUI } from '../store/useUI.js'
 import { t, dateLocale } from '../lib/i18n.js'
 import { pickableFoods, foodById, entryFor, amountLabel, macrosFor } from '../lib/diet-foods.js'
+import { cleanCode, localFoodFor, scannedFood, scannedEntry, missingRequired, gramsOf, customForCode, adminFoodFromCustom } from '../lib/diet-barcode.js'
+import { api } from '../lib/api.js'
+import { scanCode, webScanner } from '../lib/scan.js'
+import { useStore } from '../store/useStore.js'
+import CameraScan from '../components/CameraScan.jsx'
 import { SLOTS, TARGETS, planFor, dayTypeOf, nonNegotiables, slotsFor } from '../lib/diet-plan.js'
 import { proteinBasis, G_PER_KG_MIN, G_PER_KG_MAX, G_PER_KG_STEP, KCAL_MIN, KCAL_MAX } from '../lib/diet-targets.js'
 import { altsFor, proteinSwap, signed } from '../lib/diet-swap.js'
 import { healthDay } from '../lib/ist.js'
-import { useDietDay, useHealthOn, useDietTargets, useFoods } from './health-data.js'
+import { useDietDay, useHealthOn, useDietTargets, useFoods, applyFoods } from './health-data.js'
 import Icon from '../components/Icon.jsx'
 import CardHead from '../components/CardHead.jsx'
 import { Section, Row, Button, Switch, Segmented, NumberField, TextField, SearchField, Stepper } from '../components/ui.jsx'
@@ -73,9 +78,47 @@ function Meal({ slot, items, entries, veg, onVeg, onToggle, onRemove, onAdd }) {
   </div>
 }
 
-/* ---------- log a food: from the database by grams, or a custom one ---------- */
+/* ---------- a scanned packaged food (lib/diet-barcode.js): grams or servings ---------- */
+const MACRO_LABEL = { kcal: 'kcal', protein: 'Protein (g)', carbs: 'Carbs (g)', fat: 'Fat (g)' }
+function ScannedFood({ food, slot, onLog, onBack, close }) {
+  const [by, setBy] = useState('g')
+  const [amt, setAmt] = useState(100)
+  const [fill, setFill] = useState({})
+  const missing = missingRequired(food)
+  const f = scannedFood(food, fill)
+  const entry = scannedEntry(food, { amount: amt, by, slot, fill })
+  const m = missingRequired(f).length ? null : macrosFor(f, gramsOf(food, amt, by))
+  const setMode = v => { setBy(v); setAmt(v === 'serving' ? 1 : 100) }
+  return <>
+    <Section><Row title={f.name} subtitle={`${food.kcal ?? DASH} kcal · ${food.protein ?? DASH} g P · ${t('per {0}', '100 g')}`} value={t('Change')} onClick={onBack} /></Section>
+    {food.serving && <Segmented options={[{ value: 'g', label: t('Grams') }, { value: 'serving', label: t('Servings') }]} value={by} onChange={setMode} />}
+    <div className="hl-field"><span>{by === 'serving' ? t('Servings of {0}', food.serving.label) : t('Amount ({0})', 'g')}</span><NumberField value={amt} onChange={setAmt} /></div>
+    {missing.length > 0 && <>
+      <div className="hl-dim" style={{ marginTop: 6 }}>{t('The label data is missing some numbers. Fill them in per 100 g from the pack.')}</div>
+      <div className="hl-grid2">
+        {missing.map(k => <div key={k} className="hl-field"><span>{t(MACRO_LABEL[k])}</span><NumberField nullable value={fill[k] ?? null} onChange={v => setFill({ ...fill, [k]: v })} placeholder={DASH} /></div>)}
+      </div>
+    </>}
+    {m && <div className="hl-grid3" style={{ marginTop: 12 }}>
+      <div><div className="hl-l">kcal</div><div className="hl-n">{n0(m.kcal)}</div></div>
+      <div><div className="hl-l">{t('Protein')}</div><div className="hl-n">{n1(m.protein)}<small>g</small></div></div>
+      <div><div className="hl-l">{t('Fibre')}</div><div className="hl-n">{m.fiber == null ? DASH : n1(m.fiber)}{m.fiber != null && <small>g</small>}</div></div>
+    </div>}
+    <div className="hl-dim" style={{ marginTop: 6 }}>{t('From Open Food Facts. Check it against the label.')}</div>
+    <div style={{ height: 14 }} />
+    <Button variant="primary" icon="check" disabled={!entry} onClick={async () => { if (await onLog(entry)) close() }}>{t('Log it')}</Button>
+  </>
+}
+
+/* ---------- log a food: from the database by grams, by barcode, or a custom one ---------- */
 function LogFoodSheet({ close, slot: slot0, onLog }) {
   const [mode, setMode] = useState('db')
+  const [scanned, setScanned] = useState(null)
+  const [unknown, setUnknown] = useState(null)
+  const [busy, setBusy] = useState(false)
+  const [keep, setKeep] = useState(true)
+  const [keepVeg, setKeepVeg] = useState(true)
+  const admin = useStore(s => !!s.user?.admin)
   const [q, setQ] = useState('')
   const [food, setFood] = useState(null)
   const [qty, setQty] = useState(100)
@@ -86,21 +129,73 @@ function LogFoodSheet({ close, slot: slot0, onLog }) {
   const pick = f => { setFood(f); setQty(f.unit === 'g' || f.unit === 'ml' ? 100 : 1) }
   const m = food ? macrosFor(food, qty) : null
   const slots = [...SLOTS.map(s => ({ value: s.id, label: s.time })), { value: 'other', label: t('Other') }]
+  const toast = msg => useUI.getState().toast(msg)
   const log = async () => {
-    const entry = mode === 'db' ? entryFor(food, qty, slot) : { ...c, unit: 'g', slot, omega3: null }
-    if (mode === 'custom' && (!c.name.trim() || !c.qty)) { useUI.getState().toast(t('Give it a name and an amount')); return }
+    if (mode === 'custom' && (!c.name.trim() || !c.qty)) { toast(t('Give it a name and an amount')); return }
+    const { barcode, ...custom } = c
+    let entry = mode === 'db' ? entryFor(food, qty, slot) : { ...custom, unit: 'g', slot, omega3: null }
+    // An admin adding a scanned code nobody knew keeps it in the food list, so the next scan finds it.
+    if (mode === 'custom' && barcode && admin && keep) {
+      const body = adminFoodFromCustom(c, { veg: keepVeg })
+      try {
+        const d = await api('/api/admin/foods/save', { method: 'POST', body: JSON.stringify({ food: body }) })
+        applyFoods(d)
+        if (d.food?.id) entry = { ...entry, foodId: d.food.id }
+      } catch (e) { toast(e?.message || t('Could not save it to the food list')); return }
+    }
     if (await onLog(entry)) close()
   }
+
+  // Scan, then look the code up: the instance's own foods first, then the server (Open Food Facts).
+  const lookup = async raw => {
+    const code = cleanCode(raw)
+    if (!code) { toast(t('That is not a food barcode')); return }
+    setUnknown(null)
+    const own = localFoodFor(pickableFoods(), code)
+    if (own) { setMode('db'); pick(own); return }
+    setBusy(true)
+    try {
+      const d = await api('/api/health/foods/barcode?code=' + code)
+      setScanned(d.food)
+    } catch (e) {
+      if (e?.status === 404) setUnknown(code)
+      else toast(t('Could not look that barcode up. Try again, or log it as custom.'))
+    } finally { setBusy(false) }
+  }
+  const scan = async () => {
+    if (await webScanner()) {
+      useUI.getState().openSheet(closeCam => <CameraScan hint={t('Point the camera at the barcode')} onCancel={closeCam}
+        onFound={code => { closeCam(); lookup(code.value) }} />)
+      return
+    }
+    try {
+      const code = await scanCode()
+      if (code) lookup(code.value)
+    } catch (e) {
+      const m = String(e?.message)
+      toast(m === 'permission-denied' ? t('Camera permission is needed to scan. Enable it in Settings.') : m === 'unsupported' ? t('Scanning is not available on this device.') : t('Could not start the scanner'))
+    }
+  }
+  const addYourself = () => { setC({ ...customForCode(unknown), name: '' }); setUnknown(null); setMode('custom') }
+  const changeMode = v => { setMode(v); setScanned(null); setUnknown(null); if (v === 'custom' && c.barcode) setC({ ...c, barcode: null }) }
   return <>
     <h3>{t('Log food')}</h3>
-    <Segmented options={[{ value: 'db', label: t('From the list') }, { value: 'custom', label: t('Custom') }]} value={mode} onChange={setMode} />
+    <Segmented options={[{ value: 'db', label: t('From the list') }, { value: 'custom', label: t('Custom') }]} value={mode} onChange={changeMode} />
     <div className="hl-field"><span>{t('Meal')}</span>
       <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
         {slots.map(s => <button key={s.value} type="button" className={'chip' + (slot === s.value ? ' on' : '')} aria-pressed={slot === s.value} onClick={() => setSlot(s.value)}>{s.label}</button>)}
       </div>
     </div>
-    {mode === 'db' ? <>
+    {mode === 'db' && scanned ? <ScannedFood food={scanned} slot={slot} onLog={onLog} close={close} onBack={() => setScanned(null)} />
+    : mode === 'db' ? <>
       {!food ? <>
+        <div style={{ height: 10 }} />
+        <Button variant="tinted" icon="camera" disabled={busy} onClick={scan}>{busy ? t('Looking it up…') : t('Scan barcode')}</Button>
+        {unknown && <div className="card" role="status" style={{ marginTop: 10 }}>
+          <div className="hl-dim">{t('No food found for barcode {0}.', unknown)}</div>
+          <div style={{ height: 8 }} />
+          <Button size="sm" variant="tinted" icon="plus" onClick={addYourself}>{t('Add it yourself')}</Button>
+        </div>}
         <div style={{ height: 10 }} />
         <SearchField value={q} onChange={e => setQ(e.target.value)} onClear={() => setQ('')} placeholder={t('Search foods')} />
         <div className="hl-foods">
@@ -134,9 +229,16 @@ function LogFoodSheet({ close, slot: slot0, onLog }) {
         <div className="hl-field"><span>{t('Saturated fat (g)')}</span><NumberField nullable value={c.satFat} onChange={v => setC({ ...c, satFat: v })} placeholder={DASH} /></div>
       </div>
       <div className="hl-dim" style={{ marginTop: 6 }}>{t('Numbers for the whole amount. Leave saturated fat empty if you do not know it.')}</div>
+      {c.barcode && <div className="hl-dim" style={{ marginTop: 6 }}>{t('Barcode {0}', c.barcode)}</div>}
+      {c.barcode && admin && <Section>
+        <Row title={t('Save to the food list')} subtitle={t('The next scan of this barcode finds it')}><Switch checked={keep} onChange={setKeep} aria-label={t('Save to the food list')} /></Row>
+        {keep && <Row title={t('Vegetarian')}><Switch checked={keepVeg} onChange={setKeepVeg} aria-label={t('Vegetarian')} /></Row>}
+      </Section>}
     </>}
-    <div style={{ height: 14 }} />
-    <Button variant="primary" icon="check" disabled={mode === 'db' && (!food || !qty)} onClick={log}>{t('Log it')}</Button>
+    {!(mode === 'db' && scanned) && <>
+      <div style={{ height: 14 }} />
+      <Button variant="primary" icon="check" disabled={mode === 'db' && (!food || !qty)} onClick={log}>{t('Log it')}</Button>
+    </>}
   </>
 }
 

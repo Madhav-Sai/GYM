@@ -46,6 +46,7 @@ import { medicalRoutes } from './medical/routes.js';
 import { createHealthStore } from './health/store.js';
 import { healthRoutes } from './health/routes.js';
 import { createFoodStore } from './health/foods.js';
+import { createBarcodeCache, createBarcodeLookup } from './health/barcode.js';
 import { createDataBrowser } from './data-browser.js';
 import { excusedOn, nudgeFor, nudgeWindowOpen, toneOf } from './nudge.js';
 import { wrappedPushYear, wrappedSummary, wrappedPushOwed, wrappedPush } from './wrapped.js';
@@ -143,6 +144,8 @@ const TOTP_KEY = deriveTotpKey(SECRET);
 const health = createHealthStore({ dir: path.join(DATA, 'health') });
 // The food database's per-instance changes (health/foods.js): one file for every profile.
 const foods = createFoodStore({ file: path.join(DATA, 'health', 'foods.json') });
+// Barcode lookups (health/barcode.js): Open Food Facts through this server, cached for every profile.
+const barcode = createBarcodeLookup({ cache: createBarcodeCache({ file: path.join(DATA, 'health', 'barcodes.json') }) });
 // The admin data browser and export (data-browser.js): read-only, secrets never served.
 const dataBrowser = createDataBrowser({ dir: DATA });
 
@@ -3174,7 +3177,7 @@ const routes = {
   ...medicalRoutes({ json, readBody, readSession, store: medical }),
   /* ---------- diet + supplements ---------- */
   // health/routes.js (our addition), handed the same helpers.
-  ...healthRoutes({ json, readBody, readSession, requireAdmin, store: health, foods, audit }),
+  ...healthRoutes({ json, readBody, readSession, requireAdmin, store: health, foods, barcode, audit }),
 
   /* ---------- admin data browser + export (our addition) ---------- */
   // Read-only. data-browser.js decides what is never shown (the session secret, the push private

@@ -187,7 +187,7 @@ const TILE_NAME = {
 const CARD_NAME = {
   now: 'Now strip', tiles: 'Tiles', week: 'Week and today', highlights: 'Recaps and seasonal', recovery: 'Recovery hint',
   whoop: 'Whoop card', medical: 'Medical card', cardio: 'Today’s cardio', health: 'Diet and supplements cards',
-  challenges: 'Challenges', checkin: 'Gym check-in', bodyweight: 'Body weight', streak: 'Streak',
+  challenges: 'Challenges', checkin: 'Gym check-in', bodycheck: 'Monthly body check', bodyweight: 'Body weight', streak: 'Streak',
 }
 const nameOf = (group, id) => t((group === 'tiles' ? TILE_NAME : CARD_NAME)[id] || id)
 

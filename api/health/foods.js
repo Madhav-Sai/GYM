@@ -66,6 +66,12 @@ export function sanitiseFood(f, { partial = false } = {}) {
     else out.vegAlt = f.vegAlt;
   }
   if (!partial || has('note')) out.note = str(f.note, 80) || null;
+  // The packaged food's EAN/UPC, when it was added from a scan the lookup did not know.
+  if (has('barcode')) {
+    if (f.barcode == null || f.barcode === '') out.barcode = null;
+    else if (typeof f.barcode !== 'string' || !/^\d{8,14}$/.test(f.barcode)) throw bad('barcode must be 8 to 14 digits');
+    else out.barcode = f.barcode;
+  }
   return out;
 }
 

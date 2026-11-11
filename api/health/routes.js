@@ -9,7 +9,7 @@ import { saveFood, hideFood } from './foods.js';
 
 const DAY = 86400_000;
 
-export function healthRoutes({ json, readBody, readSession, requireAdmin, store, foods, audit = () => {}, now = Date.now }) {
+export function healthRoutes({ json, readBody, readSession, requireAdmin, store, foods, barcode = null, audit = () => {}, now = Date.now }) {
   // `who` resolves the caller and answers 401 (or 403) itself when it returns nothing.
   const guarded = who => fn => async (req, res) => {
     const user = who(req, res);
@@ -81,6 +81,15 @@ export function healthRoutes({ json, readBody, readSession, requireAdmin, store,
 
     'GET /api/health/foods': guard(async (req, res) => {
       json(res, 200, foodsView());
+    }),
+
+    // A packaged food by its barcode (health/barcode.js): Open Food Facts through this server, cached.
+    'GET /api/health/foods/barcode': guard(async (req, res) => {
+      if (!barcode) { json(res, 503, { error: 'barcode lookup is not set up', code: 'off' }); return; }
+      const code = String(query(req).get('code') || '').trim();
+      const { food, cached } = await barcode(code);
+      if (!food) { json(res, 404, { error: 'not found', code: 'not-found', barcode: code }); return; }
+      json(res, 200, { food, cached });
     }),
 
     'POST /api/admin/foods/save': adminGuard(async (req, res, user) => {

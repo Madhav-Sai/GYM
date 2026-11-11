@@ -3209,6 +3209,51 @@ paths:
               schema: { type: object }
         '401': { $ref: '#/components/responses/Unauthorized' }
 
+  /api/health/foods/barcode:
+    get:
+      tags: [health]
+      operationId: healthFoodBarcode
+      summary: Look up a packaged food by its barcode
+      description: >-
+        Asks Open Food Facts (through this server, so the app never calls it itself) for the product with this EAN or
+        UPC and answers it in the app's food shape, per 100 g: `{ id, code, name, brand, unit, per, kcal, protein, carbs,
+        fat, fiber, satFat, omega3, serving, source }`. A value Open Food Facts does not have is null, never 0. `serving`
+        is `{ g, label }` when the label gives one. Answers, "not found" included, are cached in
+        `DATA_DIR/health/barcodes.json`; a failed or slow lookup (6 s) is not.
+      parameters:
+        - name: code
+          in: query
+          required: true
+          description: The barcode, 8 to 14 digits.
+          schema: { type: string, pattern: '^[0-9]{8,14}$' }
+      responses:
+        '200':
+          description: '`{ food, cached }`'
+          content:
+            application/json:
+              schema: { type: object }
+        '400':
+          description: 'The code is not 8 to 14 digits (`code`: `code`).'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404':
+          description: 'Open Food Facts does not know this code (`code`: `not-found`, with `barcode`).'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '502':
+          description: 'Open Food Facts could not be reached (`code`: `upstream`).'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '504':
+          description: 'Open Food Facts did not answer within 6 seconds (`code`: `timeout`).'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
   /api/health/supplements:
     get:
       tags: [health]

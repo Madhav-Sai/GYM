@@ -33,6 +33,7 @@ import { MedicalHomeCard } from '../components/MedicalHome.jsx'
 import { LoadMyPlanButton, TodayCardioCard } from '../components/MyPlan.jsx'
 import { HealthHomeCards } from './HealthCards.jsx'
 import { CheckInCard } from '../components/GymVisit.jsx'
+import { BodyRemindersCard } from '../components/BodyReminders.jsx'
 import { NowStrip, HubTiles, customizeHomeSheet } from '../components/HomeHub.jsx'
 import { layoutOf, visibleIds } from '../lib/home-layout.js'
 import { ChallengesCard } from '../components/Challenges.jsx'
@@ -235,6 +236,10 @@ export default function Home() {
             streak and shows on the calendar (lib/gym-visits.js); the centre and a note are one tap away
             (components/GymVisit.jsx). The QR membership codes stay one tap away. */}
         {on('checkin') && <CheckInCard />}
+        </>,
+    bodycheck: () => <>
+        {/* Monthly body check (our addition, lib/body-reminders.js): photo, InBody and waist, only while due. */}
+        <BodyRemindersCard />
         </>,
     bodyweight: () => <>
         {on('body') && S.showWeightCard !== false && <div className="card">
