@@ -63,3 +63,4 @@ button.hl-badge { border: 0; font: inherit; cursor: pointer; }
 .hl-fat-h { color: var(--label-2); font-weight: 600; margin: 4px 0; }
 .hl-fat-r { display: flex; justify-content: space-between; gap: 8px; padding: 2px 0; }
 .hl-fat-r b { font-variant-numeric: tabular-nums; color: var(--label-2); font-weight: 600; flex: none; }
+.ext-w { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 8px; font-size: var(--fs-footnote); }
