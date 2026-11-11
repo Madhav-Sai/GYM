@@ -77,7 +77,7 @@ describe('Medical screens', () => {
     const withFile = { ...lab, id: 'lab-2', date: '2026-11-04', file: { id: 'aaaaaaaaaaaaaaaaaaaaaaaa.pdf', name: 'Nov report.pdf', type: 'application/pdf', size: 348160, at: '2026-11-04' } }
     const doc = { ...DOC, labs: [lab, withFile] }
     const calls = []
-    vi.stubGlobal('fetch', vi.fn(async (url, init) => { calls.push([String(url), init]); return { ok: true, status: 200, json: async () => doc } }))
+    vi.stubGlobal('fetch', vi.fn(async (url, init) => { calls.push([String(url), init]); return { ok: true, status: 200, json: async () => doc, blob: async () => new Blob([new Uint8Array(348160)], { type: 'application/pdf' }), headers: { get: () => null } } }))
     const opened = []
     vi.stubGlobal('open', vi.fn((...a) => { opened.push(a); return {} }))
     const d = await draw(<MedicalLabs />)
@@ -86,8 +86,9 @@ describe('Medical screens', () => {
     expect(hist[0].textContent).toContain('340 KB')
     expect(hist[1].textContent).toContain('Attach report (PDF or photo)')
     await act(async () => d.querySelector('[aria-label="Open report Nov report.pdf"]').click())
-    expect(opened[0][0]).toBe('/api/medical/labs/file?id=aaaaaaaaaaaaaaaaaaaaaaaa.pdf')
-    expect(opened[0][1]).toBe('_blank')
+    // A PDF downloads (the site's CSP blocks Chrome's PDF viewer in a new tab); no tab is opened.
+    expect(calls.some(c => c[0].endsWith('/api/medical/labs/file?id=aaaaaaaaaaaaaaaaaaaaaaaa.pdf'))).toBe(true)
+    expect(opened).toEqual([])
     // Attaching: the picked PDF goes up as base64 JSON for that result.
     const input = hist[1].querySelector('input[type=file]')
     expect(input.getAttribute('accept')).toContain('application/pdf')

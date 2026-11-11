@@ -21,6 +21,7 @@ import { useMedical, medicalCall, goalRows, RetestFlag } from '../components/Med
 import { confirmSheet } from '../sheets.jsx'
 import { api, apiBlob, appBase } from '../lib/api.js'
 import { MOBILE, shareExportBlob } from '../lib/mobile.js'
+import { saveFile } from '../lib/save-file.js'
 import { uploadLabFile, labFileProblem, fileSizeLabel, LAB_FILE_ACCEPT } from '../lib/lab-file.js'
 
 const toast = m => useUI.getState().toast(m)
@@ -166,6 +167,14 @@ export async function openReport(file) {
   if (MOBILE) {
     const blob = await apiBlob(path, { expectSize: file.size })
     await shareExportBlob(new Blob([blob], { type: file.type }), file.name)
+    return
+  }
+  // A PDF downloads: the site's Content-Security-Policy (object-src 'none') stops Chrome's built-in
+  // PDF viewer in a new tab. A photo opens in a tab as before.
+  if (file.type === 'application/pdf') {
+    const blob = await apiBlob(path, { expectSize: file.size })
+    const r = await saveFile(new Blob([blob], { type: file.type }), file.name, { type: file.type })
+    if (r === 'failed') toast(t('Could not save the file.'))
     return
   }
   const w = window.open(appBase().replace(/\/$/, '') + path, '_blank', 'noopener')
