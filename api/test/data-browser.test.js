@@ -61,3 +61,21 @@ test('resolve refuses traversal, absolute paths and symlinks out of the folder',
   assert.ok(ex.skipped.some(s => s.path === 'bin.dat'));
   fs.rmSync(root, { recursive: true, force: true });
 });
+
+test('lab report files are listed by name and size, never read or exported', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'gym-db-'));
+  const dir = path.join(root, 'data');
+  const fdir = path.join(dir, 'medical', 'files', 'u1');
+  fs.mkdirSync(fdir, { recursive: true });
+  // A PDF with no NUL byte would otherwise pass the text check.
+  fs.writeFileSync(path.join(fdir, 'aaaaaaaaaaaaaaaaaaaaaaaa.pdf'), '%PDF-1.7 Vitamin D 24.5 ng/mL');
+  fs.writeFileSync(path.join(fdir, 'bbbbbbbbbbbbbbbbbbbbbbbb.partial'), '%PDF-half');
+  const b = createDataBrowser({ dir });
+  const listed = b.list().map(f => f.path);
+  assert.deepEqual(listed, ['medical/files/u1/aaaaaaaaaaaaaaaaaaaaaaaa.pdf']);
+  assert.throws(() => b.read('medical/files/u1/aaaaaaaaaaaaaaaaaaaaaaaa.pdf'), e => e.status === 403);
+  const ex = b.exportAll();
+  assert.ok(!JSON.stringify(ex.files).includes('Vitamin D'));
+  assert.ok(ex.skipped.some(s => s.path === 'medical/files/u1/aaaaaaaaaaaaaaaaaaaaaaaa.pdf' && s.why === 'lab report file'));
+  fs.rmSync(root, { recursive: true, force: true });
+});

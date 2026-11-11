@@ -223,7 +223,7 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
   <p class="api-facts">
     <span>OpenAPI 3.1.0</span>
     <span>myGym v1.4.3</span>
-    <span>128 endpoints</span>
+    <span>134 endpoints</span>
     <span>AGPL-3.0-or-later</span>
   </p>
 
@@ -3660,7 +3660,7 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
 
 <section class="api-sec" id="medical">
   <h2>Medical</h2>
-  <p class="sub">Medical (added by this fork): blood tests, InBody scans and health goals, kept per profile in <code>DATA_DIR/medical/u-&lt;uid&gt;.json</code>, apart from the synced state. The first read seeds the owner's starting record once. Every write answers with the whole record.</p>
+  <p class="sub">Medical (added by this fork): blood tests, InBody scans and health goals, kept per profile in <code>DATA_DIR/medical/u-&lt;uid&gt;.json</code> (report files in <code>DATA_DIR/medical/files/&lt;uid&gt;/</code>), apart from the synced state. The first read seeds the owner's starting record once. Every write answers with the whole record.</p>
   <div class="eps">
 
 <details class="ep" id="op-medicalGet">
@@ -3727,7 +3727,7 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
     <span class="ep-sum">Delete a blood test</span>
   </summary>
   <div class="ep-body">
-<p>Removes the test with this <code>id</code>.</p>
+<p>Removes the test with this <code>id</code>, and its report file.</p>
     <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Requires a session: the cookie set at sign-in, or <code>Authorization: Bearer &lt;token&gt;</code> from mobile-app pairing.</span></p>
 
 <p class="ep-h">Request body <span class="p-hint">(JSON)</span></p><div class="ptab">
@@ -3754,6 +3754,160 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
   <div class="prow rrow">
     <span class="r-code s4">404</span>
     <span class="p-desc">No entry with that id in this profile (<code>code</code>: <code>missing</code>).</span>
+  </div>
+    </div>
+  </div>
+</details>
+
+<details class="ep" id="op-medicalLabFileUpload">
+  <summary>
+    <span class="m post">POST</span>
+    <span class="ep-path"><code>/api/medical/labs/file</code></span>
+    <span class="ep-chev" aria-hidden="true"></span>
+    <span class="ep-sum">Attach a report file to a blood test</span>
+  </summary>
+  <div class="ep-body">
+<p>A PDF, JPEG or PNG of up to 10 MB, kept in <code>DATA_DIR/medical/files/&lt;uid&gt;/</code> and named on the result as <code>file: { id, name, type, size, at }</code>. There is no multipart: the bytes travel as base64 in JSON, in pieces of at most 3 MiB (4 MiB once encoded), so every request stays under the 5 MiB body limit of the API and of the web image's nginx. The first piece carries <code>labId</code>, <code>type</code>, <code>name</code> and, when more pieces follow, <code>size</code> (the whole file in bytes); it is answered with <code>{ upload, received, size }</code>. Each next piece sends <code>upload</code>, <code>offset</code> (the bytes sent so far) and <code>data</code>. A file of one piece leaves <code>size</code> out. The answer to the last piece is the whole record with the file attached, replacing (and deleting) the one the result had. The file must start with the magic bytes of its type. An upload with no next piece for 15 minutes is dropped.</p>
+    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Requires a session: the cookie set at sign-in, or <code>Authorization: Bearer &lt;token&gt;</code> from mobile-app pairing.</span></p>
+
+<p class="ep-h">Request body <span class="p-hint">(JSON)</span></p><div class="ptab">
+  <div class="prow">
+    <span class="p-name">labId</span>
+    <span class="p-type">string <span class="p-hint">(&le; 40 chars)</span></span>
+    <span class="p-desc"></span>
+  </div>
+  <div class="prow">
+    <span class="p-name">type</span>
+    <span class="p-type">&quot;application/pdf&quot; | &quot;image/jpeg&quot; | &quot;image/png&quot;</span>
+    <span class="p-desc"></span>
+  </div>
+  <div class="prow">
+    <span class="p-name">name</span>
+    <span class="p-type">string <span class="p-hint">(&le; 120 chars)</span></span>
+    <span class="p-desc"></span>
+  </div>
+  <div class="prow">
+    <span class="p-name">size</span>
+    <span class="p-type">integer <span class="p-hint">(1&ndash;10485760)</span></span>
+    <span class="p-desc"></span>
+  </div>
+  <div class="prow">
+    <span class="p-name">upload</span>
+    <span class="p-type">string</span>
+    <span class="p-desc"></span>
+  </div>
+  <div class="prow">
+    <span class="p-name">offset</span>
+    <span class="p-type">integer <span class="p-hint">(0&ndash;)</span></span>
+    <span class="p-desc"></span>
+  </div>
+  <div class="prow">
+    <span class="p-name">data<em class="p-req" title="required">required</em></span>
+    <span class="p-type">string</span>
+    <span class="p-desc">base64 bytes of this piece</span>
+  </div>
+</div>
+    <p class="ep-h">Responses</p>
+    <div class="ptab">
+  <div class="prow rrow">
+    <span class="r-code s2">200</span>
+    <span class="p-desc"><code>{ upload, received, size }</code> while pieces are owed, then the whole record plus <code>file</code>.<span class="r-sig">object</span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">400</span>
+    <span class="p-desc">Refused input (<code>code</code>: <code>data</code>, <code>size</code>, <code>type</code> when the bytes are not the declared type).</span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">401</span>
+    <span class="p-desc">No session, expired/revoked session, or a disabled account.<span class="r-sig"><code>{&quot;error&quot;:&quot;not signed in&quot;}</code></span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">404</span>
+    <span class="p-desc">No result with that <code>labId</code> in this profile, or no such upload (<code>code</code>: <code>missing</code>, <code>upload</code>).</span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">409</span>
+    <span class="p-desc">The piece does not start where the upload stands (<code>code</code>: <code>offset</code>).</span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">413</span>
+    <span class="p-desc">Over 10 MB, or the profile has no room left (<code>code</code>: <code>too-large</code>, <code>quota</code>).</span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">415</span>
+    <span class="p-desc">Not a PDF, JPEG or PNG (<code>code</code>: <code>type</code>).</span>
+  </div>
+    </div>
+  </div>
+</details>
+
+<details class="ep" id="op-medicalLabFileGet">
+  <summary>
+    <span class="m get">GET</span>
+    <span class="ep-path"><code>/api/medical/labs/file</code></span>
+    <span class="ep-chev" aria-hidden="true"></span>
+    <span class="ep-sum">A blood test's report file</span>
+  </summary>
+  <div class="ep-body">
+<p>The file named by <code>id</code>, only when one of the signed-in profile's own results names it. Sent with the type it was stored as, <code>Content-Disposition: inline</code> and <code>X-Content-Type-Options: nosniff</code>.</p>
+    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Requires a session: the cookie set at sign-in, or <code>Authorization: Bearer &lt;token&gt;</code> from mobile-app pairing.</span></p>
+<p class="ep-h">Query parameters</p><div class="ptab">
+  <div class="prow">
+    <span class="p-name">id<em class="p-req" title="required">required</em></span>
+    <span class="p-type">string</span>
+    <span class="p-desc"></span>
+  </div>
+</div>
+
+    <p class="ep-h">Responses</p>
+    <div class="ptab">
+  <div class="prow rrow">
+    <span class="r-code s2">200</span>
+    <span class="p-desc">The file.</span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">401</span>
+    <span class="p-desc">No session, expired/revoked session, or a disabled account.<span class="r-sig"><code>{&quot;error&quot;:&quot;not signed in&quot;}</code></span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">404</span>
+    <span class="p-desc">No such file in this profile (<code>code</code>: <code>missing</code>).</span>
+  </div>
+    </div>
+  </div>
+</details>
+
+<details class="ep" id="op-medicalLabFileDelete">
+  <summary>
+    <span class="m post">POST</span>
+    <span class="ep-path"><code>/api/medical/labs/file/delete</code></span>
+    <span class="ep-chev" aria-hidden="true"></span>
+    <span class="ep-sum">Remove a blood test's report file</span>
+  </summary>
+  <div class="ep-body">
+<p>Takes the file off the result with this <code>labId</code> and deletes it.</p>
+    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Requires a session: the cookie set at sign-in, or <code>Authorization: Bearer &lt;token&gt;</code> from mobile-app pairing.</span></p>
+
+<p class="ep-h">Request body <span class="p-hint">(JSON)</span></p><div class="ptab">
+  <div class="prow">
+    <span class="p-name">labId<em class="p-req" title="required">required</em></span>
+    <span class="p-type">string <span class="p-hint">(&le; 40 chars)</span></span>
+    <span class="p-desc"></span>
+  </div>
+</div>
+    <p class="ep-h">Responses</p>
+    <div class="ptab">
+  <div class="prow rrow">
+    <span class="r-code s2">200</span>
+    <span class="p-desc">The whole record after the change.<span class="r-sig"><a href="#schema-MedicalRecord">MedicalRecord</a></span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">401</span>
+    <span class="p-desc">No session, expired/revoked session, or a disabled account.<span class="r-sig"><code>{&quot;error&quot;:&quot;not signed in&quot;}</code></span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">404</span>
+    <span class="p-desc">No result with that id in this profile (<code>code</code>: <code>missing</code>).</span>
   </div>
     </div>
   </div>
@@ -3968,7 +4122,7 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
   </div>
   <div class="prow rrow">
     <span class="r-code s4">400</span>
-    <span class="p-desc">A field was refused (<code>code</code>: <code>invalid</code>, <code>day</code>, <code>too-many</code>).</span>
+    <span class="p-desc">A field was refused (<code>code</code>: <code>invalid</code>, <code>day</code>, <code>too-many</code>, <code>entries</code>).</span>
   </div>
   <div class="prow rrow">
     <span class="r-code s4">401</span>
@@ -3986,7 +4140,7 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
     <span class="ep-sum">Log a food</span>
   </summary>
   <div class="ep-body">
-<p><code>entry</code>: <code>name</code>, <code>qty</code>, <code>unit</code> (g, ml, piece, slice, tsp, scoop), <code>slot</code>, <code>kcal</code>, <code>protein</code>, <code>carbs</code>, <code>fat</code>, <code>fiber</code>, <code>satFat</code> (or null), <code>omega3</code> (mg, or null), optional <code>foodId</code> and <code>planKey</code>. An entry with the <code>planKey</code> of one already logged replaces it.</p>
+<p><code>entry</code>: <code>name</code>, <code>qty</code>, <code>unit</code> (g, ml, piece, slice, tsp, scoop), <code>slot</code>, <code>kcal</code>, <code>protein</code>, <code>carbs</code>, <code>fat</code>, <code>fiber</code>, <code>satFat</code> (or null), <code>omega3</code> (mg, or null), optional <code>foodId</code> and <code>planKey</code>. An entry with the <code>planKey</code> of one already logged replaces it. Or <code>entries</code>, 1 to 30 of them at once (a saved meal, a meal copied from yesterday): all are logged, or none.</p>
     <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Requires a session: the cookie set at sign-in, or <code>Authorization: Bearer &lt;token&gt;</code> from mobile-app pairing.</span></p>
 
 <p class="ep-h">Request body <span class="p-hint">(JSON)</span></p><div class="ptab">
@@ -3998,6 +4152,11 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
   <div class="prow">
     <span class="p-name">entry</span>
     <span class="p-type">object</span>
+    <span class="p-desc"></span>
+  </div>
+  <div class="prow">
+    <span class="p-name">entries</span>
+    <span class="p-type">object[]</span>
     <span class="p-desc"></span>
   </div>
 </div>
@@ -4188,6 +4347,108 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
   <div class="prow rrow">
     <span class="r-code s4">401</span>
     <span class="p-desc">No session, expired/revoked session, or a disabled account.<span class="r-sig"><code>{&quot;error&quot;:&quot;not signed in&quot;}</code></span></span>
+  </div>
+    </div>
+  </div>
+</details>
+
+<details class="ep" id="op-healthMeals">
+  <summary>
+    <span class="m get">GET</span>
+    <span class="ep-path"><code>/api/health/meals</code></span>
+    <span class="ep-chev" aria-hidden="true"></span>
+    <span class="ep-sum">The saved meals</span>
+  </summary>
+  <div class="ep-body">
+<p>This profile's saved meals: <code>{ meals: [{ id, name, items, at }] }</code>. Each item is a diet entry without its day, slot or plan key. Logged again with <code>POST /api/health/diet/log</code> and <code>entries</code>.</p>
+    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Requires a session: the cookie set at sign-in, or <code>Authorization: Bearer &lt;token&gt;</code> from mobile-app pairing.</span></p>
+
+
+    <p class="ep-h">Responses</p>
+    <div class="ptab">
+  <div class="prow rrow">
+    <span class="r-code s2">200</span>
+    <span class="p-desc">The saved meals.<span class="r-sig">{ meals: object[] }</span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">401</span>
+    <span class="p-desc">No session, expired/revoked session, or a disabled account.<span class="r-sig"><code>{&quot;error&quot;:&quot;not signed in&quot;}</code></span></span>
+  </div>
+    </div>
+  </div>
+</details>
+
+<details class="ep" id="op-healthMealSave">
+  <summary>
+    <span class="m post">POST</span>
+    <span class="ep-path"><code>/api/health/meals/save</code></span>
+    <span class="ep-chev" aria-hidden="true"></span>
+    <span class="ep-sum">Save a meal</span>
+  </summary>
+  <div class="ep-body">
+<p><code>meal</code>: <code>{ name, items }</code> (1 to 30 items, each checked like a diet entry; a name of up to 60 characters). With an <code>id</code> it changes that meal; a rename may leave <code>items</code> out. At most 100.</p>
+    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Requires a session: the cookie set at sign-in, or <code>Authorization: Bearer &lt;token&gt;</code> from mobile-app pairing.</span></p>
+
+<p class="ep-h">Request body <span class="p-hint">(JSON)</span></p><div class="ptab">
+  <div class="prow">
+    <span class="p-name">meal<em class="p-req" title="required">required</em></span>
+    <span class="p-type">object</span>
+    <span class="p-desc"></span>
+  </div>
+</div>
+    <p class="ep-h">Responses</p>
+    <div class="ptab">
+  <div class="prow rrow">
+    <span class="r-code s2">200</span>
+    <span class="p-desc"><code>{ meal, meals }</code><span class="r-sig">object</span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">400</span>
+    <span class="p-desc">A field was refused (<code>code</code>: <code>invalid</code>, <code>name</code>, <code>items</code>, <code>too-many</code>).</span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">401</span>
+    <span class="p-desc">No session, expired/revoked session, or a disabled account.<span class="r-sig"><code>{&quot;error&quot;:&quot;not signed in&quot;}</code></span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">404</span>
+    <span class="p-desc">No meal with that id in this profile (<code>code</code>: <code>missing</code>).</span>
+  </div>
+    </div>
+  </div>
+</details>
+
+<details class="ep" id="op-healthMealDelete">
+  <summary>
+    <span class="m post">POST</span>
+    <span class="ep-path"><code>/api/health/meals/delete</code></span>
+    <span class="ep-chev" aria-hidden="true"></span>
+    <span class="ep-sum">Delete a saved meal</span>
+  </summary>
+  <div class="ep-body">
+
+    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Requires a session: the cookie set at sign-in, or <code>Authorization: Bearer &lt;token&gt;</code> from mobile-app pairing.</span></p>
+
+<p class="ep-h">Request body <span class="p-hint">(JSON)</span></p><div class="ptab">
+  <div class="prow">
+    <span class="p-name">id<em class="p-req" title="required">required</em></span>
+    <span class="p-type">string <span class="p-hint">(&le; 40 chars)</span></span>
+    <span class="p-desc"></span>
+  </div>
+</div>
+    <p class="ep-h">Responses</p>
+    <div class="ptab">
+  <div class="prow rrow">
+    <span class="r-code s2">200</span>
+    <span class="p-desc"><code>{ meals }</code><span class="r-sig">object</span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">401</span>
+    <span class="p-desc">No session, expired/revoked session, or a disabled account.<span class="r-sig"><code>{&quot;error&quot;:&quot;not signed in&quot;}</code></span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">404</span>
+    <span class="p-desc">No meal with that id in this profile (<code>code</code>: <code>missing</code>).</span>
   </div>
     </div>
   </div>

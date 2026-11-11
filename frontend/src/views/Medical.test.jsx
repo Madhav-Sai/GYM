@@ -72,4 +72,31 @@ describe('Medical screens', () => {
     const d = await draw(<MedicalHomeCard />)
     expect(d.textContent).toBe('')
   })
+
+  it('Labs: a result with no report offers to attach one; one with a report opens, replaces or removes it', async () => {
+    const withFile = { ...lab, id: 'lab-2', date: '2026-11-04', file: { id: 'aaaaaaaaaaaaaaaaaaaaaaaa.pdf', name: 'Nov report.pdf', type: 'application/pdf', size: 348160, at: '2026-11-04' } }
+    const doc = { ...DOC, labs: [lab, withFile] }
+    const calls = []
+    vi.stubGlobal('fetch', vi.fn(async (url, init) => { calls.push([String(url), init]); return { ok: true, status: 200, json: async () => doc } }))
+    const opened = []
+    vi.stubGlobal('open', vi.fn((...a) => { opened.push(a); return {} }))
+    const d = await draw(<MedicalLabs />)
+    const hist = [...d.querySelectorAll('.med-hist')]
+    expect(hist[0].textContent).toContain('Report:')
+    expect(hist[0].textContent).toContain('340 KB')
+    expect(hist[1].textContent).toContain('Attach report (PDF or photo)')
+    await act(async () => d.querySelector('[aria-label="Open report Nov report.pdf"]').click())
+    expect(opened[0][0]).toBe('/api/medical/labs/file?id=aaaaaaaaaaaaaaaaaaaaaaaa.pdf')
+    expect(opened[0][1]).toBe('_blank')
+    // Attaching: the picked PDF goes up as base64 JSON for that result.
+    const input = hist[1].querySelector('input[type=file]')
+    expect(input.getAttribute('accept')).toContain('application/pdf')
+    const file = new File([new Uint8Array([37, 80, 68, 70, 45, 49])], 'aug.pdf', { type: 'application/pdf' })
+    Object.defineProperty(input, 'files', { value: [file], configurable: true })
+    await act(async () => { input.dispatchEvent(new Event('change', { bubbles: true })) })
+    await act(async () => { await new Promise(res => setTimeout(res, 0)) })
+    const post = calls.find(([u, i]) => u.endsWith('/api/medical/labs/file') && i?.method === 'POST')
+    expect(post).toBeTruthy()
+    expect(JSON.parse(post[1].body)).toEqual({ labId: 'lab-1', type: 'application/pdf', name: 'aug.pdf', data: btoa('%PDF-1') })
+  })
 })

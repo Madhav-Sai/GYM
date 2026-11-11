@@ -55,6 +55,7 @@ import { durationSheet } from '../components/DurationWheel.jsx'
 import { showsConnection, showsLocalLine } from '../components/SyncBanner.jsx'
 import BackupFolderRow, { useBackupFolder, autoBackupSubtitle } from '../components/BackupFolderRow.jsx'
 import AppIconRow from '../components/AppIconRow.jsx'
+import BodyCheckReminderRow from '../components/BodyCheckReminderRow.jsx'
 import { altAppIcons, trimmedSettings, coachNeedsServer } from '../lib/fork-flags.js'
 import { AnimationQualityRow } from '../components/Animations.jsx'
 import { ServerSyncSection, KeptChangesRows, leaveServer, connectServer, passkeySignIn } from '../components/ServerSync.jsx'
@@ -810,6 +811,11 @@ export default function Settings({ page = null, find = null, via = null, entryKe
 
     reminders: () => <>
       <NotificationsCard S={S} update={update} toast={toast} />
+      {/* The monthly body check (components/BodyCheckReminderRow.jsx): Home's card shows its switch
+          only while something is due, so it lives here too. */}
+      {MOBILE && <Section footer={t('A progress photo, an InBody scan and your waist, on the 1st of each month at 10:30 India time.')}>
+        <BodyCheckReminderRow title="Monthly body check" subtitle="Remind me on the 1st" iconTint="var(--teal)" />
+      </Section>}
       {MOBILE && gymReminder && <Section footer={t('A nudge when you walk into your gym.')}>
         <Row icon="mapPin" iconTint="var(--green)" title={t('Gym reminder')} value={gymOn ? t('On') : t('Off')} accessory="chevron" onClick={() => nav('/settings/gym')} />
       </Section>}

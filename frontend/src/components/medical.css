@@ -51,6 +51,8 @@
 .med-tag.under,.med-tag.over{color:var(--orange);background:rgba(255,159,10,.14)}
 .med-hist{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 0}
 .med-hist + .med-hist{border-top:.5px solid var(--sep)}
+.med-report{margin-top:4px}
+.med-report .linkbtn{background:none;border:0;padding:2px 0;color:var(--accent,var(--blue));font:inherit;cursor:pointer;text-decoration:underline;text-underline-offset:2px}
 .med-form-row{display:grid;grid-template-columns:1fr 92px 64px;gap:6px;align-items:center;padding:4px 0}
 .med-form-row .num,.med-form-row .field{width:100%}
 .med-form-sec{margin:14px 0 4px;font-size:var(--fs-caption);color:var(--label-2);text-transform:uppercase;letter-spacing:.04em}

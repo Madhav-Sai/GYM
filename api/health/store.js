@@ -2,7 +2,8 @@
  * temp-then-rename like every other file here. Kept apart from the profile's synced state the way
  * the Whoop data is: this is a single-owner log, read and written by the app over the API.
  *
- * The file holds { v, diet: { prefs, days: { 'YYYY-MM-DD': day } }, supplements: { list, log } }.
+ * The file holds { v, diet: { prefs, days: { 'YYYY-MM-DD': day } }, supplements: { list, log }, meals }
+ * (meals.js: the saved meals).
  * Days older than KEEP_DAYS are dropped on every save. */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -13,7 +14,7 @@ export const KEEP_DAYS = 400;
 const DAY = 86400_000;
 
 const safeUid = uid => String(uid || '').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 64);
-export const blankHealth = () => ({ v: 1, diet: { prefs: { veg: false }, days: {} }, supplements: { list: null, log: {} } });
+export const blankHealth = () => ({ v: 1, diet: { prefs: { veg: false }, days: {} }, supplements: { list: null, log: {} }, meals: [] });
 
 /** 'YYYY-MM-DD' that is a real calendar date, or null. */
 export function validDay(d) {
