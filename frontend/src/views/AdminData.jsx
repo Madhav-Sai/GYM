@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store/useStore.js'
 import { useUI } from '../store/useUI.js'
 import { api } from '../lib/api.js'
+import { saveFile } from '../lib/save-file.js'
 import { fmtBytes, filterJson, countLeaves } from '../lib/admin-data.js'
 import Icon from '../components/Icon.jsx'
 import { Button, SearchField } from '../components/ui.jsx'
@@ -65,16 +66,10 @@ function FileView({ file, close }) {
 export async function downloadExport(toast) {
   try {
     const d = await api('/api/admin/export', { timeout: 120000 })
-    const blob = new Blob([JSON.stringify(d, null, 2)], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `mygym-export-${(d.exported || new Date().toISOString()).slice(0, 10)}.json`
-    document.body.appendChild(a)
-    a.click()
-    a.remove()
-    setTimeout(() => URL.revokeObjectURL(url), 10000)
-    toast?.(`Exported ${Object.keys(d.files || {}).length} files`)
+    // A download in a browser, the share sheet in the phone app (lib/save-file.js).
+    const r = await saveFile(JSON.stringify(d, null, 2), `mygym-export-${(d.exported || new Date().toISOString()).slice(0, 10)}.json`)
+    if (r === 'saved') toast?.(`Exported ${Object.keys(d.files || {}).length} files`)
+    else if (r === 'failed') toast?.('Could not save the file.')
   } catch (e) { toast?.(errText(e)) }
 }
 

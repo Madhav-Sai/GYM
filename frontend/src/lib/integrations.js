@@ -137,6 +137,8 @@ export function cardState(id, ctx) {
       return mine.every(c => c.paused) ? { status: 'off', action: 'manage' } : { status: 'connected', action: 'manage' }
     }
     case 'coach':
+      // myGym: a server without AI and no Coach on this phone (lib/coach.js coachHidden).
+      if (ctx.noCoach) return null
       if (ctx.mobile) return { status: ctx.coachMode ? 'connected' : 'off', action: ctx.coachMode ? 'manage' : 'connect' }
       return ctx.coach ? { status: 'connected', action: 'open' } : null
     case 'mcp':

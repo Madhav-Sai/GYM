@@ -30,3 +30,14 @@ export function trimmedSettings() {
   if (v === '0') return false
   return import.meta.env.MODE !== 'test'
 }
+
+/** The Coach only where it can work: a server with an AI provider set up (GET /api/config `coach`), or a phone that
+ *  already has a Coach of its own. Upstream shows the phone's Coach setup and the AI Coach module everywhere, which on
+ *  a server without AI leads to a screen that bounces home. Off under test so upstream's Coach tests keep guarding
+ *  those rows; VITE_COACH_NEEDS_SERVER=0 brings them back. */
+export function coachNeedsServer() {
+  const v = import.meta.env.VITE_COACH_NEEDS_SERVER
+  if (v === '1') return true
+  if (v === '0') return false
+  return import.meta.env.MODE !== 'test'
+}

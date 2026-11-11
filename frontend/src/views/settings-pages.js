@@ -62,7 +62,8 @@ export function pageVisible(page, ctx) {
   if (page === 'whoop') return trimmedSettings() && !ctx.demo
   if (trimmedSettings() && (page === 'watch' || page === 'zepp' || page === 'health-connect')) return false
   if (page === 'reminders') return !!(ctx.user || ctx.mobile)
-  if (page === 'coach') return !!ctx.mobile
+  // myGym: not on a server without AI, unless this phone has a Coach of its own (lib/coach.js coachHidden).
+  if (page === 'coach') return !!ctx.mobile && !ctx.noCoach
   // The iPhone app only: the watch app ships inside it.
   if (page === 'watch') return !!ctx.ios
   // Signed in to a server: a Zepp OS watch reaches myGym through it (lib/watch-relay.js).
@@ -105,7 +106,7 @@ const MODULE_KW = {
 }
 export const SEARCH = [
   // Modules
-  ...MODULES.map(m => ({ page: 'modules', title: m.title, icon: m.icon, tint: m.tint, kw: MODULE_KW[m.id] + ' module turn on off hide' })),
+  ...MODULES.map(m => ({ page: 'modules', title: m.title, icon: m.icon, tint: m.tint, kw: MODULE_KW[m.id] + ' module turn on off hide', ...(m.id === 'coach' ? { when: c => !c.noCoach } : {}) })),
   // Workout
   { page: 'workout', title: 'Automatic warm-ups', icon: 'sunrise', tint: 'var(--orange)', mod: 'plates', kw: 'warm-up warmup ramp automatic generator compounds' },
   { page: 'workout', title: 'Rest timer', icon: 'timer', tint: 'var(--orange)', kw: 'rest pause break seconds minutes timer countdown' },

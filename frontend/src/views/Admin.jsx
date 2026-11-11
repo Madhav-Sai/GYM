@@ -12,6 +12,7 @@ import Icon from '../components/Icon.jsx'
 import { Button } from '../components/ui.jsx'
 import AdminCoach from './AdminCoach.jsx'
 import { downloadExport } from './AdminData.jsx'
+import { saveFile } from '../lib/save-file.js'
 import '../admin.css'
 
 // Admin-only operator dashboard (owner passkey + admin flag; guarded again server-side).
@@ -74,13 +75,10 @@ function UserDetail({ id, viewerOwner, onChanged, close }) {
   // an entry that lacks either has nothing to show and is skipped rather than drawn.
   const workouts = (d.workouts || []).filter(w => w && Array.isArray(w.entries) && w.entries.every(e => e && Array.isArray(e.sets)))
   // Their whole record as the admin API already returns it — the export the delete sheet offers.
-  const exportUser = () => {
-    const blob = new Blob([JSON.stringify(d, null, 2)], { type: 'application/json' })
-    const a = document.createElement('a')
-    a.href = URL.createObjectURL(blob)
-    a.download = `opengym-${u.name.replace(/[^a-zA-Z0-9_-]+/g, '-').toLowerCase()}-${u.id}.json`
-    document.body.appendChild(a); a.click(); a.remove()
-    setTimeout(() => URL.revokeObjectURL(a.href), 1000)
+  // A download in a browser, the share sheet in the phone app (lib/save-file.js).
+  const exportUser = async () => {
+    const r = await saveFile(JSON.stringify(d, null, 2), `opengym-${u.name.replace(/[^a-zA-Z0-9_-]+/g, '-').toLowerCase()}-${u.id}.json`)
+    if (r === 'failed') toast('Could not save the file.')
   }
   const doDelete = () => {
     api('/api/admin/user/delete', { method: 'POST', body: JSON.stringify({ id: u.id }) })

@@ -32,7 +32,7 @@ import { t, tn, LANGS, INSTR_LANGS, EXERCISE_NAME_LANGS, baseLang, dateLocale } 
 import { englishOnly } from '../lib/english-only.js'
 import { effectiveLang } from '../lib/default-lang.js'
 import { DEMO, REPO } from '../lib/demo.js'
-import { MOBILE, isAndroid, shareExport, shareExportBlob, syncReminder } from '../lib/mobile.js'
+import { MOBILE, isAndroid, syncReminder } from '../lib/mobile.js'
 import { NUDGE_COPY, NUDGE_TONES, toneOf } from '../lib/nudge.js'
 import { referencedFiles } from '../lib/media-refs.js'
 import { mediaStore } from '../lib/media-store.js'
@@ -46,7 +46,7 @@ import { APK_VARIANT, VARIANT_NAMES } from '../lib/apk-variant.js'
 import { BUILTIN_PX } from '../lib/anim-quality.js'
 import { getChannel, gymReminderBuilt } from '../lib/channel.js'
 import { forgetCoach } from '../lib/coach-api.js'
-import { coachAvailable } from '../lib/coach.js'
+import { coachAvailable, coachHidden } from '../lib/coach.js'
 import { REST_MAX, REST_PAUSE_MIN, REST_PAUSE_MAX, fmtRest, fmtDuration } from '../lib/duration.js'
 import { loadMyPlan } from '../components/MyPlan.jsx'
 import { starterPlanSheet, confirmSheet, importFromApp, importFromHevy, equipmentProfileSheet, plateInventorySheet, dumbbellInventorySheet, barDefaultsSheet, menuSheet } from '../sheets.jsx'
@@ -55,7 +55,7 @@ import { durationSheet } from '../components/DurationWheel.jsx'
 import { showsConnection, showsLocalLine } from '../components/SyncBanner.jsx'
 import BackupFolderRow, { useBackupFolder, autoBackupSubtitle } from '../components/BackupFolderRow.jsx'
 import AppIconRow from '../components/AppIconRow.jsx'
-import { altAppIcons, trimmedSettings } from '../lib/fork-flags.js'
+import { altAppIcons, trimmedSettings, coachNeedsServer } from '../lib/fork-flags.js'
 import { AnimationQualityRow } from '../components/Animations.jsx'
 import { ServerSyncSection, KeptChangesRows, leaveServer, connectServer, passkeySignIn } from '../components/ServerSync.jsx'
 import { passwordOn, PasswordRow, openPasswordSignIn, openPasswordRegister } from '../components/PasswordAuth.jsx'
@@ -77,6 +77,7 @@ import { isOn, presetOf } from '../lib/modules.js'
 import { presetCopy } from '../lib/modules-copy.js'
 import { reportSheet } from '../components/ReportSheet.jsx'
 import { csvExportSheet } from '../components/CsvExportSheet.jsx'
+import { saveFile } from '../lib/save-file.js'
 import GymReminderPage, { GymEditPage, GymFindPage } from './GymReminder.jsx'
 import { readGymConfig } from '../lib/gym-reminder.js'
 import { THEMES, inSeason, seasonChoice, activeSeason } from '../lib/seasonal.js'
@@ -329,14 +330,11 @@ export default function Settings({ page = null, find = null, via = null, entryKe
   const doExport = async () => {
     const json = JSON.stringify(useStore.getState().S, null, 2)
     const name = 'opengym-backup-' + todayISO() + '.json'
-    // WKWebView can't download blob URLs — the native build hands the file to the share sheet.
-    if (MOBILE) {
-      try { await shareExport(json, name); toast(t('Backup exported')) } catch (e) { /* share sheet dismissed */ }
-      return
-    }
-    const blob = new Blob([json], { type: 'application/json' })
-    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click(); URL.revokeObjectURL(a.href)
-    toast(t('Backup exported'))
+    // WKWebView can't download blob URLs — the native build hands the file to the share sheet
+    // (lib/save-file.js). A closed sheet says nothing; a file that could not be written says so.
+    const r = await saveFile(json, name)
+    if (r === 'saved') toast(t('Backup exported'))
+    else if (r === 'failed') toast(t('Could not save the file.'))
   }
   // "Export with photos & videos": the same JSON plus every file the state refers to, in a zip
   // (lib/backup-media.js). Signed in, a file this device never downloaded is fetched for it; one
@@ -350,13 +348,9 @@ export default function Settings({ page = null, find = null, via = null, entryKe
     catch { toast(t('Something went wrong')); return }
     const name = 'opengym-backup-' + todayISO() + '.zip'
     if (out.missing) toast(tn('{0} file could not be included', '{0} files could not be included', out.missing))
-    if (MOBILE) {
-      try { await shareExportBlob(out.blob, name); if (!out.missing) toast(t('Backup exported')) } catch (e) { /* share sheet dismissed */ }
-      return
-    }
-    const a = document.createElement('a'); a.href = URL.createObjectURL(out.blob); a.download = name; a.click()
-    setTimeout(() => URL.revokeObjectURL(a.href), 60000)
-    if (!out.missing) toast(t('Backup exported'))
+    const r = await saveFile(out.blob, name)
+    if (r === 'saved' && !out.missing) toast(t('Backup exported'))
+    else if (r === 'failed') toast(t('Could not save the file.'))
   }
   // Import takes the JSON backup and the zip alike, told apart by their first bytes. A zip's
   // files go into the local store only once the import is confirmed, each checked against its
@@ -478,6 +472,8 @@ export default function Settings({ page = null, find = null, via = null, entryKe
     spokenCues: S.spokenCues === true,
     // Settings → Modules: which feature areas are on (pageVisible and the search ask it).
     mod: id => isOn(S, id),
+    // myGym: no AI on this server (and none on this phone): no Coach row, page or search hit.
+    noCoach: coachHidden(config, user, { demo: DEMO, coachMode: coachLocal?.mode, needServer: coachNeedsServer() }),
   }
   const on = id => isOn(S, id)
   const mode = scheduleModeOf(S)
