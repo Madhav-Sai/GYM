@@ -25,8 +25,9 @@ export const groupCopy = () => ({
   extras: t('Extras'),
 })
 
-export const presetCopy = () => ({
+// noCoach: the server has no AI Coach (lib/coach.js coachHidden), so Everything does not promise one.
+export const presetCopy = (noCoach = false) => ({
   training: [t('Just training'), t('Log, plan, progress. Nothing else on the screen.')],
   body: [t('Training and body'), t('Plus weigh-ins, measurements, photos and your health apps.')],
-  all: [t('Everything'), t('Streaks, the Coach, themes, the lot.')],
+  all: [t('Everything'), noCoach ? t('Streaks, themes, the lot.') : t('Streaks, the Coach, themes, the lot.')],
 })

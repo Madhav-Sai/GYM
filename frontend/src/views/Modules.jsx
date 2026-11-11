@@ -12,7 +12,8 @@ import { DEMO } from '../lib/demo.js'
 import { platformNow } from '../lib/platform-now.js'
 import { api } from '../lib/api.js'
 import { MODULES, GROUPS, PRESETS, isOn, presetOf, presetModules, applyPreset, setModule, turnedOff, onCount } from '../lib/modules.js'
-import { trimmedSettings } from '../lib/fork-flags.js'
+import { trimmedSettings, coachNeedsServer } from '../lib/fork-flags.js'
+import { coachHidden } from '../lib/coach.js'
 import { readWatchStatus, readGarminLink } from '../lib/watch-settings.js'
 import { moduleCopy, groupCopy, presetCopy } from '../lib/modules-copy.js'
 import { confirmSheet } from '../sheets.jsx'
@@ -68,6 +69,11 @@ export default function ModulesPage() {
   const update = useStore(s => s.update)
   const conn = useConnections()
   const preset = presetOf(S)
+  // myGym: a server without AI has no Coach to switch on or off, so neither the row nor Everything mentions it.
+  const user = useStore(s => s.user)
+  const config = useStore(s => s.config)
+  const coachMode = useStore(s => s.coachLocal?.mode)
+  const noCoach = coachHidden(config, user, { demo: DEMO, coachMode, needServer: coachNeedsServer() })
 
   // Applies a change, after one question when it pauses something that is connected.
   const change = (next, title, apply) => {
@@ -80,7 +86,7 @@ export default function ModulesPage() {
       onConfirm: () => update(apply),
     })
   }
-  const mc = moduleCopy(), gc = groupCopy(), pc = presetCopy()
+  const mc = moduleCopy(), gc = groupCopy(), pc = presetCopy(noCoach)
   const pickPreset = id => {
     if (id === 'custom' || id === preset) return
     const next = presetModules(id)
@@ -104,7 +110,7 @@ export default function ModulesPage() {
     </Section>
     {GROUPS.map((g, gi) => <Section key={g.id} title={gc[g.id]}
       footer={gi === GROUPS.length - 1 ? t('Logging, plans, history, the exercise library and the basic stats are always on.') : null}>
-      {MODULES.filter(m => m.group === g.id && !(trimmedSettings() && m.id === 'watch')).map(m => (
+      {MODULES.filter(m => m.group === g.id && !(trimmedSettings() && m.id === 'watch') && !(noCoach && m.id === 'coach')).map(m => (
         <Row key={m.id} icon={m.icon} iconTint={m.tint} title={mc[m.id][0]} subtitle={mc[m.id][1]} className="module-row" tour={'module-' + m.id}>
           <Switch aria-label={mc[m.id][0]} checked={isOn(S, m.id)} onChange={v => flip(m.id, v)} />
         </Row>

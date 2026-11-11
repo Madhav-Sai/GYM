@@ -15,8 +15,11 @@
 //   S.whoopImported = { '<whoop id>': { s: '<workout id>' | 'skip', _ts }, … }
 //
 // `s` is the workout it became, the logged gym session it was linked to (that session carries
-// `whoopId`), or 'skip' (deleted from History, or nothing to import). A Whoop id with an entry is
-// never imported again, so a deleted workout does not come back on the next summary.
+// `whoopId`), 'skip' (deleted from History, or nothing to import), or null: released, because the
+// logged session it was linked to was deleted (releaseWhoopLink). A Whoop id with an entry is never
+// imported again, so a deleted workout does not come back on the next summary; a released one is
+// open again. Released rather than removed: a removed key would come back from the server's copy
+// in the merge, while a newer stamp wins over it.
 //
 // The id is the Whoop id with a prefix, so two devices importing the same workout before they
 // sync make one workout, not two (the merge unions workouts by id).
@@ -146,7 +149,7 @@ export function planWhoopImport(S, workouts, { now = Date.now() } = {}) {
   const seen = new Set()
   for (const w of usable) {
     const id = String(w.id)
-    if (seen.has(id) || Object.hasOwn(done, id)) continue
+    if (seen.has(id) || (Object.hasOwn(done, id) && !isReleased(done[id]))) continue
     seen.add(id)
     if (ids.has(whoopSessionId(id)) || Number(removed[whoopSessionId(id)]) > 0) continue
     if (linkedIds.has(id)) continue
@@ -186,6 +189,27 @@ export function applyWhoopImport(S, p, now = Date.now()) {
   S.workouts = list
   S.whoopImported = map
   return added
+}
+
+// An entry let go by releaseWhoopLink: the Whoop workout is open to import again.
+const isReleased = v => isMap(v) && v.s == null
+
+/** The Whoop id logged session `w` is linked to (S.whoopImported points back at it), or null. */
+export function whoopLinkOf(S, w) {
+  if (!w || w.source === 'whoop' || w.whoopId == null || w.id == null) return null
+  const e = isMap(S?.whoopImported) ? S.whoopImported[String(w.whoopId)] : null
+  return isMap(e) && e.s === w.id ? String(w.whoopId) : null
+}
+
+/**
+ * `S` (mutated) with the Whoop link of logged session `w` let go, stamped `now`, so the Whoop
+ * workout is imported on the next run now the session is gone. True when there was one.
+ */
+export function releaseWhoopLink(S, w, now = Date.now()) {
+  const id = whoopLinkOf(S, w)
+  if (!id) return false
+  S.whoopImported = { ...S.whoopImported, [id]: { s: null, _ts: now } }
+  return true
 }
 
 /** S.whoopImported with `whoopId` marked as not to be imported again, stamped `now`. */

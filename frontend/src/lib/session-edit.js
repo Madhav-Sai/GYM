@@ -16,6 +16,7 @@ import { bestWeightForEntry, workoutVolume } from './history.js'
 import { hasCompletedWork } from './workout-model.js'
 import { stampWorkout } from './sync-merge.js'
 import { legacySyncKey, rebuildPrHistory } from './workout-date.js'
+import { releaseWhoopLink } from './whoop-import.js'
 
 const clone = value => structuredClone(value)
 const list = v => (Array.isArray(v) ? v : [])
@@ -232,6 +233,8 @@ export function deleteEditedWorkout(state) {
   state.active = null
   if (!current) return false
   state.workouts = state.workouts.filter(w => w !== current)
+  // myGym: a Whoop workout linked to it comes back on the next import (lib/whoop-import.js).
+  releaseWhoopLink(state, current)
   lowerKeptWeights(state, [...new Set(list(current.entries).map(e => e?.id).filter(id => id != null))], current, null)
   return true
 }

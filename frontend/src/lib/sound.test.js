@@ -2,6 +2,7 @@
 // lib/sound.js keeps one AudioContext per page; each test gets a fresh module so that state
 // does not leak. The fake context records what the real one would be asked to do.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { PR_BUZZ } from './haptics.js'
 
 class FakeCtx {
   constructor() {
@@ -459,6 +460,24 @@ describe('vibrate switch', () => {
       sound.setVibrate(false)
       sound.vibrate(30)
       expect(native).toEqual([[200, 100, 200]])
+    } finally {
+      sound.setNativeBuzzer(null)
+      sound.setVibrate(true)
+    }
+  })
+
+  it('a new PR is three short taps through the native side, all haptic-engine taps on the iPhone', () => {
+    Object.defineProperty(navigator, 'vibrate', { value: undefined, configurable: true, writable: true })
+    const native = []
+    sound.setNativeBuzzer(p => { native.push(p); return Promise.resolve(true) })
+    try {
+      sound.vibrate(PR_BUZZ)
+      expect(native).toEqual([PR_BUZZ])
+      // On pulses (even places) under 100 ms: RestAlertPlugin.swift plays those as impact taps.
+      expect(PR_BUZZ.filter((_, i) => i % 2 === 0).every(ms => ms > 0 && ms < 100)).toBe(true)
+      sound.setVibrate(false)
+      sound.vibrate(PR_BUZZ)
+      expect(native).toHaveLength(1)
     } finally {
       sound.setNativeBuzzer(null)
       sound.setVibrate(true)

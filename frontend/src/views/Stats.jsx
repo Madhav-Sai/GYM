@@ -13,6 +13,7 @@ import { bwSheet, goalSheet, calendarSheet, dayOverrideSheet, workoutDetailSheet
 import LineChart from '../components/LineChart.jsx'
 import WeightRate from '../components/WeightRate.jsx'
 import Heatmap from '../components/Heatmap.jsx'
+import ActivityWeeksCard from '../components/ActivityWeeksCard.jsx'
 import { SeasonDeco } from '../components/Seasonal.jsx'
 import Icon from '../components/Icon.jsx'
 import { StreakCard } from '../components/Streak.jsx'
@@ -912,6 +913,9 @@ export default function Stats() {
         onDay={iso => { const ws = workouts.filter(w => workoutDay(w) === iso); if (ws.length === 1) workoutDetailSheet(ws[0]); else if (ws.length) calendarSheet(iso); else dayOverrideSheet(iso) }}
       />
     </div>
+
+    {/* Every workout by time, Whoop ones included (they have no sets for the volume charts). */}
+    {workouts.length > 0 && <ActivityWeeksCard S={S} />}
 
     {workouts.length > 0 && <>
       <div className="row between stats-list-h">

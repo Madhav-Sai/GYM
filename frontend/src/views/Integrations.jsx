@@ -9,7 +9,8 @@ import { MOBILE } from '../lib/mobile.js'
 import { fmtAgo } from '../lib/format.js'
 import { copyText } from '../lib/clipboard.js'
 import { platformNow } from '../lib/platform-now.js'
-import { coachAvailable } from '../lib/coach.js'
+import { coachAvailable, coachHidden } from '../lib/coach.js'
+import { coachNeedsServer } from '../lib/fork-flags.js'
 import { healthStatus, loadHealth, onHealthChange, disableHealth, disableRead } from '../lib/health-sync.js'
 import { directory, shownDirectory, shownCards, cardState, CARD, PILL, WORKS_WITH, WEBHOOK_EVENTS, webhookUrlProblem, normalizeWebhookUrl } from '../lib/integrations.js'
 import { importFromApp, importFromHevy, confirmSheet, menuSheet } from '../sheets.jsx'
@@ -125,6 +126,7 @@ export default function IntegrationsPage({ android = false, ios = false }) {
     mobile: MOBILE, platform, user, demo: DEMO, admin: !!user?.admin, health, server: server.data, offered,
     mod: id => isOn(S, id),
     coach: coachAvailable(config, user, { demo: DEMO }), coachMode: coachLocal?.mode === 'server' || coachLocal?.mode === 'byok' ? coachLocal.mode : null,
+    noCoach: coachHidden(config, user, { demo: DEMO, coachMode: coachLocal?.mode, needServer: coachNeedsServer() }),
   }
   const dir = shownDirectory(ctx)
 

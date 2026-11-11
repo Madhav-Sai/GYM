@@ -85,6 +85,35 @@ describe('Whoop workouts in History', () => {
     const pick = renderTop()
     act(() => { item(pick, 'HRX').click() })
     expect(useStore.getState().S.workouts.find(x => x.id === 'whoop-c2').name).toBe('Cult: HRX')
+    // The open detail sheet reads the workout from the store, so its title follows at once.
+    expect(host.querySelector('h3').textContent).toBe('Cult: HRX')
+  })
+
+  it('deleting a logged session with a Whoop workout linked lets the Whoop workout come back', () => {
+    const start = now - 3 * 3600000, end = now - 2 * 3600000
+    const session = { ...gymSession, id: 'g2', d: new Date(start).toISOString().slice(0, 10), start, end, name: 'Legs' }
+    useStore.setState(s => ({ S: { ...s.S, workouts: [gymSession, session] } }))
+    act(() => { expect(runWhoopImport({ connected: true, syncedAt: 5, workouts: [whoop('c4')] })).toBe(0) })
+    let S = useStore.getState().S
+    expect(S.whoopImported.c4.s).toBe('g2')
+    expect(S.workouts.find(x => x.id === 'g2').whoopId).toBe('c4')
+    workoutDetailSheet(S.workouts.find(x => x.id === 'g2'))
+    const host = renderTop()
+    act(() => { item(host, 'Workout options').click() })
+    const menu = renderTop()
+    act(() => { item(menu, 'Delete workout').click() })
+    const confirm = renderTop()
+    expect(confirm.textContent).toContain('The Whoop workout will come back on its own.')
+    act(() => { button(confirm, 'Delete').click() })
+    S = useStore.getState().S
+    expect(S.workouts.some(x => x.id === 'g2')).toBe(false)
+    expect(S.whoopImported.c4.s).toBe(null)
+    expect(useUI.getState().toastMsg).toContain('The Whoop workout will come back on its own.')
+    // The next run imports it as a workout of its own.
+    act(() => { expect(runWhoopImport({ connected: true, syncedAt: 6, workouts: [whoop('c4')] })).toBe(1) })
+    S = useStore.getState().S
+    expect(S.workouts.some(x => x.id === 'whoop-c4')).toBe(true)
+    expect(S.whoopImported.c4.s).toBe('whoop-c4')
   })
 
   it('a deleted imported workout is marked skip and is not imported again', () => {

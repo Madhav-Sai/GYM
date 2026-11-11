@@ -12,12 +12,13 @@ import { usesBar, hasBarOverride, isNoBar, barTypeWeight, ownBarDefault, barPick
 import { PLATE_SIZES, pairsOf, ownsPlates, withPlatePairs, withStandardPlates, withLoadKind, loadKindFor, baseWeightFor, dropGrid } from './lib/plates.js'
 import { toScale, rirOf, EFFORT_PRESETS, effortColor } from './lib/effort.js'
 import { beep, vibrate } from './lib/sound.js'
+import { PR_BUZZ } from './lib/haptics.js'
 import { t, tn, dateLocale, instrFor, instrTranslated, descFor, exerciseNameFor, exerciseNameClass, getLang, useLang } from './lib/i18n.js'
 import { nav, closeThenNav, navToWorkout } from './lib/nav.js'
 import { buildStarterPlan, starterPlanDays, starterPlanOptions } from './lib/starter.js'
 import { WhoopMatchSection } from './components/MyPlan.jsx'
 import { WhoopBadge, WhoopSessionSection, cultRenameSheet } from './components/WhoopWorkout.jsx'
-import { isWhoopWorkout, withWhoopSkip } from './lib/whoop-import.js'
+import { isWhoopWorkout, withWhoopSkip, whoopLinkOf, releaseWhoopLink } from './lib/whoop-import.js'
 import Media, { Thumb } from './components/Media.jsx'
 import CustomMediaField from './components/CustomMediaField.jsx'
 import WorkoutMediaSection, { workoutMediaCount } from './components/WorkoutMedia.jsx'
@@ -3082,12 +3083,17 @@ function WorkoutDurationEdit({ w, onDone, close }) {
 }
 export const workoutDurationSheet = (w, onDone) => ui().openSheet(close => <WorkoutDurationEdit w={w} onDone={onDone} close={close} />)
 
-function WorkoutDetail({ w, close }) {
+function WorkoutDetail({ w: opened, close }) {
+  const st = useStore(s => s.S)
+  // The name as the store has it now, not as it was when the sheet opened: a rename from here
+  // ("Rename as Cult class") shows in the title at once. Only the name: a caller may open the sheet
+  // on a copy of its own (another unit, a note added), and the rest stays the copy it was given.
+  const live = Array.isArray(st.workouts) ? st.workouts.find(x => sameWorkout(x, opened)) : null
+  const w = live && typeof live.name === 'string' && live.name !== opened.name ? { ...opened, name: live.name } : opened
   // Logged by the Whoop band, not set by set (lib/whoop-import.js): nothing to edit or repeat.
   const fromWhoop = isWhoopWorkout(w)
   const noteRef = useRef(null)
   const onNoteFocus = useSheetKeyboard(noteRef)
-  const st = useStore(s => s.S)
   const update = useStore(s => s.update)
   // The session note is editable here rather than only at the finish sheet: what you want to
   // record about a session is often clearer once you have looked at what you actually did.
@@ -3227,12 +3233,20 @@ function WorkoutDetail({ w, close }) {
   }
   // Matched the way the edits above are, not by id: a workout from before ids has none, and
   // filtering on `x.id !== undefined` took every other one of them with it.
-  const deleteWorkout = () => confirmSheet({ title: t('Delete workout?'), message: t('This removes it from your history for good.') + mediaGoesToo(S().workouts.find(x => sameWorkout(x, w))), confirmText: t('Delete'), danger: true, onConfirm: () => { update(s => {
-    // A workout from Whoop stays deleted: its Whoop id is marked so the next summary skips it.
-    const gone = s.workouts.find(x => sameWorkout(x, w))
-    if (isWhoopWorkout(gone)) s.whoopImported = withWhoopSkip(s.whoopImported, gone.whoop.id)
-    s.workouts = s.workouts.filter(x => !sameWorkout(x, w))
-  }); close(); toast(t('Workout deleted')) } })
+  const deleteWorkout = () => {
+    // A logged session with a Whoop workout linked lets the link go, so that workout is imported
+    // on its own next time (lib/whoop-import.js releaseWhoopLink), and the dialog says so.
+    const linked = !!whoopLinkOf(S(), S().workouts.find(x => sameWorkout(x, w)))
+    const back = linked ? ' ' + t('The Whoop workout will come back on its own.') : ''
+    confirmSheet({ title: t('Delete workout?'), message: t('This removes it from your history for good.') + back + mediaGoesToo(S().workouts.find(x => sameWorkout(x, w))), confirmText: t('Delete'), danger: true, onConfirm: () => { update(s => {
+      // A workout from Whoop stays deleted: its Whoop id is marked so the next summary skips it.
+      const gone = s.workouts.find(x => sameWorkout(x, w))
+      if (isWhoopWorkout(gone)) s.whoopImported = withWhoopSkip(s.whoopImported, gone.whoop.id)
+      else if (gone) releaseWhoopLink(s, gone)
+      s.workouts = s.workouts.filter(x => !sameWorkout(x, w))
+    }); close(); toast(linked ? t('Workout deleted. The Whoop workout will come back on its own.') : t('Workout deleted'))
+    if (linked) import('./views/WhoopSheets.jsx').then(m => m.resetWhoopImportMemo()).catch(() => {}) } })
+  }
   // The once-in-a-while things, in one menu over this sheet: when it happened, keeping it as a
   // routine, getting it out of the app (on paper: the browser's print dialog or the phone's
   // print sheet; .fit for Garmin Connect), and Delete on its own at the end.
@@ -3904,7 +3918,7 @@ export function saveWorkoutEdits(onExit = () => nav('/history')) {
   if (editLeftEmpty(S().active)) {
     confirmSheet({
       title: t('Delete workout?'),
-      message: t('No sets are left in this workout, so there is nothing to save. Delete it from your history?') + mediaGoesToo(editedRecord(S())),
+      message: t('No sets are left in this workout, so there is nothing to save. Delete it from your history?') + (whoopLinkOf(S(), editedRecord(S())) ? ' ' + t('The Whoop workout will come back on its own.') : '') + mediaGoesToo(editedRecord(S())),
       confirmText: t('Delete workout'), cancelText: t('Keep editing'), danger: true,
       onConfirm: () => {
         useStore.getState().deleteHistoryEdit()
@@ -4164,5 +4178,7 @@ function doFinishWorkout() {
   // into s.active, which is gone. What it held is not logged, like any set left unchecked.
   useUI.getState().stopWork()
   beep(snd(), 880, 0.15); beep(snd(), 1100, 0.15, 0.18); beep(snd(), 1320, 0.3, 0.36)
+  // A new PR is felt too, on the phone through its haptic engine (lib/haptics.js).
+  if (prs.length || e1prs.length) vibrate(PR_BUZZ)
   ui().openSheet(close => <FinishSummary w={shown} prs={prs} e1prs={e1prs} additions={additions} close={close} />, { kind: 'center', locked: true, wide: true })
 }

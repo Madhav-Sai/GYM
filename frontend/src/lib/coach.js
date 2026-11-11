@@ -67,6 +67,13 @@ export const coachAvailable = (config, user, { demo, mobile, coachMode } = {}) =
   mobile ? (coachMode === 'byok' || !!(config?.coach?.enabled && user))
     : demo ? true : !!(config?.coach?.enabled && user)
 
+// myGym: whether every Coach entry point (Settings, Modules, the Integrations card, the presets'
+// words) stays out of sight. Only when this build asks for a server's Coach (fork-flags.js
+// coachNeedsServer), and then only while nothing makes one: no Coach in the server's config for
+// this session, no demo, and no Coach this phone already set up for itself (coachMode).
+export const coachHidden = (config, user, { demo, coachMode, needServer = true } = {}) =>
+  !!needServer && !demo && !coachMode && !(config?.coach?.enabled && user)
+
 // What each data category means, in the user's words. Rendered from the same list the payload
 // builder uses (api/coach/core/categories.js), so the screen cannot promise less than leaves.
 // Each entry returns [title, detail] in the current language, through literal t() calls so

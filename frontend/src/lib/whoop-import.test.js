@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   planWhoopImport, applyWhoopImport, whoopSessionOf, sportLabel, cultName, notImportable, withWhoopSkip,
   renameWorkout, whoopSessionView, whoopImportOn, isWhoopWorkout, whoopSessionId, SKIP, CULT_CLASSES,
+  whoopLinkOf, releaseWhoopLink,
 } from './whoop-import.js'
 import { mergeStates, STAMPED_MAPS, stampChange } from './sync-merge.js'
 import { STAMPED_MAPS as API_STAMPED_MAPS, stampPut } from '../../../api/sync-stamps.js'
@@ -174,5 +175,30 @@ describe('S.whoopImported syncs per Whoop id, on both sides', () => {
     expect(next.edited?.whoopImported).toBe(undefined)
     expect(next.whoopImported.a.s).toBe(SKIP)
     expect(next.edited.whoopAutoImport).toBeGreaterThanOrEqual(1000)
+  })
+})
+
+describe('a deleted logged session lets its Whoop link go', () => {
+  const session = { id: 'g1', start: 1000, end: 2000, whoopId: 'w9', entries: [] }
+  it('releases only the entry that points at that session', () => {
+    const S = { workouts: [session], whoopImported: { w9: { s: 'g1', _ts: 1 }, w8: { s: 'g0', _ts: 1 } } }
+    expect(whoopLinkOf(S, session)).toBe('w9')
+    expect(releaseWhoopLink(S, session, 50)).toBe(true)
+    expect(S.whoopImported.w9).toEqual({ s: null, _ts: 50 })
+    expect(S.whoopImported.w8).toEqual({ s: 'g0', _ts: 1 })
+    expect(releaseWhoopLink({ whoopImported: { w9: { s: 'other', _ts: 1 } } }, session)).toBe(false)
+    expect(releaseWhoopLink({ whoopImported: {} }, { id: 'x' })).toBe(false)
+  })
+  it('a released Whoop id is planned for import again', () => {
+    const now = Date.now()
+    const w = { id: 'w9', sport: 'running', start: now - 7200000, end: now - 3600000, strain: 9 }
+    const S = { workouts: [], whoopImported: { w9: { s: null, _ts: 5 } } }
+    expect(planWhoopImport(S, [w], { now }).add.map(x => x.id)).toEqual(['whoop-w9'])
+    expect(planWhoopImport({ workouts: [], whoopImported: { w9: { s: 'g1', _ts: 5 } } }, [w], { now }).add).toEqual([])
+  })
+  it('the release wins over the older link in a merge', () => {
+    const local = { workouts: [], whoopImported: { w9: { s: null, _ts: 50 } } }
+    const remote = { workouts: [], whoopImported: { w9: { s: 'g1', _ts: 10 } } }
+    expect(mergeStates(local, remote).whoopImported.w9.s).toBe(null)
   })
 })
