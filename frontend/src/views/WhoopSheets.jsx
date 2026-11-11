@@ -5,7 +5,9 @@ import { t } from '../lib/i18n.js'
 import { api } from '../lib/api.js'
 import { DEMO } from '../lib/demo.js'
 import { MOBILE } from '../lib/mobile.js'
-import { fmtAgo } from '../lib/format.js'
+import { fmtAgo, todayISO } from '../lib/format.js'
+import { needsStepsFallback, withStepsFallback, stepsSourceOf, STEPS_APPLE } from '../lib/steps-source.js'
+import { readTodaySteps } from '../lib/health-sync.js'
 import { isOn } from '../lib/modules.js'
 import { DASH, numOrDash, fmtSleep, fmtSteps, zoneLine, syncMessage, BAND_INK } from '../lib/whoop.js'
 import { confirmSheet } from '../sheets.jsx'
@@ -60,7 +62,18 @@ export function useWhoopSummary(enabled) {
   const [error, setError] = useState(false)
   const load = useCallback(() => {
     if (!enabled) return Promise.resolve(null)
-    return api('/api/whoop/summary').then(d => { setData(d); setError(false); runWhoopImport(d); return d }).catch(() => { setError(true); return null })
+    return api('/api/whoop/summary').then(d => {
+      setData(d); setError(false); runWhoopImport(d)
+      // No step count from Whoop today: Apple Health's, on the iPhone with it on (lib/steps-source.js).
+      // A dash stays a dash when there is none, or the build cannot read it.
+      if (MOBILE && needsStepsFallback(d)) {
+        readTodaySteps({ S: useStore.getState().S }).then(v => {
+          const next = withStepsFallback(d, v, todayISO())
+          if (next !== d) setData(cur => (cur === d ? next : cur))
+        }).catch(() => {})
+      }
+      return d
+    }).catch(() => { setError(true); return null })
   }, [enabled])
   useEffect(() => { load() }, [load])
   // Back from Whoop's page (or from the background): the numbers may be new, and a sign-in may have just finished.
@@ -106,7 +119,7 @@ function Stats({ s }) {
       </div>
       <div className="wh-stat">
         <div className="wh-n">{fmtSteps(s?.steps?.value)}</div>
-        <div className="wh-l">{t('Steps')}</div>
+        <div className="wh-l">{stepsSourceOf(s) === STEPS_APPLE ? t('Steps (Apple Health)') : t('Steps')}</div>
       </div>
     </div>
     {band && <div className="wh-guide" style={{ color: BAND_INK[band.band] }}>{t(band.text)}</div>}
@@ -158,7 +171,7 @@ function WhoopDetail({ close, conn, server, toast }) {
       <Row icon="heart" iconTint="var(--red)" title={t('Resting heart rate')} value={rec?.rhr != null ? numOrDash(rec.rhr) + ' bpm' : DASH} />
       <Row icon="moon" iconTint="var(--indigo)" title={t('Sleep consistency')} value={slp?.consistency != null ? numOrDash(slp.consistency) + '%' : DASH} />
       <Row icon="gauge" iconTint="var(--purple)" title={t('Day strain')} value={numOrDash(cyc?.strain, 1)} />
-      <Row icon="steps" iconTint="var(--green)" title={t('Steps')} subtitle={t('Counted by Whoop')} value={fmtSteps(s.steps?.value)} />
+      <Row icon="steps" iconTint="var(--green)" title={t('Steps')} subtitle={stepsSourceOf(s) === STEPS_APPLE ? t('Counted by Apple Health') : t('Counted by Whoop')} value={fmtSteps(s.steps?.value)} />
     </Section>}
 
     {z && <Section><Row icon="bolt" iconTint={z.ink} title={t(z.key, ...z.args)} value={`${z.m} / ${s.zone45.target[0]}-${s.zone45.target[1]} min`} /></Section>}

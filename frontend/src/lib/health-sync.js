@@ -25,6 +25,7 @@ import { isOn } from './modules.js'
 import { exerciseNameFor } from './i18n-core.js'
 import { EXIDX } from './exercises.js'
 import { speedUnitOf } from './speed.js'
+import { todayWindow } from './steps-source.js'
 
 export const HEALTH_FILE = 'opengym-health.json'
 const OFF = { on: false, written: {}, at: 0, error: null, readHr: false, readWeight: false, wHistory: false, wCursor: 0, seen: {}, hrTried: {}, readError: null }
@@ -362,4 +363,43 @@ async function readOnce(getState, force, now, applyFn) {
   await saveHealth(h)
   told(h)
   return h
+}
+
+/* ------------------------------------------------------- today's steps (myGym, our addition) -- */
+
+// The Whoop card's stand-in when Whoop has no step count for today (lib/steps-source.js): what
+// Apple Health counted since midnight. iPhone only, only with Apple Health switched on, at most
+// one read every few minutes. Read permission for the step count is asked once, the first time it
+// is needed. Anything that goes wrong (an older app without readSteps, a build signed without the
+// HealthKit capability, a refusal) reads as null, and the card shows a dash as before.
+export const STEPS_EVERY_MS = 5 * 60e3
+let stepsMemo = null   // { at, value }
+let stepsRunning = null
+export const _resetStepsMemo = () => { stepsMemo = null; stepsRunning = null }
+
+export function readTodaySteps({ now = Date.now(), S = null } = {}) {
+  if (!MOBILE) return Promise.resolve(null)
+  if (S && !isOn(S, 'health')) return Promise.resolve(null)
+  if (stepsMemo && now - stepsMemo.at < STEPS_EVERY_MS) return Promise.resolve(stepsMemo.value)
+  if (stepsRunning) return stepsRunning
+  stepsRunning = (async () => {
+    let value = null
+    try {
+      const p = await plugin()
+      const h = p?.platform === 'ios' ? await loadHealth() : null
+      if (h?.on) {
+        if (!h.stepsAsked) {
+          await p.HC.requestPermissions({ read: ['steps'], write: [] }).catch(() => null)
+          await saveHealth({ ...(await loadHealth()), stepsAsked: true })
+        }
+        const { from, to } = todayWindow(now)
+        const res = await p.HC.readSteps({ from, to })
+        const v = Number(res?.steps)
+        value = res && res.steps != null && Number.isFinite(v) && v >= 0 ? Math.round(v) : null
+      }
+    } catch { value = null }
+    stepsMemo = { at: now, value }
+    return value
+  })().finally(() => { stepsRunning = null })
+  return stepsRunning
 }
