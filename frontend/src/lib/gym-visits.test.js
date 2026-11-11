@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { canCheckIn, visitOn, visitDays, withVisit, visitOf, withVisitDetails, checkInDay, monthVisits, recentCentres } from './gym-visits.js'
+import { canCheckIn, visitOn, visitDays, withVisit, visitOf, withVisitDetails, checkInDay, monthVisits, recentCentres, withVisitClass, visitClassOn, cleanClass, CLS_MAX, VISIT_CLASSES } from './gym-visits.js'
 import { mergeStates, stampEdits, stampChange } from './sync-merge.js'
 import { streakInfo } from './streak.js'
 
@@ -142,5 +142,36 @@ describe('a check-in survives reload and sync', () => {
     const a = change(base, s => { s.gymVisits = withVisitDetails(s.gymVisits, '2026-11-04', { note: 'forgot to tap' }, 100, TODAY) }, 100)
     const m = mergeStates(base, a)
     expect(visitOf(m, '2026-11-04')).toEqual({ on: true, note: 'forgot to tap' })
+  })
+})
+
+describe('what you did at the gym (cls)', () => {
+  it('a chip checks the day in with its class, keeping the centre and note', () => {
+    const a = withVisitDetails({}, TODAY, { centre: 'Cult HSR', note: 'busy' }, 1, TODAY)
+    const b = withVisitClass(a, TODAY, '  HRX ', 2, TODAY)
+    expect(b[TODAY]).toEqual({ on: true, centre: 'Cult HSR', note: 'busy', cls: 'HRX', _ts: 2 })
+    expect(visitClassOn({ gymVisits: b }, TODAY)).toBe('HRX')
+    expect(withVisitClass(b, TODAY, '', 3, TODAY)[TODAY]).toEqual({ on: true, centre: 'Cult HSR', note: 'busy', _ts: 3 })
+    expect(withVisitClass({}, '2026-12-01', 'HRX', 3, TODAY)).toEqual({})
+    expect(withVisitClass({}, TODAY, 'Yoga', 4, TODAY)[TODAY]).toEqual({ on: true, cls: 'Yoga', _ts: 4 })
+  })
+  it('kept by a fresh check-in and by details saved without one, gone when taken back', () => {
+    const a = withVisitClass({}, TODAY, 'Spin', 1, TODAY)
+    expect(withVisit(a, TODAY, true, 2, TODAY)[TODAY].cls).toBe('Spin')
+    expect(withVisitDetails(a, TODAY, { centre: 'X' }, 2, TODAY)[TODAY].cls).toBe('Spin')
+    expect(withVisitDetails(a, TODAY, { centre: 'X', cls: 'Pilates' }, 2, TODAY)[TODAY].cls).toBe('Pilates')
+    expect(withVisit(a, TODAY, false, 3, TODAY)[TODAY]).toEqual({ _ts: 3 })
+    expect(visitClassOn({ gymVisits: withVisit(a, TODAY, false, 3, TODAY) }, TODAY)).toBe('')
+  })
+  it('free text is tidied and capped; the chips are the Cult formats plus the gym floor', () => {
+    expect(cleanClass('  Animal   flow ')).toBe('Animal flow')
+    expect(cleanClass('x'.repeat(99))).toHaveLength(CLS_MAX)
+    expect(cleanClass(5)).toBe('')
+    expect(VISIT_CLASSES.map(c => c.v)).toEqual(['Gym floor', 'HRX', 'Strength & Conditioning', 'Boxing', 'Dance Fitness', 'Yoga', 'Spin', 'Burn', 'HIIT'])
+  })
+  it('syncs with the entry, the later write of the day wins', () => {
+    const phone = { _ts: 1, edited: {}, gymVisits: withVisitClass({}, TODAY, 'HRX', 100, TODAY) }
+    const laptop = { _ts: 1, edited: {}, gymVisits: withVisitClass({}, TODAY, 'Burn', 200, TODAY) }
+    expect(mergeStates(phone, laptop).gymVisits[TODAY].cls).toBe('Burn')
   })
 })

@@ -64,6 +64,15 @@ describe('WeeklyReviewView', () => {
     expect(sugg).toEqual(['stalled', 'hr'])
     expect(text).toMatch(/stalled 2 weeks: drop 5 kg and build back/)
   })
+  it('Whoop workouts show on their own line, not as planned days trained', () => {
+    const S = S0()
+    S.workouts.push({ id: 'whoop-1', d: '2026-11-05', start: Date.parse('2026-11-05T07:00:00Z'), end: Date.parse('2026-11-05T08:00:00Z'), name: 'Cult: HRX', routineIds: [], routineId: null, entries: [], prs: [], source: 'whoop', whoop: { id: '1' } })
+    const r = weeklyReview(S, W, '2026-11-09')
+    act(() => root.render(<WeeklyReviewView r={r} unit="kg" />))
+    expect(host.querySelector('[data-wr="workouts"]').textContent).toContain('1/2')
+    expect(host.querySelector('[data-testid="wr-whoop-sessions"]').textContent).toContain('1 Whoop/Cult session')
+    expect(host.textContent).toContain('1 session')
+  })
   it('without Whoop says how to get it, never a 0', () => {
     const r = weeklyReview(S0(), W, '2026-11-09', {})
     act(() => root.render(<WeeklyReviewView r={r} />))

@@ -5,10 +5,12 @@
 //
 // Stored per day, exactly the way day notes are (lib/day-notes.js):
 //
-//   S.gymVisits = { '2026-11-09': { on: true, _ts, centre?, note? }, … }
+//   S.gymVisits = { '2026-11-09': { on: true, _ts, centre?, note?, cls? }, … }
 //
-// `centre` is which gym (a Cult centre's name, free text) and `note` a line about the visit; both
-// optional, both kept when the same day is checked in again, both go when it is taken back.
+// `centre` is which gym (a Cult centre's name, free text), `note` a line about the visit and `cls`
+// what you did there (a Cult class from VISIT_CLASSES, "Gym floor" for your own plan, or free
+// text); all optional, all kept when the same day is checked in again, all go when it is taken
+// back. A Whoop workout on a day with a class is named after it (lib/whoop-import.js cultNames).
 //
 // One entry per day with the time it was written, so two devices that each checked in on a
 // different day keep both, and the same day keeps the later write (lib/sync-merge.js
@@ -47,27 +49,60 @@ export function withVisit(map, iso, on, now = Date.now(), today = todayISO()) {
 
 export const CENTRE_MAX = 60
 export const VISIT_NOTE_MAX = 200
+export const CLS_MAX = 40
+/** The chips of "What did you do?": the stored value and its English label for t(). */
+export const VISIT_CLASSES = [
+  { v: 'Gym floor', label: 'Gym floor (my plan)' },
+  { v: 'HRX', label: 'HRX' },
+  { v: 'Strength & Conditioning', label: 'Strength & Conditioning' },
+  { v: 'Boxing', label: 'Boxing' },
+  { v: 'Dance Fitness', label: 'Dance Fitness' },
+  { v: 'Yoga', label: 'Yoga' },
+  { v: 'Spin', label: 'Spin' },
+  { v: 'Burn', label: 'Burn' },
+  { v: 'HIIT', label: 'HIIT' },
+]
+/** A class as stored: spaces tidied, trimmed, at most CLS_MAX characters ('' for none). */
+export const cleanClass = v => (typeof v === 'string' ? v.replace(/\s+/g, ' ').trim().slice(0, CLS_MAX) : '')
 const detailsOf = e => {
   const out = {}
   const c = typeof e?.centre === 'string' ? e.centre.trim().slice(0, CENTRE_MAX) : ''
   const n = typeof e?.note === 'string' ? e.note.trim().slice(0, VISIT_NOTE_MAX) : ''
+  const k = cleanClass(e?.cls)
   if (c) out.centre = c
   if (n) out.note = n
+  if (k) out.cls = k
   return out
 }
 
-/** The check-in entry of a day ({ on, centre?, note? }), or null when you did not check in. */
+/** The check-in entry of a day ({ on, centre?, note?, cls? }), or null when you did not check in. */
 export const visitOf = (S, iso) => (visitOn(S, iso) ? { on: true, ...detailsOf(S.gymVisits[iso]) } : null)
 
 /**
- * S.gymVisits with `iso` checked in and its centre and note set (empty text clears one). Saving
- * details is a check-in too: you only name the centre of a visit you made.
+ * S.gymVisits with `iso` checked in and its centre, note and class set (empty text clears one; a
+ * class left out keeps the one the day had). Saving details is a check-in too: you only name the
+ * centre of a visit you made.
  */
-export function withVisitDetails(map, iso, { centre, note } = {}, now = Date.now(), today = todayISO()) {
+export function withVisitDetails(map, iso, { centre, note, cls } = {}, now = Date.now(), today = todayISO()) {
   const base = isMap(map) ? map : {}
   if (!canCheckIn(iso, today)) return base
-  return { ...base, [iso]: { ...detailsOf({ centre, note }), on: true, _ts: now } }
+  const had = isMap(base[iso]) && base[iso].on === true ? base[iso] : null
+  return { ...base, [iso]: { ...detailsOf({ centre, note, cls: cls === undefined ? had?.cls : cls }), on: true, _ts: now } }
 }
+
+/**
+ * S.gymVisits with `iso` checked in and its class set to `cls` (empty clears it), the centre and
+ * note kept: one tap on a "What did you do?" chip.
+ */
+export function withVisitClass(map, iso, cls, now = Date.now(), today = todayISO()) {
+  const base = isMap(map) ? map : {}
+  if (!canCheckIn(iso, today)) return base
+  const had = isMap(base[iso]) && base[iso].on === true ? base[iso] : null
+  return { ...base, [iso]: { ...detailsOf({ ...detailsOf(had), cls }), on: true, _ts: now } }
+}
+
+/** The class of the visit on `iso` ('' when none or not checked in). */
+export const visitClassOn = (S, iso) => visitOf(S, iso)?.cls || ''
 
 /** The day a check-in made at `now` belongs to: phone-local date, rolling over at 04:00. */
 export function checkInDay(now = new Date()) {

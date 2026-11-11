@@ -24,14 +24,18 @@ describe('smart day', () => {
     expect(smartDay({ band: 'red', routines: [], dayType: 'rest' }).actions).toEqual(['keep'])
     expect(smartDay({ band: 'red', routines: [steady], dayType: 'cardio' }).actions).toEqual(['diet', 'cardio', 'keep'])
   })
-  it('yellow: train, no new weight; green: try progression; neither changes the diet', () => {
+  it('yellow: start, keep last week\'s weights; green: start, try a PR; neither changes the diet', () => {
     const y = smartDay({ band: 'yellow', routines: [lift], dayType: 'training' })
-    expect(y).toMatchObject({ lift: 'hold', dietDayType: null, actions: ['keep'] })
+    expect(y).toMatchObject({ lift: 'hold', dietDayType: null, note: "Keep last week's weights", actions: ['start', 'keep'] })
     expect(y.text).toMatch(/no new weight/)
     const g = smartDay({ band: 'green', routines: [lift], dayType: 'training' })
-    expect(g).toMatchObject({ lift: 'progress', actions: ['keep'] })
+    expect(g).toMatchObject({ lift: 'progress', note: 'Try a PR today', actions: ['start', 'keep'] })
     expect(g.text).toMatch(/progression/)
-    expect(smartDay({ band: 'green', routines: [], dayType: 'rest' }).lift).toBeNull()
+    expect(smartDay({ band: 'green', routines: [], dayType: 'rest' })).toMatchObject({ lift: null, note: null, actions: ['keep'] })
+    // a cardio day starts too, with no lifting note
+    expect(smartDay({ band: 'yellow', routines: [steady], dayType: 'cardio' })).toMatchObject({ note: null, actions: ['start', 'keep'] })
+    // red never offers a start, and has no note
+    expect(smartDay({ band: 'red', routines: [lift], dayType: 'training' })).toMatchObject({ note: null })
   })
   it('nothing without a band, when off, or once kept for today', () => {
     expect(smartDay({ band: null, routines: [lift] })).toBeNull()

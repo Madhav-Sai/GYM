@@ -79,8 +79,20 @@ describe('workouts and check-ins', () => {
       workouts: [workout('a', '2026-11-02', []), workout('b', '2026-11-03', []), workout('c', '2026-11-03', []), workout('d', '2026-11-07', [])],
       gymVisits: { '2026-11-04': { on: true, _ts: 1 }, '2026-11-02': { on: true, _ts: 1 }, '2026-11-12': { on: true, _ts: 1 } },
     })
-    expect(workoutTally(S, W, '2026-11-09')).toEqual({ sessions: 4, days: 3, planned: 4, plannedDone: 2 })
+    expect(workoutTally(S, W, '2026-11-09')).toEqual({ sessions: 4, days: 3, planned: 4, plannedDone: 2, whoop: 0 })
     expect(checkIns(S, W)).toEqual({ checkIns: 2, gymDays: 4 })
+  })
+  it('a Whoop workout counts as a session, never as a planned day trained', () => {
+    const whoopW = (id, d) => ({ id: 'whoop-' + id, d, start: Date.parse(d + 'T07:00:00Z'), end: Date.parse(d + 'T08:00:00Z'), name: 'Cult: HRX', routineIds: [], routineId: null, entries: [], prs: [], source: 'whoop', whoop: { id, sport: 'functional fitness' } })
+    const S = base({
+      routines: [{ id: 'r1', name: 'Lower A', ex: [{ id: 'squat' }] }],
+      week: { 1: 'r1', 2: 'r1', 4: 'r1', 5: 'r1' },
+      // Monday logged and a class the same morning; Thursday and Friday a class only; Saturday off plan.
+      workouts: [workout('a', '2026-11-02', []), whoopW('1', '2026-11-02'), whoopW('2', '2026-11-05'), whoopW('3', '2026-11-06'), whoopW('4', '2026-11-07')],
+    })
+    expect(workoutTally(S, W, '2026-11-09')).toEqual({ sessions: 5, days: 4, planned: 4, plannedDone: 1, whoop: 4 })
+    const r = weeklyReview(S, W, '2026-11-09')
+    expect(r.suggestions.find(x => x.id === 'missed').args).toEqual([1, 4])
   })
 })
 

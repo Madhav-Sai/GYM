@@ -137,7 +137,7 @@ export default function Home() {
   const CARDS = {
     now: () => <NowStrip />,
     // Smart day (lib/smart-day.js): today's Whoop band against the plan, with one-tap actions.
-    smartday: () => <SmartDayBanner />,
+    smartday: () => <SmartDayBanner onStart={onToday} />,
     tiles: () => <HubTiles streak={streak} />,
     week: () => <>
         <div className="card">

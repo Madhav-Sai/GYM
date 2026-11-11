@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   planWhoopImport, applyWhoopImport, whoopSessionOf, sportLabel, cultName, notImportable, withWhoopSkip,
   renameWorkout, whoopSessionView, whoopImportOn, isWhoopWorkout, whoopSessionId, SKIP, CULT_CLASSES,
-  whoopLinkOf, releaseWhoopLink,
+  whoopLinkOf, releaseWhoopLink, applyCultNames, cultNameFor,
 } from './whoop-import.js'
 import { mergeStates, STAMPED_MAPS, stampChange } from './sync-merge.js'
 import { STAMPED_MAPS as API_STAMPED_MAPS, stampPut } from '../../../api/sync-stamps.js'
@@ -200,5 +200,36 @@ describe('a deleted logged session lets its Whoop link go', () => {
     const local = { workouts: [], whoopImported: { w9: { s: null, _ts: 50 } } }
     const remote = { workouts: [], whoopImported: { w9: { s: 'g1', _ts: 10 } } }
     expect(mergeStates(local, remote).whoopImported.w9.s).toBe(null)
+  })
+})
+
+describe('a Whoop workout takes the class of its day\'s check-in', () => {
+  const visit = (cls, extra = {}) => ({ gymVisits: { '2026-11-09': { on: true, _ts: 1, ...(cls ? { cls } : {}) } }, ...extra })
+  it('names a fresh import "Cult: <class>"', () => {
+    const S = base(visit('HRX'))
+    applyWhoopImport(S, planWhoopImport(S, [ww('a', 7, 8)], { now: NOW }), NOW)
+    expect(S.workouts[0]).toMatchObject({ name: 'Cult: HRX', nameAuto: true, _ts: NOW })
+  })
+  it('follows a class picked or changed later, and goes back to the sport when it is cleared', () => {
+    const S = base(visit(''))
+    applyWhoopImport(S, planWhoopImport(S, [ww('a', 7, 8)], { now: NOW }), NOW)
+    expect(S.workouts[0].name).toBe('Functional fitness')
+    S.gymVisits['2026-11-09'].cls = 'Boxing'
+    expect(applyCultNames(S, NOW + 1)).toBe(1)
+    expect(S.workouts[0]).toMatchObject({ name: 'Cult: Boxing', _ts: NOW + 1 })
+    expect(applyCultNames(S, NOW + 2)).toBe(0)
+    delete S.gymVisits['2026-11-09'].cls
+    expect(applyCultNames(S, NOW + 3)).toBe(1)
+    expect(S.workouts[0].name).toBe('Functional fitness')
+    expect(S.workouts[0].nameAuto).toBeUndefined()
+  })
+  it('never renames a workout you renamed, nor a logged session, nor another day', () => {
+    const S = base(visit('Yoga'))
+    applyWhoopImport(S, planWhoopImport(S, [ww('a', 7, 8)], { now: NOW }), NOW)
+    renameWorkout(S, 'whoop-a', 'Morning run', NOW + 1)
+    S.workouts.push(gym('g', 18, 19), whoopSessionOf(ww('b', 7, 8, { day: '2026-11-08' })))
+    expect(applyCultNames(S, NOW + 2)).toBe(0)
+    expect(S.workouts.map(w => w.name)).toEqual(['Morning run', 'Push', 'Functional fitness'])
+    expect(cultNameFor(S, S.workouts[0])).toBeNull()
   })
 })

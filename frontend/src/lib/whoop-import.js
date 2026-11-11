@@ -7,7 +7,11 @@
 //
 //   { id: 'whoop-<id>', d, start, end, routineIds: [], routineId: null, name, bw: null,
 //     entries: [], prs: [], source: 'whoop',
-//     whoop: { id, sport, strain, avgHr, maxHr, kcal, distanceM, zonesMin: [z0..z5] }, _ts }
+//     whoop: { id, sport, strain, avgHr, maxHr, kcal, distanceM, zonesMin: [z0..z5] }, _ts,
+//     nameAuto?, renamed? }
+//
+// `nameAuto` marks a name taken from the day's check-in class ("Cult: HRX", applyCultNames);
+// `renamed` one you typed or picked yourself (renameWorkout), which the class never overrides.
 //
 // Which Whoop workouts were dealt with is a synced map, one stamped entry per Whoop id, merged per
 // key like S.gymVisits (lib/sync-merge.js STAMPED_MAPS):
@@ -27,6 +31,7 @@ import { matchWhoopWorkout } from './whoop-match.js'
 import { overCeiling } from './cardio-plans.js'
 import { stampWorkout } from './sync-merge.js'
 import { insertChronological } from './backfill.js'
+import { visitClassOn } from './gym-visits.js'
 
 export const IMPORT_DAYS = 90
 export const MIN_IMPORT_MS = 5 * 60000
@@ -188,7 +193,44 @@ export function applyWhoopImport(S, p, now = Date.now()) {
   }
   S.workouts = list
   S.whoopImported = map
+  applyCultNames(S, now)
   return added
+}
+
+/**
+ * The name an imported Whoop workout should carry now, or null to leave it: "Cult: <class>" when
+ * the day's check-in names a class (lib/gym-visits.js), its sport name again when an automatic
+ * class name lost its class. A workout you renamed yourself (`renamed`) is never touched.
+ */
+export function cultNameFor(S, w) {
+  if (!isWhoopWorkout(w) || w.renamed === true) return null
+  const want = cultName(visitClassOn(S, w.d))
+  if (want) return w.name === want ? null : want
+  if (w.nameAuto === true) return whoopSessionOf({ ...w.whoop, id: w.whoop.id, start: w.start, end: w.end, day: w.d }).name
+  return null
+}
+
+/**
+ * `S` (mutated) with every imported Whoop workout named after the class of its day's check-in
+ * (cultNameFor), stamped `now`. Run after an import and after a check-in's class changes.
+ * Returns how many were renamed.
+ */
+export function applyCultNames(S, now = Date.now()) {
+  if (!Array.isArray(S?.workouts)) return 0
+  let n = 0
+  let list = S.workouts
+  list.forEach((w, i) => {
+    const name = cultNameFor(S, w)
+    if (!name) return
+    if (list === S.workouts) list = list.slice()
+    const next = { ...w, name }
+    if (name.startsWith('Cult: ')) next.nameAuto = true
+    else delete next.nameAuto
+    list[i] = stampWorkout(next, now)
+    n++
+  })
+  if (n) S.workouts = list
+  return n
 }
 
 // An entry let go by releaseWhoopLink: the Whoop workout is open to import again.
@@ -226,7 +268,10 @@ export function renameWorkout(S, id, name, now = Date.now()) {
   const i = S.workouts.findIndex(x => x?.id === id)
   if (i < 0 || S.workouts[i].name === n) return false
   S.workouts = S.workouts.slice()
-  S.workouts[i] = stampWorkout({ ...S.workouts[i], name: n }, now)
+  // Yours from now on: the day's class no longer renames it (applyCultNames).
+  const next = { ...S.workouts[i], name: n, renamed: true }
+  delete next.nameAuto
+  S.workouts[i] = stampWorkout(next, now)
   return true
 }
 

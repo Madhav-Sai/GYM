@@ -1,7 +1,9 @@
 // Smart day (this fork, lib/smart-day.js): today's Whoop recovery band against today's plan, as a
 // banner on Home (under the Now strip) and at the top of the Diet screen. Every change is a tap:
 // "Switch diet to rest day" posts the day type the way the Diet screen's own switch does,
-// "Do cardio instead" opens the treadmill table, "Keep my plan" hides it for the day.
+// "Do cardio instead" opens the treadmill table, "Keep my plan" hides it for the day. On yellow and
+// green, "Start today's workout" starts today's routine the way Home's today row does (Home passes
+// its own start as `onStart`; without one, as on the Diet screen, the button is left out).
 import { useStore } from '../store/useStore.js'
 import { useUI } from '../store/useUI.js'
 import { t } from '../lib/i18n.js'
@@ -35,6 +37,8 @@ const WORDS = {
   'Train and try progression: add weight where you hit every rep last time.': () => t('Train and try progression: add weight where you hit every rep last time.'),
   'Do the full cardio plan today.': () => t('Do the full cardio plan today.'),
   'Green on a rest day. An easy walk is fine.': () => t('Green on a rest day. An easy walk is fine.'),
+  "Keep last week's weights": () => t("Keep last week's weights"),
+  'Try a PR today': () => t('Try a PR today'),
 }
 const say = key => (WORDS[key] ? WORDS[key]() : t(key))
 const DIET_LABEL = { rest: () => t('Switch diet to rest day'), cardio: () => t('Switch diet to cardio day') }
@@ -51,7 +55,7 @@ export function useWhoopOffered() {
  * The banner itself, from a summary and the diet's day type. Pure drawing, so the render tests
  * hand it a mocked summary. `onDietDay(dayType)` switches the diet; `onKeep` hides it for today.
  */
-export function SmartDayView({ summary, routines, dayType, kept, on = true, onDietDay, onKeep, onCardio, compact }) {
+export function SmartDayView({ summary, routines, dayType, kept, on = true, onDietDay, onKeep, onCardio, onStart, compact }) {
   const band = summary?.connected === false ? null : summary?.today?.guidance?.band
   const s = smartDay({ band, routines, dayType, kept, on })
   if (!s) return null
@@ -64,10 +68,12 @@ export function SmartDayView({ summary, routines, dayType, kept, on = true, onDi
         <div className="lbl2">{t('Smart day')}{Number.isFinite(summary?.today?.recovery?.score) ? ` · ${Math.round(summary.today.recovery.score)}%` : ''}</div>
         <div style={{ fontWeight: 600 }}>{say(s.title)}</div>
         <div className="small" style={{ marginTop: 2, color: 'var(--label-2)' }}>{say(s.text)}</div>
+        {s.note && <div className="small smart-day-note" style={{ marginTop: 4, fontWeight: 600, color: ink }}>{say(s.note)}</div>}
       </div>
     </div>
     <div className="row" style={{ gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
       {s.actions.includes('diet') && <Button size="sm" variant="tinted" icon="leaf" onClick={() => onDietDay?.(s.dietDayType)}>{DIET_LABEL[s.dietDayType]()}</Button>}
+      {s.actions.includes('start') && onStart && <Button size="sm" variant="tinted" icon="play" onClick={onStart}>{t("Start today's workout")}</Button>}
       {s.actions.includes('cardio') && <Button size="sm" variant="tinted" icon="figureRun" onClick={() => (onCardio ? onCardio(s.cardioKey) : cardioPlanSheet(s.cardioKey))}>{t('Do cardio instead')}</Button>}
       <Button size="sm" variant="ghost" icon="check" onClick={onKeep}>{t('Keep my plan')}</Button>
     </div>
@@ -82,7 +88,7 @@ export const keepToday = day => useStore.getState().update(s => { s.smartDayKept
  * On the Diet screen pass `dayType` and `onDietDay`, so the switch posts through the screen's own
  * resource and the screen moves at once.
  */
-export function SmartDayBanner({ dayType: givenType, onDietDay: givenDietDay, compact }) {
+export function SmartDayBanner({ dayType: givenType, onDietDay: givenDietDay, onStart, compact }) {
   const S = useStore(s => s.S)
   const offered = useWhoopOffered()
   const enabled = offered && smartDayOn(S)
@@ -99,5 +105,5 @@ export function SmartDayBanner({ dayType: givenType, onDietDay: givenDietDay, co
     if (r) useUI.getState().toast(v === 'rest' ? t('Diet set to a rest day') : t('Diet set to a cardio day'))
   })
   return <SmartDayView summary={w.data} routines={effectiveRoutines(S, todayISO())} dayType={dayType} kept={keptOn(S, day)}
-    onDietDay={onDietDay} onKeep={() => keepToday(day)} compact={compact} />
+    onDietDay={onDietDay} onKeep={() => keepToday(day)} onStart={onStart} compact={compact} />
 }
