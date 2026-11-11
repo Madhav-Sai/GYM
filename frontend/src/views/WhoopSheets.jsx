@@ -18,6 +18,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { WhoopHomeDash, WhoopDashboard, WhoopSkeleton, WhoopFirstSync } from './WhoopDashboard.jsx'
 import { dayParam } from '../lib/whoop-view.js'
 import { planWhoopImport, applyWhoopImport, whoopImportOn } from '../lib/whoop-import.js'
+import { smartDayOn } from '../lib/smart-day.js'
 import './whoop.css'
 
 /* Whoop (our addition): the sign-in, the manage sheet and the Home card. The numbers come from our
@@ -261,6 +262,7 @@ export function WhoopSettingsPage() {
       <div style={{ height: 8 }} /><Button variant="primary" icon="plug" onClick={() => connectWhoop(toast)}>{t('Connect again')}</Button><div style={{ height: 12 }} /></>}
     {s.today ? <WhoopDashboard s={s} initialDay={initialDay} onRefresh={sync} /> : <WhoopFirstSync syncedAt={s.syncedAt} onRefresh={sync} />}
     <WhoopImportSwitch s={s} />
+    <SmartDaySwitch />
     <Section>
       {s.profile?.firstName && <Row icon="personCircle" iconTint="var(--blue)" title={t('Connected as {0}', s.profile.firstName)} />}
       <Row icon="clock" iconTint="var(--blue)" title={t('Last sync')} subtitle={t('Syncs every 5 minutes')} value={s.syncedAt ? fmtAgo(s.syncedAt) : t('Not yet')} />
@@ -284,6 +286,17 @@ function WhoopImportSwitch({ s }) {
   return <Section footer={t('Runs, walks and classes your Whoop detects, Cult classes included, appear in History. Cult has no app link, so they come through Whoop.')}>
     <Row icon="history" iconTint="var(--red)" title={t('Add Whoop workouts to History')}>
       <Switch checked={on} aria-label={t('Add Whoop workouts to History')} onChange={set} />
+    </Row>
+  </Section>
+}
+
+/** Settings → Whoop: the smart day banner on Home and Diet (lib/smart-day.js, a synced setting, on by default). */
+function SmartDaySwitch() {
+  const on = useStore(st => smartDayOn(st.S))
+  const update = useStore(st => st.update)
+  return <Section footer={t('On a red recovery day, Home and Diet suggest cardio or rest and a rest-day diet; yellow says hold the weights, green says try progression. Nothing changes until you tap.')}>
+    <Row icon="lightbulb" iconTint="var(--red)" title={t('Smart day suggestions')}>
+      <Switch checked={on} aria-label={t('Smart day suggestions')} onChange={v => update(st => { st.smartDay = v })} />
     </Row>
   </Section>
 }

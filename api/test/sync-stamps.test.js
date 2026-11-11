@@ -465,3 +465,19 @@ test('whoopImported rides per Whoop id, the import switch is stamped as a settin
   assert.ok(next.edited.whoopAutoImport >= NOW);
   assert.equal(next.whoopImported.w2.s, 'skip');
 });
+
+// Smart day and the weekly review (this fork, frontend lib/smart-day.js, lib/weekly-review.js):
+// the switch, the days "Keep my plan" put away and the week the review card put away are plain
+// settings, stamped whole on both sides.
+test('smartDay, smartDayKept and weeklyReviewSeen are stamped as settings', () => {
+  const cur = stored();
+  const next = clone(cur);
+  delete next.edited; delete next._rev;
+  next.smartDay = false;
+  next.smartDayKept = { '2026-11-11': true };
+  next.weeklyReviewSeen = 'w:2026-11-02';
+  stampPut(cur, next, { overRead: true, stamped: false, now: NOW });
+  assert.ok(next.edited.smartDay >= NOW);
+  assert.ok(next.edited.smartDayKept >= NOW);
+  assert.ok(next.edited.weeklyReviewSeen >= NOW);
+});

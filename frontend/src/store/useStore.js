@@ -110,6 +110,12 @@ export const DEF = {
   // null until changed (the defaults show), then one setting each, stamped whole when changed.
   daySchedule: null,
   homeLayout: null,
+  // Smart day (this fork, lib/smart-day.js): the Whoop-band suggestion on Home and Diet, on unless
+  // switched off in Settings → Whoop, and the days "Keep my plan" put it away ({ iso: true }); the
+  // weekly review card's × (lib/weekly-review.js) stores the week it put away. Plain settings.
+  smartDay: true,
+  smartDayKept: {},
+  weeklyReviewSeen: null,
   // Body measurements (#82, #699): one check-in per day; canonical cm, kg or % according to
   // the field's unit (lib/measurements.js); merged like weigh-ins (lib/sync-merge.js).
   measurements: [], measurementEnabled: null, customMeasurements: [],

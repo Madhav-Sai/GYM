@@ -17,6 +17,7 @@ import Icon from '../components/Icon.jsx'
 import CardHead from '../components/CardHead.jsx'
 import { Section, Row, Button, Switch, Segmented, NumberField, TextField, SearchField, Stepper } from '../components/ui.jsx'
 import { DASH, n0, n1, litres, Totals, Flags } from '../components/HealthParts.jsx'
+import { SmartDayBanner } from '../components/SmartDay.jsx'
 import './health.css'
 
 /* Diet (our addition): today's plan by meal, tap an item when it is eaten, log anything else by
@@ -318,6 +319,8 @@ export default function Diet() {
   const checks = nonNegotiables(entries, data.water)
 
   return <Shell nav={nav} sub={`${t(DAY_TYPE_LABEL[type])} · ${new Date(day + 'T12:00:00Z').toLocaleDateString(dateLocale(), { weekday: 'long', day: 'numeric', month: 'short' })}`}>
+    {/* Smart day (lib/smart-day.js): only for today, and the switch goes through this screen's own post. */}
+    {day === healthDay() && <SmartDayBanner dayType={type} onDietDay={v => post('day', { dayType: v === auto ? null : v })} />}
     <div className="card">
       <div className="row between" style={{ alignItems: 'flex-end' }}>
         <div>
