@@ -39,6 +39,7 @@ import { checklist } from './supplements.js'
 import { healthDay, healthMinutes } from './ist.js'
 import { DEMO } from './demo.js'
 import { needsStepsFallback, withStepsFallback, stepsSourceOf } from './steps-source.js'
+import { flushWidgetActions, overlayPending, pendingWidgetActions } from './widget-actions.js'
 
 export const WIDGET_SNAPSHOT_VERSION = 2
 // What the weight goal's little curve draws: the last weigh-ins.
@@ -415,7 +416,8 @@ export async function startWidgetSync ({ useStore }) {
       if (whoop) snap.whoop = whoop
       if (diet) snap.diet = diet
       if (supps) snap.supps = supps
-      const json = JSON.stringify(snap)
+      // The widget buttons' taps not on the server yet (lib/widget-actions.js) stay drawn in.
+      const json = JSON.stringify(overlayPending(snap, pendingWidgetActions()))
       if (json === last) return
       await p.WidgetBridge.write({ json })
       last = json
@@ -448,12 +450,20 @@ export async function startWidgetSync ({ useStore }) {
     if (s.status === 'fulfilled') { const next = supplementsWidgetBlock(s.value, { day }); if (JSON.stringify(next) !== JSON.stringify(supps)) { supps = next; changed = true } }
     if (changed) schedule()
   }
+  // The widget buttons' taps (+250 ml, Taken): sent first, so the numbers fetched after include them.
+  const flushActions = async api => {
+    try {
+      const r = await flushWidgetActions({ bridge: p.WidgetBridge, post: (path, body) => api(path, { method: 'POST', body: JSON.stringify(body) }) })
+      if (r && (r.sent || r.pending.length)) schedule()
+    } catch { /* kept for the next time */ }
+  }
   const pull = async () => {
     const st = useStore.getState()
     if (!st.user || DEMO) return
     if (!poll) poll = setInterval(pull, WHOOP_POLL_MS)
     let api
     try { ({ api } = await import('./api.js')) } catch { return }
+    await flushActions(api)
     await Promise.all([pullWhoop(st, api), pullHealth(api).catch(() => {})])
   }
   const offUser = useStore.subscribe((s, prev) => { if (s.user !== prev.user || s.config !== prev.config) pull() })

@@ -43,6 +43,8 @@ struct MGNextSupp: Decodable {
     var name: String?
     var time: String?
     var overdue: Bool?
+    /// The item's id when the widget picked it from `items` (the Taken button needs it).
+    var id: String? = nil
 }
 
 struct MGSupps: Decodable {
@@ -181,9 +183,9 @@ enum MG {
         let now = nowMinutes(date)
         let pending = (s.items ?? []).filter { !($0.taken ?? false) && !($0.skipped ?? false) }
         if let up = pending.first(where: { (minutes($0.time) ?? -1) >= now }) {
-            return MGNextSupp(name: up.name, time: up.time, overdue: false)
+            return MGNextSupp(name: up.name, time: up.time, overdue: false, id: up.id)
         }
-        if let first = pending.first { return MGNextSupp(name: first.name, time: first.time, overdue: true) }
+        if let first = pending.first { return MGNextSupp(name: first.name, time: first.time, overdue: true, id: first.id) }
         // Nothing pending: all done today, unless the list never came (then the app's own answer).
         return s.items == nil ? s.next : nil
     }
@@ -206,6 +208,13 @@ enum MG {
         o.locale = Locale(identifier: "en_US")
         o.dateFormat = "EEEEE"
         return o.string(from: d)
+    }
+    /// The health day (lib/ist.js healthDay): India time, and before 04:00 is the evening before.
+    static func healthDay(_ now: Date = Date()) -> String {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone(secondsFromGMT: 330 * 60) ?? TimeZone.current
+        let c = cal.dateComponents([.year, .month, .day], from: now.addingTimeInterval(-4 * 3600))
+        return String(format: "%04d-%02d-%02d", c.year ?? 1970, c.month ?? 1, c.day ?? 1)
     }
     static func zoneColor(_ z: Double, _ target: [Double]?, _ warn: Double?) -> Color {
         let w = warn ?? 30
@@ -252,6 +261,31 @@ struct MGEmpty: View {
             Text(text).font(.caption2).multilineTextAlignment(.center).foregroundColor(WH.dim)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+/// A widget button's face: a small filled capsule (the Button(intent:) around it is the caller's).
+struct MGTapLabel: View {
+    let title: String
+    let symbol: String
+    let color: Color
+    var body: some View {
+        HStack(spacing: 3) {
+            Image(systemName: symbol).font(.system(size: 9, weight: .black))
+            Text(title).font(.system(size: 10, weight: .heavy, design: .rounded)).lineLimit(1)
+        }
+        .foregroundColor(.black)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background(Capsule().fill(color))
+    }
+}
+
+/// Under every widget button: the widget cannot reach the server, the app sends the tap.
+struct MGSavesNote: View {
+    var body: some View {
+        Text("Saves when myGym opens").font(.system(size: 7, weight: .semibold)).foregroundColor(WH.dim)
+            .lineLimit(1).minimumScaleFactor(0.7)
     }
 }
 
@@ -405,9 +439,25 @@ struct MacrosView: View {
         }
     }
 
+    /// +250 ml (AddWaterIntent), with the note that the app sends it.
+    func waterButton(_ align: HorizontalAlignment) -> some View {
+        VStack(alignment: align, spacing: 1) {
+            Button(intent: AddWaterIntent(ml: 250)) {
+                MGTapLabel(title: "+250 ml", symbol: "drop.fill", color: MG.water)
+            }
+            .buttonStyle(.plain)
+            MGSavesNote()
+        }
+    }
+
     func small(_ d: MGDiet) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            MGHeader(title: "MACROS", trailing: d.dayType?.uppercased())
+        VStack(alignment: .leading, spacing: 5) {
+            HStack(alignment: .top, spacing: 4) {
+                Text("MACROS").font(.system(size: 10, weight: .black)).tracking(1.5).foregroundColor(.white)
+                    .lineLimit(1).fixedSize()
+                Spacer(minLength: 2)
+                waterButton(.trailing)
+            }
             Spacer(minLength: 0)
             bars(d)
         }
@@ -417,8 +467,11 @@ struct MacrosView: View {
         VStack(alignment: .leading, spacing: 6) {
             MGHeader(title: "MACROS", trailing: d.dayType?.uppercased())
             HStack(spacing: 14) {
-                WRing(frac: WH.frac(d.protein, d.proteinTarget ?? 160), color: MG.protein, value: WH.num(d.proteinLeft), unit: "g", label: "protein left", line: 9, font: 24)
-                    .frame(width: 104)
+                VStack(spacing: 4) {
+                    WRing(frac: WH.frac(d.protein, d.proteinTarget ?? 160), color: MG.protein, value: WH.num(d.proteinLeft), unit: "g", label: "protein left", line: 9, font: 22)
+                    waterButton(.center)
+                }
+                .frame(width: 104)
                 bars(d)
             }
         }
@@ -508,11 +561,11 @@ struct SupplementsView: View {
         return (s.d3Due ?? false) ? line + " · D3 today" : line
     }
 
-    func nextBlock(_ next: MGNextSupp?, big: CGFloat) -> some View {
+    func nextBlock(_ next: MGNextSupp?, big: CGFloat, lines: Int = 2) -> some View {
         VStack(alignment: .leading, spacing: 1) {
             Text("NEXT").font(.system(size: 9, weight: .bold)).tracking(0.8).foregroundColor(WH.dim)
             if let n = next {
-                Text(n.name ?? "–").font(.system(size: big, weight: .heavy, design: .rounded)).foregroundColor(.white).lineLimit(2).minimumScaleFactor(0.6)
+                Text(n.name ?? "–").font(.system(size: big, weight: .heavy, design: .rounded)).foregroundColor(.white).lineLimit(lines).minimumScaleFactor(0.6)
                 Text(n.time ?? "any time").font(.system(size: 12, weight: .bold, design: .rounded)).monospacedDigit()
                     .foregroundColor((n.overdue ?? false) ? WH.red : WH.green)
             } else {
@@ -525,23 +578,41 @@ struct SupplementsView: View {
         (s.items ?? []).filter { !($0.taken ?? false) && !($0.skipped ?? false) }
     }
 
+    /// Taken for the item due next (SuppTakenIntent), with the note that the app sends it.
+    func takenButton(_ id: String) -> some View {
+        VStack(alignment: .leading, spacing: 1) {
+            Button(intent: SuppTakenIntent(suppId: id)) {
+                MGTapLabel(title: "Taken", symbol: "checkmark", color: WH.green)
+            }
+            .buttonStyle(.plain)
+            MGSavesNote()
+        }
+    }
+
     func small(_ s: MGSupps, _ next: MGNextSupp?) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
+        let tapId: String? = next?.id
+        return VStack(alignment: .leading, spacing: 5) {
             MGHeader(title: "SUPPS", trailing: "\(WH.num(s.pending)) left", trailingColor: (s.pending ?? 0) > 0 ? WH.yellow : WH.green)
             if s.d3Due ?? false { D3Badge(taken: s.d3Taken ?? false) }
-            nextBlock(next, big: 16)
+            nextBlock(next, big: 16, lines: tapId == nil ? 2 : 1)
             Spacer(minLength: 0)
-            ForEach(Array(pendingRows(s).prefix((s.d3Due ?? false) ? 1 : 2).enumerated()), id: \.offset) { _, r in
-                SuppRowView(s: r)
+            if let id = tapId {
+                takenButton(id)
+            } else {
+                ForEach(Array(pendingRows(s).prefix((s.d3Due ?? false) ? 1 : 2).enumerated()), id: \.offset) { _, r in
+                    SuppRowView(s: r)
+                }
             }
         }
     }
 
     func medium(_ s: MGSupps, _ next: MGNextSupp?) -> some View {
-        HStack(alignment: .top, spacing: 12) {
-            VStack(alignment: .leading, spacing: 6) {
+        let tapId: String? = next?.id
+        return HStack(alignment: .top, spacing: 12) {
+            VStack(alignment: .leading, spacing: 5) {
                 MGHeader(title: "SUPPLEMENTS")
-                nextBlock(next, big: 18)
+                nextBlock(next, big: 18, lines: tapId == nil ? 2 : 1)
+                if let id = tapId { takenButton(id) }
                 Spacer(minLength: 0)
                 if s.d3Due ?? false { D3Badge(taken: s.d3Taken ?? false) }
                 Text("\(WH.num(s.pending)) of \(WH.num(s.total)) pending").font(.system(size: 10, weight: .semibold)).foregroundColor(WH.dim)
@@ -1025,5 +1096,102 @@ struct MyGymWidgetBundle: WidgetBundle {
         MyDayWidget()
         WhoopMetricWidget()
         WhoopWeekWidget()
+    }
+}
+
+// MARK: - the buttons (+250 ml on Macros, Taken on Supplements)
+
+/*
+ * The widget has no session and cannot reach the server. A tap queues the action in the shared
+ * keychain (WidgetActionQueue, App/WorkoutActivity.swift), draws the new number straight away by
+ * editing the snapshot copy, and the app sends it the next time it opens (lib/widget-actions.js,
+ * WidgetBridgePlugin.drainActions). Each action has its own id, so the app posts it once.
+ */
+enum WidgetTap {
+    static func nowMs() -> Double { (Date().timeIntervalSince1970 * 1000).rounded() }
+
+    static func water(_ ml: Int) {
+        let day = MG.healthDay()
+        WidgetActionQueue.append(["id": UUID().uuidString, "kind": "water", "amount": ml, "day": day, "at": nowMs()])
+        editSnapshot { root in
+            guard var diet = root["diet"] as? [String: Any] else { return }
+            if (diet["day"] as? String) == day {
+                let had: Double = (diet["water"] as? Double) ?? 0
+                diet["water"] = had + Double(ml)
+            } else {
+                // The copy is from another day: only the water is known for today.
+                diet["day"] = day
+                for k in ["dayType", "kcal", "protein", "proteinLeft", "fiber"] { diet[k] = NSNull() }
+                diet["water"] = Double(ml)
+            }
+            root["diet"] = diet
+        }
+        WidgetCenter.shared.reloadAllTimelines()
+    }
+
+    static func supplementTaken(_ suppId: String) {
+        let day = MG.healthDay()
+        WidgetActionQueue.append(["id": UUID().uuidString, "kind": "supp", "suppId": suppId, "day": day, "at": nowMs()])
+        editSnapshot { root in
+            guard var supps = root["supps"] as? [String: Any], var items = supps["items"] as? [[String: Any]] else { return }
+            guard let i = items.firstIndex(where: { ($0["id"] as? String) == suppId }) else { return }
+            let wasOpen = !((items[i]["taken"] as? Bool) ?? false) && !((items[i]["skipped"] as? Bool) ?? false)
+            items[i]["taken"] = true
+            items[i]["skipped"] = false
+            if (items[i]["d3"] as? Bool) == true { supps["d3Taken"] = true }
+            supps["items"] = items
+            if wasOpen, let p = supps["pending"] as? Double { supps["pending"] = Swift.max(0, p - 1) }
+            // The widget works the next one out from the items itself (MG.nextSupp).
+            supps["next"] = NSNull()
+            root["supps"] = supps
+        }
+        WidgetCenter.shared.reloadAllTimelines()
+    }
+
+    /// The snapshot as plain JSON, changed and written back where the widgets read it.
+    static func editSnapshot(_ change: (inout [String: Any]) -> Void) {
+        guard let data = SharedSnapshot.load(),
+              var root = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else { return }
+        change(&root)
+        guard let out = try? JSONSerialization.data(withJSONObject: root) else { return }
+        SharedSnapshot.save(out)
+    }
+}
+
+/// Macros' +250 ml.
+struct AddWaterIntent: AppIntent {
+    static let title: LocalizedStringResource = "Add water"
+    static let isDiscoverable = false
+
+    @Parameter(title: "Millilitres") var ml: Int
+
+    init() {}
+
+    init(ml: Int) {
+        self.ml = ml
+    }
+
+    func perform() async throws -> some IntentResult {
+        WidgetTap.water(ml)
+        return .result()
+    }
+}
+
+/// Supplements' Taken, for the item due next.
+struct SuppTakenIntent: AppIntent {
+    static let title: LocalizedStringResource = "Supplement taken"
+    static let isDiscoverable = false
+
+    @Parameter(title: "Supplement") var suppId: String
+
+    init() {}
+
+    init(suppId: String) {
+        self.suppId = suppId
+    }
+
+    func perform() async throws -> some IntentResult {
+        WidgetTap.supplementTaken(suppId)
+        return .result()
     }
 }

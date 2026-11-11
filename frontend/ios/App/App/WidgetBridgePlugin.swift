@@ -13,6 +13,7 @@ public class WidgetBridgePlugin: CAPPlugin, CAPBridgedPlugin {
     public let jsName = "WidgetBridge"
     public let pluginMethods: [CAPPluginMethod] = [
         CAPPluginMethod(name: "write", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "drainActions", returnType: CAPPluginReturnPromise),
     ]
 
     static let fileName = "widget.json"
@@ -34,5 +35,18 @@ public class WidgetBridgePlugin: CAPPlugin, CAPBridgedPlugin {
         } else {
             call.reject("could not write the widget data")
         }
+    }
+
+    /// myGym: the widget buttons' taps (WidgetActionQueue), handed to the page and cleared here. The page
+    /// keeps any it could not send yet itself (lib/widget-actions.js), so nothing is lost on a failed post.
+    @objc func drainActions(_ call: CAPPluginCall) {
+        let list = WidgetActionQueue.drain()
+        let json: String
+        if let data = try? JSONSerialization.data(withJSONObject: list), let s = String(data: data, encoding: .utf8) {
+            json = s
+        } else {
+            json = "[]"
+        }
+        call.resolve(["json": json])
     }
 }

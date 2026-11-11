@@ -26,20 +26,22 @@ enum SharedSnapshot {
         guard let prefix = Bundle.main.object(forInfoDictionaryKey: "AppIdentifierPrefix") as? String, !prefix.isEmpty, !prefix.hasPrefix("$(") else { return nil }
         return prefix + "com.madhavsais.mygym.shared"
     }
-    private static func base() -> [String: Any]? {
+    fileprivate static func base(_ acct: String) -> [String: Any]? {
         guard let g = group else { return nil }
         return [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: service,
-                kSecAttrAccount as String: account, kSecAttrAccessGroup as String: g]
+                kSecAttrAccount as String: acct, kSecAttrAccessGroup as String: g]
     }
-    @discardableResult static func write(_ data: Data) -> Bool {
-        guard var q = base() else { return false }
+    @discardableResult static func write(_ data: Data) -> Bool { write(data, account: account) }
+    @discardableResult static func write(_ data: Data, account acct: String) -> Bool {
+        guard var q = base(acct) else { return false }
         SecItemDelete(q as CFDictionary)
         q[kSecValueData as String] = data
         q[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlock
         return SecItemAdd(q as CFDictionary, nil) == errSecSuccess
     }
-    static func read() -> Data? {
-        guard var q = base() else { return nil }
+    static func read() -> Data? { read(account: account) }
+    static func read(account acct: String) -> Data? {
+        guard var q = base(acct) else { return nil }
         q[kSecReturnData as String] = true
         q[kSecMatchLimit as String] = kSecMatchLimitOne
         var out: CFTypeRef?
@@ -49,6 +51,57 @@ enum SharedSnapshot {
     static func load() -> Data? {
         if let url = OpenGymGroup.container?.appendingPathComponent("widget.json"), let d = try? Data(contentsOf: url) { return d }
         return read()
+    }
+    /// Writes the snapshot where load() reads it: the App Group file when there is one, and the keychain item.
+    @discardableResult static func save(_ data: Data) -> Bool {
+        var saved = write(data)
+        if let dir = OpenGymGroup.container,
+           (try? data.write(to: dir.appendingPathComponent("widget.json"), options: .atomic)) != nil {
+            saved = true
+        }
+        return saved
+    }
+}
+
+/**
+ * myGym: the widget buttons' taps (+250 ml water, a supplement taken) the app has not sent to the
+ * server yet, oldest first, as a JSON array in a second keychain item beside SharedSnapshot's. The
+ * widget cannot reach the server (it has no session), so its intents (OpenGymWidgets/MyGymWidgets.swift)
+ * append here and WidgetBridgePlugin.drainActions hands the list to the page (lib/widget-actions.js),
+ * which posts each one once, by its id. The app and the extension are two processes: a tap that lands
+ * while the app drains can come back a second time, which is why the page de-duplicates by id.
+ */
+enum WidgetActionQueue {
+    static let account = "widget-actions.json"
+    private static let lock = NSLock()
+
+    static func all() -> [[String: Any]] {
+        lock.lock(); defer { lock.unlock() }
+        return read()
+    }
+
+    @discardableResult static func append(_ action: [String: Any]) -> Bool {
+        lock.lock(); defer { lock.unlock() }
+        var list = read()
+        list.append(action)
+        // Taps nobody drained for a long time: the newest 100 stay.
+        if list.count > 100 { list.removeFirst(list.count - 100) }
+        guard let data = try? JSONSerialization.data(withJSONObject: list) else { return false }
+        return SharedSnapshot.write(data, account: account)
+    }
+
+    /// Everything queued, and the queue emptied.
+    static func drain() -> [[String: Any]] {
+        lock.lock(); defer { lock.unlock() }
+        let list = read()
+        if let q = SharedSnapshot.base(account) { SecItemDelete(q as CFDictionary) }
+        return list
+    }
+
+    private static func read() -> [[String: Any]] {
+        guard let data = SharedSnapshot.read(account: account),
+              let list = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] else { return [] }
+        return list
     }
 }
 
