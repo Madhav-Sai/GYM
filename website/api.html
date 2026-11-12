@@ -223,7 +223,7 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
   <p class="api-facts">
     <span>OpenAPI 3.1.0</span>
     <span>myGym v1.4.3</span>
-    <span>134 endpoints</span>
+    <span>135 endpoints</span>
     <span>AGPL-3.0-or-later</span>
   </p>
 
@@ -3671,7 +3671,7 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
     <span class="ep-sum">The profile's medical record</span>
   </summary>
   <div class="ep-body">
-<p>Blood tests (<code>labs</code>, oldest first, each with its markers, reference range and flag), InBody scans (<code>inbody</code>), goals and the markers followed closely (<code>tracked</code>). A value that was not measured is <code>null</code> (draw a dash, never 0). The first read of a profile with no record seeds the owner's starting data, once.</p>
+<p>Blood tests (<code>labs</code>, oldest first, each with its markers, reference range and flag), InBody scans (<code>inbody</code>), goals and the markers followed closely (<code>tracked</code>). A value that was not measured is <code>null</code> (draw a dash, never 0). The first read of a profile with no record seeds the owner's starting data, once. <code>seedV</code> is the seed round the record has had: a read of an older record adds the later rounds once (a test or scan of the same day is left alone). <code>tests</code> are the next tests to book, each with its due window and the day it was done.</p>
     <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Requires a session: the cookie set at sign-in, or <code>Authorization: Bearer &lt;token&gt;</code> from mobile-app pairing.</span></p>
 
 
@@ -4084,6 +4084,56 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
   <div class="prow rrow">
     <span class="r-code s4">401</span>
     <span class="p-desc">No session, expired/revoked session, or a disabled account.<span class="r-sig"><code>{&quot;error&quot;:&quot;not signed in&quot;}</code></span></span>
+  </div>
+    </div>
+  </div>
+</details>
+
+<details class="ep" id="op-medicalTestDone">
+  <summary>
+    <span class="m post">POST</span>
+    <span class="ep-path"><code>/api/medical/tests/done</code></span>
+    <span class="ep-chev" aria-hidden="true"></span>
+    <span class="ep-sum">Tick a next test done, or take the tick off</span>
+  </summary>
+  <div class="ep-body">
+<p><code>done</code> true (the default) ticks the test on <code>day</code> (YYYY-MM-DD, today when left out); <code>done</code> false takes the tick off.</p>
+    <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Requires a session: the cookie set at sign-in, or <code>Authorization: Bearer &lt;token&gt;</code> from mobile-app pairing.</span></p>
+
+<p class="ep-h">Request body <span class="p-hint">(JSON)</span></p><div class="ptab">
+  <div class="prow">
+    <span class="p-name">id<em class="p-req" title="required">required</em></span>
+    <span class="p-type">string <span class="p-hint">(&le; 40 chars)</span></span>
+    <span class="p-desc"></span>
+  </div>
+  <div class="prow">
+    <span class="p-name">done</span>
+    <span class="p-type">boolean <span class="p-hint">(default true)</span></span>
+    <span class="p-desc"></span>
+  </div>
+  <div class="prow">
+    <span class="p-name">day</span>
+    <span class="p-type">string <span class="p-hint">(date)</span></span>
+    <span class="p-desc"></span>
+  </div>
+</div>
+    <p class="ep-h">Responses</p>
+    <div class="ptab">
+  <div class="prow rrow">
+    <span class="r-code s2">200</span>
+    <span class="p-desc">The whole record after the change.<span class="r-sig"><a href="#schema-MedicalRecord">MedicalRecord</a></span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">400</span>
+    <span class="p-desc">Refused input (<code>code</code>: <code>date</code>).</span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">401</span>
+    <span class="p-desc">No session, expired/revoked session, or a disabled account.<span class="r-sig"><code>{&quot;error&quot;:&quot;not signed in&quot;}</code></span></span>
+  </div>
+  <div class="prow rrow">
+    <span class="r-code s4">404</span>
+    <span class="p-desc">No such test (<code>code</code>: <code>missing</code>).</span>
   </div>
     </div>
   </div>
@@ -5938,6 +5988,11 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
     <span class="p-type">&quot;normal&quot; | &quot;high&quot; | &quot;low&quot; | &quot;deficient&quot;</span>
     <span class="p-desc"></span>
   </div>
+  <div class="prow">
+    <span class="p-name">note</span>
+    <span class="p-type">string <span class="p-hint">(&le; 200 chars)</span></span>
+    <span class="p-desc">The lab's comment on this marker.</span>
+  </div>
 </div>
   </div>
 </details>
@@ -5964,6 +6019,11 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
   <div class="prow">
     <span class="p-name">lab</span>
     <span class="p-type">string <span class="p-hint">(&le; 80 chars)</span></span>
+    <span class="p-desc"></span>
+  </div>
+  <div class="prow">
+    <span class="p-name">note</span>
+    <span class="p-type">string <span class="p-hint">(&le; 200 chars)</span></span>
     <span class="p-desc"></span>
   </div>
   <div class="prow">
@@ -6060,9 +6120,39 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
     <span class="p-desc"></span>
   </div>
   <div class="prow">
+    <span class="p-name">smi</span>
+    <span class="p-type">number</span>
+    <span class="p-desc">Skeletal muscle index.</span>
+  </div>
+  <div class="prow">
+    <span class="p-name">intake</span>
+    <span class="p-type">number</span>
+    <span class="p-desc">Recommended calorie intake (kcal).</span>
+  </div>
+  <div class="prow">
+    <span class="p-name">time</span>
+    <span class="p-type">string</span>
+    <span class="p-desc"></span>
+  </div>
+  <div class="prow">
+    <span class="p-name">device</span>
+    <span class="p-type">string <span class="p-hint">(&le; 40 chars)</span></span>
+    <span class="p-desc"></span>
+  </div>
+  <div class="prow">
+    <span class="p-name">note</span>
+    <span class="p-type">string <span class="p-hint">(&le; 200 chars)</span></span>
+    <span class="p-desc"></span>
+  </div>
+  <div class="prow">
     <span class="p-name">segmental</span>
     <span class="p-type">object</span>
-    <span class="p-desc">la, ra, trunk, ll, rl, each { kg, flag }.</span>
+    <span class="p-desc">Lean mass of la, ra, trunk, ll, rl, each { kg, flag, approx }.</span>
+  </div>
+  <div class="prow">
+    <span class="p-name">segmentalFat</span>
+    <span class="p-type">object</span>
+    <span class="p-desc">Fat mass of the same segments, same shape.</span>
   </div>
   <div class="prow">
     <span class="p-name">targets</span>
@@ -6071,6 +6161,11 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
   </div>
   <div class="prow">
     <span class="p-name">targets.weight</span>
+    <span class="p-type">number</span>
+    <span class="p-desc"></span>
+  </div>
+  <div class="prow">
+    <span class="p-name">targets.weightControl</span>
     <span class="p-type">number</span>
     <span class="p-desc"></span>
   </div>
@@ -6142,6 +6237,79 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
     <span class="p-type">string <span class="p-hint">(date)</span></span>
     <span class="p-desc"></span>
   </div>
+  <div class="prow">
+    <span class="p-name">note</span>
+    <span class="p-type">string <span class="p-hint">(&le; 200 chars)</span></span>
+    <span class="p-desc"></span>
+  </div>
+  <div class="prow">
+    <span class="p-name">achieved</span>
+    <span class="p-type">object</span>
+    <span class="p-desc">The day and value the goal was reached, kept as history.</span>
+  </div>
+  <div class="prow">
+    <span class="p-name">achieved.date</span>
+    <span class="p-type">string <span class="p-hint">(date)</span></span>
+    <span class="p-desc"></span>
+  </div>
+  <div class="prow">
+    <span class="p-name">achieved.value</span>
+    <span class="p-type">number</span>
+    <span class="p-desc"></span>
+  </div>
+</div>
+  </div>
+</details>
+
+<details class="ep sch" id="schema-MedicalTest">
+  <summary>
+    <span class="sch-name"><code>MedicalTest</code></span>
+    <span class="ep-chev" aria-hidden="true"></span>
+    <span class="ep-sum"></span>
+  </summary>
+  <div class="ep-body">
+
+<div class="ptab">
+  <div class="prow">
+    <span class="p-name">id</span>
+    <span class="p-type">string <span class="p-hint">(&le; 40 chars)</span></span>
+    <span class="p-desc"></span>
+  </div>
+  <div class="prow">
+    <span class="p-name">title</span>
+    <span class="p-type">string <span class="p-hint">(&le; 120 chars)</span></span>
+    <span class="p-desc"></span>
+  </div>
+  <div class="prow">
+    <span class="p-name">from</span>
+    <span class="p-type">string <span class="p-hint">(date)</span></span>
+    <span class="p-desc">Due from. Null with <code>to</code> null is a one-time item.</span>
+  </div>
+  <div class="prow">
+    <span class="p-name">to</span>
+    <span class="p-type">string <span class="p-hint">(date)</span></span>
+    <span class="p-desc">Due by. Null is open-ended.</span>
+  </div>
+  <div class="prow">
+    <span class="p-name">reason</span>
+    <span class="p-type">string <span class="p-hint">(&le; 200 chars)</span></span>
+    <span class="p-desc"></span>
+  </div>
+  <div class="prow">
+    <span class="p-name">expect</span>
+    <span class="p-type">string <span class="p-hint">(&le; 200 chars)</span></span>
+    <span class="p-desc"></span>
+  </div>
+  <div class="prow">
+    <span class="p-name">prominent</span>
+    <span class="p-type">boolean</span>
+    <span class="p-desc">Shown on top until ticked.</span>
+  </div>
+  <div class="prow">
+    <span class="p-name">done</span>
+    <span class="p-type">string <span class="p-hint">(date)</span></span>
+    <span class="p-desc">The day it was ticked.</span>
+  </div>
 </div>
   </div>
 </details>
@@ -6157,6 +6325,11 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
 <div class="ptab">
   <div class="prow">
     <span class="p-name">v</span>
+    <span class="p-type">integer</span>
+    <span class="p-desc"></span>
+  </div>
+  <div class="prow">
+    <span class="p-name">seedV</span>
     <span class="p-type">integer</span>
     <span class="p-desc"></span>
   </div>
@@ -6183,6 +6356,11 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
   <div class="prow">
     <span class="p-name">goals</span>
     <span class="p-type"><a href="#schema-MedicalGoal">MedicalGoal</a>[]</span>
+    <span class="p-desc"></span>
+  </div>
+  <div class="prow">
+    <span class="p-name">tests</span>
+    <span class="p-type"><a href="#schema-MedicalTest">MedicalTest</a>[]</span>
     <span class="p-desc"></span>
   </div>
   <div class="prow">

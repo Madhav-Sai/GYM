@@ -15,7 +15,8 @@ import { shortDay, D3Card } from '../components/HealthParts.jsx'
 import './health.css'
 
 /* Supplements (our addition): today's checklist (taken, or skipped with a reason), the vitamin D3
-   loading phase (8 weekly Sundays, then every 4 weeks), 30-day adherence, and the list itself.
+   schedule (8 weekly Sundays, then monthly: since 2026-11-11 on the first Sunday of each month),
+   30-day adherence, and the list itself.
    India time (lib/ist.js); the list and log live on the server (GET /api/health/supplements). */
 
 const DASH = '–'
@@ -23,6 +24,7 @@ const DOW = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', '
 
 export function scheduleText(s) {
   const sch = s.schedule || {}
+  if (sch.kind === 'phase' && sch.monthly === 'firstSunday') return t('Monthly, on the first Sunday')
   if (sch.kind === 'phase') return t('Weekly x{0}, then every {1} days', sch.weeklyDoses, sch.everyDays)
   if (sch.kind === 'weekly') return t('Weekly on {0}', t(DOW[sch.dow ?? 0]))
   return t('Daily')

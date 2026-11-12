@@ -2832,7 +2832,9 @@ paths:
         Blood tests (`labs`, oldest first, each with its markers, reference range and flag), InBody
         scans (`inbody`), goals and the markers followed closely (`tracked`). A value that was not
         measured is `null` (draw a dash, never 0). The first read of a profile with no record seeds
-        the owner's starting data, once.
+        the owner's starting data, once. `seedV` is the seed round the record has had: a read of an
+        older record adds the later rounds once (a test or scan of the same day is left alone).
+        `tests` are the next tests to book, each with its due window and the day it was done.
       responses:
         '200':
           description: The record.
@@ -3108,6 +3110,43 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Error' }
         '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /api/medical/tests/done:
+    post:
+      tags: [medical]
+      operationId: medicalTestDone
+      summary: Tick a next test done, or take the tick off
+      description: |
+        `done` true (the default) ticks the test on `day` (YYYY-MM-DD, today when left out); `done`
+        false takes the tick off.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [id]
+              properties:
+                id: { type: string, maxLength: 40, example: t-cbc }
+                done: { type: boolean, default: true }
+                day: { type: string, format: date }
+      responses:
+        '200':
+          description: The whole record after the change.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MedicalRecord' }
+        '400':
+          description: 'Refused input (`code`: `date`).'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404':
+          description: 'No such test (`code`: `missing`).'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
 
   /api/health/diet:
     get:
@@ -5189,6 +5228,7 @@ components:
             below: { type: number, description: A second, lower cut-off (vitamin D deficient under 20). }
             std: { type: boolean, description: A standard range, not one the lab printed. }
         flag: { type: string, nullable: true, enum: [normal, high, low, deficient] }
+        note: { type: string, maxLength: 200, description: The lab's comment on this marker. }
     MedicalLab:
       type: object
       required: [date, markers]
@@ -5196,6 +5236,7 @@ components:
         id: { type: string, maxLength: 40 }
         date: { type: string, format: date }
         lab: { type: string, maxLength: 80, example: Orange Health Labs }
+        note: { type: string, maxLength: 200, example: Fasted about 11 hours. }
         markers: { type: array, maxItems: 200, items: { $ref: '#/components/schemas/MedicalMarker' } }
     MedicalInbody:
       type: object
@@ -5216,18 +5257,29 @@ components:
         tbw: { type: number, nullable: true }
         protein: { type: number, nullable: true }
         mineral: { type: number, nullable: true }
+        smi: { type: number, nullable: true, description: Skeletal muscle index. }
+        intake: { type: number, nullable: true, description: Recommended calorie intake (kcal). }
+        time: { type: string, example: '10:36' }
+        device: { type: string, maxLength: 40, example: InBody 260S }
+        note: { type: string, maxLength: 200 }
         segmental:
           type: object
-          description: la, ra, trunk, ll, rl, each { kg, flag }.
+          description: Lean mass of la, ra, trunk, ll, rl, each { kg, flag, approx }.
           additionalProperties:
             type: object
             properties:
               kg: { type: number, nullable: true }
               flag: { type: string, nullable: true, enum: [normal, under, over] }
+              approx: { type: boolean, description: Read off a faint sheet. }
+        segmentalFat:
+          type: object
+          description: Fat mass of the same segments, same shape.
+          additionalProperties: { type: object }
         targets:
           type: object
           properties:
             weight: { type: number, nullable: true }
+            weightControl: { type: number, nullable: true }
             fatControl: { type: number, nullable: true }
             muscleControl: { type: number, nullable: true }
     MedicalGoal:
@@ -5243,15 +5295,35 @@ components:
         hi: { type: number, nullable: true }
         by: { type: string, format: date }
         from: { type: string, format: date, nullable: true }
+        note: { type: string, maxLength: 200 }
+        achieved:
+          type: object
+          description: The day and value the goal was reached, kept as history.
+          properties:
+            date: { type: string, format: date }
+            value: { type: number, nullable: true }
+    MedicalTest:
+      type: object
+      properties:
+        id: { type: string, maxLength: 40, example: t-cbc }
+        title: { type: string, maxLength: 120 }
+        from: { type: string, format: date, nullable: true, description: Due from. Null with `to` null is a one-time item. }
+        to: { type: string, format: date, nullable: true, description: Due by. Null is open-ended. }
+        reason: { type: string, maxLength: 200 }
+        expect: { type: string, maxLength: 200 }
+        prominent: { type: boolean, description: Shown on top until ticked. }
+        done: { type: string, format: date, description: The day it was ticked. }
     MedicalRecord:
       type: object
       properties:
         v: { type: integer }
+        seedV: { type: integer, example: 2 }
         profile: { type: object, nullable: true }
         tracked: { type: array, items: { type: string } }
         labs: { type: array, items: { $ref: '#/components/schemas/MedicalLab' } }
         inbody: { type: array, items: { $ref: '#/components/schemas/MedicalInbody' } }
         goals: { type: array, items: { $ref: '#/components/schemas/MedicalGoal' } }
+        tests: { type: array, items: { $ref: '#/components/schemas/MedicalTest' } }
         updatedAt: { type: integer }
     IntegrationEvent:
       type: string

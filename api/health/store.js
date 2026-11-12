@@ -2,13 +2,13 @@
  * temp-then-rename like every other file here. Kept apart from the profile's synced state the way
  * the Whoop data is: this is a single-owner log, read and written by the app over the API.
  *
- * The file holds { v, diet: { prefs, days: { 'YYYY-MM-DD': day } }, supplements: { list, log }, meals }
+ * The file holds { v, suppV, diet: { prefs, days: { 'YYYY-MM-DD': day } }, supplements: { list, log }, meals }
  * (meals.js: the saved meals).
  * Days older than KEEP_DAYS are dropped on every save. */
 import fs from 'node:fs';
 import path from 'node:path';
 import { atomicWrite } from '../durable.js';
-import { seedSupplements } from './supplements.js';
+import { seedSupplements, migrateSupplementsV2, SUPP_SEED_VERSION } from './supplements.js';
 
 export const KEEP_DAYS = 400;
 const DAY = 86400_000;
@@ -34,8 +34,17 @@ export function createHealthStore({ dir, now = Date.now }) {
       const raw = JSON.parse(fs.readFileSync(fileOf(uid), 'utf8'));
       d = { ...d, ...raw, diet: { ...d.diet, ...(raw.diet || {}) }, supplements: { ...d.supplements, ...(raw.supplements || {}) } };
     } catch (e) { if (e.code !== 'ENOENT') console.error('health: cannot read data of', safeUid(uid), e.message); }
-    // First read: the owner's supplements, so the checklist is never empty on day one.
-    if (!Array.isArray(d.supplements.list)) d.supplements.list = seedSupplements(new Date(now()).toISOString().slice(0, 10));
+    // First read: the owner's supplements, so the checklist is never empty on day one. A list seeded
+    // in an earlier round gets the later ones once (supplements.js), and is saved.
+    const today = new Date(now()).toISOString().slice(0, 10);
+    if (!Array.isArray(d.supplements.list)) {
+      d.supplements.list = seedSupplements(today);
+      d.suppV = SUPP_SEED_VERSION;
+    } else if ((Number.isInteger(d.suppV) ? d.suppV : 1) < SUPP_SEED_VERSION) {
+      migrateSupplementsV2(d.supplements.list, today);
+      d.suppV = SUPP_SEED_VERSION;
+      save(uid, d);
+    }
     cache.set(uid, d);
     return d;
   }

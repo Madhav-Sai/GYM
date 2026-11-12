@@ -20,7 +20,7 @@ import { visitOn, checkInDay } from '../lib/gym-visits.js'
 import { healthDay } from '../lib/ist.js'
 import { TARGETS, dayTypeOf } from '../lib/diet-plan.js'
 import { checklist, pendingCount } from '../lib/supplements.js'
-import { retestReminder } from '../lib/medical.js'
+import { nextTests } from '../lib/medical.js'
 import { useWhoopSummary } from '../views/WhoopSheets.jsx'
 import { useDietDay, useSupplements, useHealthOn } from '../views/health-data.js'
 import { useMedical, goalRows } from './MedicalHome.jsx'
@@ -125,10 +125,11 @@ function MedicalTile({ onOpen }) {
   const { data } = useMedical()
   let value = '-', sub = t('Goals and blood tests')
   if (data) {
-    const r = retestReminder(data.labs || [], todayISO())
+    // A test to book now (or the prominent one, until ticked) before the goals.
+    const urgent = nextTests(data.tests, todayISO()).find(x => x.status === 'overdue' || x.status === 'due' || (x.prominent && x.status !== 'done'))
     const rows = goalRows(data, S)
     const open = rows.find(x => !x.prog.met)
-    if (r?.due) { value = <Icon name="warning" />; sub = t('Retest due') }
+    if (urgent) { value = <Icon name="warning" />; sub = urgent.title }
     else if (open) { value = Number.isFinite(open.prog.pct) ? <><CountUp value={Math.round(open.prog.pct * 100)} />%</> : '-'; sub = open.goal.label }
     else if (rows.length) { value = <Icon name="check" />; sub = t('All goals met') }
   }

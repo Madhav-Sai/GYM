@@ -23,6 +23,12 @@ const DOC = {
     segmental: { la: { kg: 3.03, flag: 'normal' }, ra: { kg: 2.99, flag: 'normal' }, trunk: { kg: 24.8, flag: 'normal' }, ll: { kg: 7.93, flag: 'under' }, rl: { kg: 7.92, flag: 'under' } },
     targets: { weight: 65, fatControl: -12.5, muscleControl: 4.6 } }],
   goals: [{ id: 'g-vitd', key: 'lab:vitd', label: 'Vitamin D', unit: 'ng/mL', start: 11.8, lo: 30, hi: null, by: '2099-12-25' }],
+  tests: [
+    { id: 't-cbc', title: 'Repeat CBC', from: '2098-12-09', to: '2098-12-23', reason: 'Lymphocytes 49.6 %, ALC 3160 flagged' },
+    { id: 't-lipid', title: 'Lipid profile, fasted 12 hours', from: '2098-12-23', to: '2099-01-06', expect: 'TG 150-170, HDL 29-32' },
+    { id: 't-physician', title: 'See a physician: take both reports, ask for ApoB and Lp(a)', from: null, to: null, prominent: true },
+    { id: 't-old', title: 'Old test', from: null, to: null, done: '2026-11-01' },
+  ],
 }
 
 const draw = async el => {
@@ -61,11 +67,47 @@ describe('Medical screens', () => {
     expect(d.textContent).toContain('+4.6')
     expect(d.querySelectorAll('svg.med-chart').length).toBeGreaterThan(2)
   })
-  it('the hub and the Home card show the goal bars and the retest flag', async () => {
+  it('the hub and the Home card show the goal bars and the next tests, the physician on top', async () => {
     const d = await draw(<><MedicalHub /><MedicalHomeCard /></>)
     expect(d.querySelectorAll('.med-goal').length).toBe(2)
-    expect(d.textContent).toContain('Retest: vitamin D + lipid profile + InBody (not the full panel)')
     expect(d.textContent).toContain('days left')
+    const lists = d.querySelectorAll('.med-tests')
+    expect(lists.length).toBe(2)
+    const hub = [...lists[0].querySelectorAll('.med-test')]
+    expect(hub.map(x => x.querySelector('b').textContent)).toEqual(['See a physician: take both reports, ask for ApoB and Lp(a)', 'Repeat CBC', 'Lipid profile, fasted 12 hours', 'Old test'])
+    expect(hub[0].classList.contains('prominent')).toBe(true)
+    expect(hub[2].textContent).toContain('Expected: TG 150-170, HDL 29-32')
+    expect(hub[3].textContent).toContain('Undo')
+    // Home: the open ones only, no tick.
+    const home = [...lists[1].querySelectorAll('.med-test')]
+    expect(home.length).toBe(3)
+    expect(lists[1].textContent).not.toContain('Mark done')
+  })
+  it('ticking a next test posts it done', async () => {
+    const calls = []
+    vi.stubGlobal('fetch', vi.fn(async (url, init) => { calls.push([String(url), init]); return { ok: true, status: 200, json: async () => DOC } }))
+    const d = await draw(<MedicalHub />)
+    await act(async () => d.querySelector('[aria-label="Mark done: Repeat CBC"]').click())
+    const post = calls.find(([u]) => u.endsWith('/api/medical/tests/done'))
+    expect(JSON.parse(post[1].body)).toEqual({ id: 't-cbc', done: true })
+  })
+  it('an achieved goal says so, and the InBody sheet shows segmental fat and the approximate values', async () => {
+    const scan = { ...DOC.inbody[0], id: 'i2', date: '2026-11-11', time: '10:36', device: 'InBody 260S', weight: 72.1, note: 'Right arm and right leg are approximate.',
+      segmental: { ...DOC.inbody[0].segmental, rl: { kg: 7.9, flag: 'under', approx: true } },
+      segmentalFat: { la: { kg: 1.4, flag: 'over' }, ra: { kg: 1.4, flag: 'over' }, trunk: { kg: 11.8, flag: 'over' }, ll: { kg: 2.9, flag: 'over' }, rl: { kg: 2.9, flag: 'over' } },
+      targets: { weight: 65.1, weightControl: -7, fatControl: -11.9, muscleControl: 4.9 } }
+    const doc = { ...DOC, inbody: [DOC.inbody[0], scan], goals: [{ ...DOC.goals[0], achieved: { date: '2026-11-11', value: 52.9 } }] }
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, status: 200, json: async () => doc })))
+    const hub = await draw(<MedicalHub />)
+    expect(hub.textContent).toContain('Achieved 11 Nov 2026')
+    const d = await draw(<MedicalInbody />)
+    expect(d.textContent).toContain('Segmental fat mass')
+    expect(d.textContent).toContain('≈7.9')
+    expect(d.textContent).toContain('11.8')
+    expect(d.textContent).toContain('Over')
+    expect(d.textContent).toContain('-7')
+    expect(d.textContent).toContain('InBody 260S')
+    expect(d.textContent).toContain('Right arm and right leg are approximate.')
   })
   it('signed out: no request and no Home card', async () => {
     useStore.setState({ user: null })

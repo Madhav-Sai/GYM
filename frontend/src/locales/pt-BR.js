@@ -3071,6 +3071,23 @@ export const PT_BR_OVERRIDES = {
   "Monthly body check": "Monthly body check",
   "A report must be a PDF, JPEG or PNG": "A report must be a PDF, JPEG or PNG",
   "A report file is at most 10 MB": "A report file is at most 10 MB",
+  "Achieved {0}": "Achieved {0}",
+  "Any time": "Any time",
+  "D3 tonight, with dinner": "D3 tonight, with dinner",
+  "Done {0}": "Done {0}",
+  "Due from {0}": "Due from {0}",
+  "Due {0} to {1}": "Due {0} to {1}",
+  "Expected: {0}": "Expected: {0}",
+  "For example: fasted 12 hours": "For example: fasted 12 hours",
+  "Mark done": "Mark done",
+  "Monthly now: the first Sunday of each month, with dinner. No more weekly doses.": "Monthly now: the first Sunday of each month, with dinner. No more weekly doses.",
+  "Monthly, on the first Sunday": "Monthly, on the first Sunday",
+  "Next tests": "Next tests",
+  "Overdue since {0}": "Overdue since {0}",
+  "Weight control": "Weight control",
+  "Segmental fat mass": "Segmental fat mass",
+  "Skeletal muscle index": "Skeletal muscle index",
+  "Recommended intake": "Recommended intake",
 }
 
 export default { ...pt, ...PT_BR_OVERRIDES }

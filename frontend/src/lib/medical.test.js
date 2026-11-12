@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   DASH, fmtVal, markerFlag, refBar, markerSeries, latestMarker, labOverview, markerTemplate,
   weightPoints, waistPoints, inbodySeries, goalCurrent, goalProgress, targetText,
-  retestReminder, waistVsWeight, RECOMP_TEXT, RETEST_TEXT, addDays,
+  testStatus, nextTests, homeTests, waistVsWeight, RECOMP_TEXT,
 } from './medical.js'
 
 const lab = (id, date, markers) => ({ id, date, lab: 'Orange Health Labs', markers })
@@ -91,20 +91,35 @@ describe('goals', () => {
   })
 })
 
-describe('retest reminder', () => {
-  it('twelve weeks after the newest test, vitamin D, lipids and InBody only', () => {
-    const r = retestReminder([LABS[1]], '2026-11-08')
-    expect(r.dueDate).toBe('2026-11-04')
-    expect(r.due).toBe(true)
-    expect(r.daysUntil).toBe(-4)
-    expect(r.text).toBe(RETEST_TEXT)
-    expect(r.text).toBe('Retest: vitamin D + lipid profile + InBody (not the full panel)')
+describe('next tests', () => {
+  const TESTS = [
+    { id: 't-cbc', title: 'Repeat CBC', from: '2026-12-09', to: '2026-12-23', reason: 'Lymphocytes 49.6 %, ALC 3160 flagged' },
+    { id: 't-lipid', title: 'Lipid profile, fasted 12 hours', from: '2026-12-23', to: '2027-01-06' },
+    { id: 't-apob', title: 'Ask the doctor for ApoB and Lp(a)', from: null, to: null },
+    { id: 't-b12', title: 'B12 retest', from: '2027-02-11', to: null },
+    { id: 't-physician', title: 'See a physician', from: null, to: null, prominent: true },
+  ]
+  it('each window reads upcoming, soon, due, overdue; a tick is done; no window is any time', () => {
+    expect(testStatus(TESTS[0], '2026-11-12')).toBe('upcoming')
+    expect(testStatus(TESTS[0], '2026-12-03')).toBe('soon')
+    expect(testStatus(TESTS[0], '2026-12-09')).toBe('due')
+    expect(testStatus(TESTS[0], '2026-12-23')).toBe('due')
+    expect(testStatus(TESTS[0], '2026-12-24')).toBe('overdue')
+    expect(testStatus({ ...TESTS[0], done: '2026-12-10' }, '2026-12-24')).toBe('done')
+    expect(testStatus(TESTS[2], '2026-11-12')).toBe('anytime')
+    expect(testStatus(TESTS[3], '2027-06-01')).toBe('due')   // open-ended: never overdue
   })
-  it('not yet due before then, soon in the last week, and the newest test resets it', () => {
-    expect(retestReminder([LABS[1]], '2026-10-01')).toMatchObject({ due: false, soon: false })
-    expect(retestReminder([LABS[1]], '2026-10-30')).toMatchObject({ due: false, soon: true })
-    expect(retestReminder(LABS, '2026-11-08')).toMatchObject({ due: false, dueDate: addDays('2026-11-04', 84) })
-    expect(retestReminder([], '2026-11-08')).toBe(null)
+  it('the prominent one stays on top until ticked, then the most pressing first', () => {
+    expect(nextTests(TESTS, '2026-11-12').map(x => x.id)).toEqual(['t-physician', 't-cbc', 't-lipid', 't-b12', 't-apob'])
+    expect(nextTests(TESTS, '2026-12-24').map(x => x.id)).toEqual(['t-physician', 't-cbc', 't-lipid', 't-b12', 't-apob'])
+    const ticked = TESTS.map(x => (x.id === 't-physician' || x.id === 't-cbc' ? { ...x, done: '2026-12-10' } : x))
+    expect(nextTests(ticked, '2026-12-24').map(x => x.id)).toEqual(['t-lipid', 't-b12', 't-apob', 't-cbc', 't-physician'])
+    expect(nextTests(TESTS, '2026-11-12')[1].daysUntil).toBe(27)
+  })
+  it('Home shows the prominent one and the next two open', () => {
+    expect(homeTests(TESTS, '2026-11-12').map(x => x.id)).toEqual(['t-physician', 't-cbc', 't-lipid'])
+    expect(homeTests(TESTS.map(x => ({ ...x, done: '2026-11-12' })), '2026-11-12')).toEqual([])
+    expect(nextTests(undefined, '2026-11-12')).toEqual([])
   })
 })
 

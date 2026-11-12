@@ -58,8 +58,10 @@ export function D3Card({ p, onMark, onMarkAll, compact = false }) {
   const label = { taken: t('Taken'), skipped: t('Skipped'), missed: t('Missed'), due: t('Today'), upcoming: t('Upcoming') }
   return <div className={'card' + (p.dueToday ? ' hl-d3' : '')}>
     <CardHead icon="sun" tint="var(--orange)" eyebrow={p.s.name}
-      title={p.dueToday ? t('D3 tonight, after dinner') : t('Next dose {0}', shortDay(p.next))}
-      sub={p.phase === 'weekly' ? t('Weekly phase: {0} of {1} taken', p.taken, p.weekly.length) : t('Monthly now: every {0} days, on Sunday', p.everyDays)} />
+      title={p.dueToday ? (p.firstSunday ? t('D3 tonight, with dinner') : t('D3 tonight, after dinner')) : t('Next dose {0}', shortDay(p.next))}
+      sub={p.phase === 'weekly' ? t('Weekly phase: {0} of {1} taken', p.taken, p.weekly.length)
+        : p.firstSunday ? t('Monthly now: the first Sunday of each month, with dinner. No more weekly doses.')
+        : t('Monthly now: every {0} days, on Sunday', p.everyDays)} />
     {!compact && <div className="hl-dots" aria-label={t('Weekly doses')}>
       {p.weekly.map(w => <button key={w.day} type="button" className={'hl-dot ' + w.status} disabled={w.status === 'upcoming'}
         aria-label={`${w.n}: ${shortDay(w.day)}, ${label[w.status]}`} title={`${shortDay(w.day)}: ${label[w.status]}`}

@@ -89,7 +89,7 @@ test('deleting the result deletes its file', async t => {
 test('owner only: another profile can neither read, attach to nor remove the file', async t => {
   const { call, setSession, store, dir } = setup(t);
   // A result of u1's own (the seeded ones carry the same ids in every profile).
-  const labId = store.saveLab('u1', { date: '2026-11-01', markers: [{ name: 'B12', value: 300 }] }).labs.at(-1).id;
+  const labId = store.saveLab('u1', { date: '2026-11-01', markers: [{ name: 'B12', value: 300 }] }).labs.find(l => l.date === '2026-11-01').id;
   const id = (await call('POST /api/medical/labs/file', { body: up(labId, PDF) })).body.file.id;
   setSession({ id: 'u2' });
   assert.equal((await call('GET /api/medical/labs/file', { url: '/api/medical/labs/file?id=' + id })).status, 404);
