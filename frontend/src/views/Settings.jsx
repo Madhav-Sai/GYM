@@ -55,6 +55,7 @@ import { durationSheet } from '../components/DurationWheel.jsx'
 import { showsConnection, showsLocalLine } from '../components/SyncBanner.jsx'
 import BackupFolderRow, { useBackupFolder, autoBackupSubtitle } from '../components/BackupFolderRow.jsx'
 import AppIconRow from '../components/AppIconRow.jsx'
+import WidgetsDiagRow from '../components/WidgetsDiagRow.jsx'
 import BodyCheckReminderRow from '../components/BodyCheckReminderRow.jsx'
 import { altAppIcons, trimmedSettings, coachNeedsServer } from '../lib/fork-flags.js'
 import { AnimationQualityRow } from '../components/Animations.jsx'
@@ -1047,6 +1048,8 @@ export default function Settings({ page = null, find = null, via = null, entryKe
           <Switch checked={S.connStatus !== false} onChange={v => update(s => { s.connStatus = v; if (v) s.connLocal = true })} />
         </Row>}
       </Section>
+      {/* myGym: the Home Screen widgets' data, where it breaks, and a refresh (iPhone app only). */}
+      {ios && <WidgetsDiagRow />}
     </>,
 
     // One section per seasonal theme (lib/seasonal.js). Auto shows it in its weeks; On keeps it

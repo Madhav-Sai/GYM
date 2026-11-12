@@ -80,6 +80,35 @@ struct WidgetSnapshot: Codable {
         guard let data = SharedSnapshot.load() else { return nil }
         return try? JSONDecoder().decode(WidgetSnapshot.self, from: data)
     }
+
+    /// myGym: why load() gave nothing, as a short code the empty widget shows under its line:
+    /// "no group", "no data (kc -25300)", or "bad data: streakInfo.next" when the JSON did not decode.
+    static func emptyReason() -> String {
+        guard let data = SharedSnapshot.load() else { return SharedSnapshot.missingReason() }
+        do {
+            _ = try JSONDecoder().decode(WidgetSnapshot.self, from: data)
+            return ""
+        } catch {
+            return decodeNote(error)
+        }
+    }
+
+    static func decodeNote(_ error: Error) -> String {
+        guard let e = error as? DecodingError else { return "bad data" }
+        let path: [CodingKey]
+        switch e {
+        case .typeMismatch(_, let c): path = c.codingPath
+        case .valueNotFound(_, let c): path = c.codingPath
+        case .dataCorrupted(let c): path = c.codingPath
+        case .keyNotFound(let k, let c): path = c.codingPath + [k]
+        @unknown default: path = []
+        }
+        let spot = path.map { key -> String in
+            if let i = key.intValue { return String(i) }
+            return key.stringValue
+        }.joined(separator: ".")
+        return spot.isEmpty ? "bad data" : "bad data: " + spot
+    }
 }
 
 /// The snapshot as of one moment: the day it is then, the next day with a plan, this week.
@@ -254,6 +283,11 @@ struct WidgetEmpty: View {
         VStack(alignment: .leading, spacing: 6) {
             Image(systemName: "dumbbell.fill").font(.title3).foregroundStyle(.secondary)
             Text("Open openGym once to see your plan here.").font(.caption).foregroundStyle(.secondary)
+            // myGym: why there is nothing (SharedSnapshot.missingReason), so a screenshot says where it breaks.
+            let reason = WidgetSnapshot.emptyReason()
+            if !reason.isEmpty {
+                Text(verbatim: reason).font(.system(size: 8, design: .monospaced)).foregroundStyle(.tertiary).lineLimit(2)
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
