@@ -1,7 +1,9 @@
 // Supplement reminders on the phone (our addition), through the same Capacitor local notifications
 // as the workout reminder (lib/mobile.js syncReminder), on an id range of their own. Times are India
-// time: D3 on its dose Sundays at 20:30, omega-3 at 10:15, isabgol at 23:45, magnesium at 00:45 (the
-// night after, still the same health day). The next week is queued; every open of the Supplements
+// time, as each supplement's `remind` (the 6 am training plan, api/health/supplements.js round 2):
+// D3 on its first Sunday at 23:00 with dinner, omega-3 with each meal at 07:30, 13:15 and 23:00 (three
+// items, three reminders), whey at 07:15 after the gym, isabgol and magnesium at 23:45. A time before
+// 04:00 belongs to the health day before (DAY_ROLLOVER_MIN). The next week is queued; every open of the Supplements
 // screen or Home replaces it, and a dose already marked taken or skipped is not reminded.
 import { MOBILE } from './mobile.js'
 import { addDays, atIST, minutesOf, DAY_ROLLOVER_MIN } from './ist.js'

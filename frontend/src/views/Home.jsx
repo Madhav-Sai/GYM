@@ -222,7 +222,7 @@ export default function Home() {
         <WhoopHomeCard />
         </>,
     medical: () => <>
-        {/* Medical (this fork): the goal bars and, 12 weeks after a blood test, the retest flag. */}
+        {/* Medical (this fork): the goal bars and the next tests to book. */}
         <MedicalHomeCard />
         </>,
     cardio: () => <>

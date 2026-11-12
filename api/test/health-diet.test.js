@@ -75,7 +75,7 @@ test('the store writes DATA_DIR/health/u-<uid>.json, seeds supplements, and drop
   const dir = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'gym-health-')), 'health');
   const now = () => Date.parse('2026-11-08T06:00:00Z');
   const store = createHealthStore({ dir, now });
-  assert.equal(store.get('u1').supplements.list.length, 5);
+  assert.equal(store.get('u1').supplements.list.length, 8);
   store.change('u1', doc => { doc.diet.days['2026-11-08'] = { ...blankDay(), water: 500 }; doc.diet.days['2024-01-01'] = blankDay(); });
   const file = path.join(dir, 'u-u1.json');
   const raw = JSON.parse(fs.readFileSync(file, 'utf8'));

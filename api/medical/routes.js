@@ -81,5 +81,7 @@ export function medicalRoutes({ json, readBody, readSession, store, files = null
     }),
 
     'POST /api/medical/tracked': write((uid, body) => store.setTracked(uid, body?.keys)),
+    // The next tests to book: tick one done (on `day`, today when left out) or take the tick off.
+    'POST /api/medical/tests/done': write((uid, body) => store.setTestDone(uid, idOf(body), body?.done !== false, typeof body?.day === 'string' ? body.day : null)),
   };
 }

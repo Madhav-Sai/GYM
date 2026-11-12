@@ -8,8 +8,6 @@ import { measurementValue } from './measurements.js'
 
 export const DASH = '–'
 const DAY = 86400000
-export const RETEST_WEEKS = 12
-export const RETEST_TEXT = 'Retest: vitamin D + lipid profile + InBody (not the full panel)'
 const LB_PER_KG = 2.2046226218
 
 const isNum = v => typeof v === 'number' && Number.isFinite(v)
@@ -178,14 +176,38 @@ export function targetText(goal) {
   return DASH
 }
 
-/** Twelve weeks after the newest blood test: retest the markers that were off, not the whole
- *  panel. `due` once the day has come; `soon` in the week before. null with no test at all. */
-export function retestReminder(labs, today, weeks = RETEST_WEEKS) {
-  const last = sortByDate(labs).at(-1)
-  if (!last || !today) return null
-  const dueDate = addDays(last.date, weeks * 7)
-  const daysUntil = daysBetween(today, dueDate)
-  return { lastDate: last.date, dueDate, daysUntil, due: daysUntil <= 0, soon: daysUntil > 0 && daysUntil <= 7, text: RETEST_TEXT }
+/* The next tests to book (the record's `tests`, api/medical/seed-v2.js): each has a due window
+   from..to (to null: from then on; both null: one-time, any time) and `done`, the day it was ticked.
+   Status on `today`: done, overdue (past `to`), due (inside the window), soon (the week before
+   `from`), upcoming, or anytime. */
+export const SOON_DAYS = 7
+export function testStatus(test, today) {
+  if (!test) return null
+  if (test.done) return 'done'
+  if (!test.from && !test.to) return 'anytime'
+  if (test.to && today > test.to) return 'overdue'
+  if (!test.from || today >= test.from) return 'due'
+  return daysBetween(today, test.from) <= SOON_DAYS ? 'soon' : 'upcoming'
+}
+const STATUS_ORDER = { overdue: 0, due: 1, soon: 2, upcoming: 3, anytime: 4, done: 5 }
+
+/** Every test with its status, the open ones first: a prominent one on top until ticked, then by
+ *  how pressing, then by date. */
+export function nextTests(tests, today) {
+  return (Array.isArray(tests) ? tests : []).map(x => ({ ...x, status: testStatus(x, today), daysUntil: x.from && today ? daysBetween(today, x.from) : null }))
+    .sort((a, b) => {
+      const pa = a.prominent && a.status !== 'done' ? 0 : 1, pb = b.prominent && b.status !== 'done' ? 0 : 1
+      if (pa !== pb) return pa - pb
+      if (STATUS_ORDER[a.status] !== STATUS_ORDER[b.status]) return STATUS_ORDER[a.status] - STATUS_ORDER[b.status]
+      return (a.from || '9999') < (b.from || '9999') ? -1 : (a.from || '9999') > (b.from || '9999') ? 1 : 0
+    })
+}
+
+/** The few the Home card shows: the prominent ones still open, then the most pressing others. */
+export function homeTests(tests, today, max = 3) {
+  const open = nextTests(tests, today).filter(x => x.status !== 'done')
+  const top = open.filter(x => x.prominent)
+  return [...top, ...open.filter(x => !x.prominent).slice(0, Math.max(0, max - top.length))]
 }
 
 // The reading nearest a day, within `maxDays`.

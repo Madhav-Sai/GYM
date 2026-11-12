@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { doseDays, nextDose, isDoseDay, d3Phase } from './d3-phase.js'
+import { doseDays, nextDose, isDoseDay, d3Phase, firstDowOfMonth } from './d3-phase.js'
 import { checklist, adherence, dueOn, doseFor, pendingCount, phaseOf } from './supplements.js'
 import { buildSupplementNotifications } from './supp-reminders.js'
 
@@ -113,5 +113,81 @@ describe('supplement reminders', () => {
     expect(d3.schedule.at.toISOString()).toBe('2026-11-22T15:00:00.000Z')  // 20:30 IST
     expect(d3.body).toMatch(/fat/)
     expect(new Set(n.map(x => x.id)).size).toBe(n.length)
+  })
+})
+
+describe('D3 monthly on the first Sunday', () => {
+  const FS = { ...SCH, monthly: 'firstSunday', monthlyFrom: '2026-11-11' }
+
+  test('the first Sunday of a month', () => {
+    expect(firstDowOfMonth('2026-11-20')).toBe('2026-11-01')
+    expect(firstDowOfMonth('2026-12-31')).toBe('2026-12-06')
+    expect(firstDowOfMonth('2027-01-15')).toBe('2027-01-03')
+    expect(firstDowOfMonth('2027-02-01')).toBe('2027-02-07')
+  })
+
+  test('from 2026-11-11: the weekly history stays, then one dose on each first Sunday', () => {
+    expect(doseDays(FS, '2027-03-01')).toEqual([...WEEKLY, '2026-12-06', '2027-01-03', '2027-02-07'])
+    expect(nextDose(FS, '2026-11-11')).toBe('2026-12-06')
+    expect(nextDose(FS, '2026-12-07')).toBe('2027-01-03')
+    expect(nextDose(FS, '2026-12-27')).toBe('2027-01-03')
+    expect(isDoseDay(FS, '2026-11-22')).toBe(false)   // the old every-28-days date is gone
+    expect(isDoseDay(FS, '2026-12-06')).toBe(true)
+    expect(isDoseDay(FS, '2026-11-01')).toBe(false)   // before monthlyFrom: never a dose day
+    for (const d of doseDays(FS, '2028-01-01')) expect(new Date(d + 'T00:00:00Z').getUTCDay()).toBe(0)
+    // a year of first Sundays: twelve doses from Dec 2026 to Nov 2027
+    expect(doseDays(FS, '2027-11-30').filter(d => d > '2026-11-11')).toHaveLength(12)
+  })
+
+  test('the weekly doses stop at monthlyFrom, even mid-phase', () => {
+    const long = { ...FS, weeklyDoses: 12 }   // weekly would run to 2026-11-22
+    expect(doseDays(long, '2026-12-31')).toEqual([...WEEKLY, '2026-11-01', '2026-11-08', '2026-12-06'])
+    const p = d3Phase(long, {}, '2026-11-11')
+    expect(p.phase).toBe('monthly')
+    expect(p.weekly).toHaveLength(10)
+    expect(p.firstSunday).toBe(true)
+    expect(p.next).toBe('2026-12-06')
+  })
+
+  test('without monthlyFrom it starts right after the weekly doses', () => {
+    const plain = { ...SCH, monthly: 'firstSunday' }
+    expect(doseDays(plain, '2026-12-31')).toEqual([...WEEKLY, '2026-11-01', '2026-12-06'])
+  })
+
+  test('a missed first-Sunday dose is not moved', () => {
+    const p = d3Phase(FS, {}, '2026-12-08')
+    expect(p.missedLast).toBe('2026-12-06')
+    expect(p.next).toBe('2027-01-03')
+    expect(p.monthly).toEqual([{ day: '2026-12-06', status: 'missed' }])
+  })
+})
+
+describe('reminders on the 6 am plan (round 2 of the seeded list)', () => {
+  const FS = { ...SCH, monthly: 'firstSunday', monthlyFrom: '2026-11-11' }
+  const V2 = [
+    { id: 'd3', name: 'Uprise-D3 60K', dose: '1 capsule', schedule: FS, requiresFat: true, remind: '23:00', active: true, createdDay: '2026-11-08' },
+    { id: 'omega3', name: 'Omega-3 fish oil, breakfast', dose: '1 capsule', schedule: { kind: 'daily' }, requiresFat: true, remind: '07:30', active: true, createdDay: '2026-11-08' },
+    { id: 'omega3-lunch', name: 'Omega-3 fish oil, lunch', dose: '1 capsule', schedule: { kind: 'daily' }, requiresFat: true, remind: '13:15', active: true, createdDay: '2026-11-11' },
+    { id: 'omega3-dinner', name: 'Omega-3 fish oil, dinner', dose: '1 capsule', schedule: { kind: 'daily' }, requiresFat: true, remind: '23:00', active: true, createdDay: '2026-11-11' },
+    { id: 'whey', name: 'Whey protein, after the gym', dose: '1 scoop', schedule: { kind: 'daily' }, remind: '07:15', active: true, createdDay: '2026-11-08' },
+    { id: 'whey-night', name: 'Whey protein, night', dose: '1 scoop', schedule: { kind: 'daily' }, remind: null, active: true, createdDay: '2026-11-11' },
+    { id: 'magnesium', name: 'Magnesium', dose: '1 tablet', schedule: { kind: 'daily' }, remind: '23:45', active: true, createdDay: '2026-11-08' },
+  ]
+  test('three omega-3 reminders a day, whey after the gym, D3 only on the first Sunday at 23:00', () => {
+    const n = buildSupplementNotifications(V2, {}, '2026-12-01', new Date('2026-11-30T23:00:00Z'))
+    const at = title => n.filter(x => x.title === title).map(x => x.schedule.at.toISOString())
+    expect(at('Omega-3 fish oil, breakfast')[0]).toBe('2026-12-01T02:00:00.000Z')   // 07:30 IST
+    expect(at('Omega-3 fish oil, lunch')[0]).toBe('2026-12-01T07:45:00.000Z')       // 13:15 IST
+    expect(at('Omega-3 fish oil, dinner')[0]).toBe('2026-12-01T17:30:00.000Z')      // 23:00 IST
+    expect(at('Whey protein, after the gym')[0]).toBe('2026-12-01T01:45:00.000Z')   // 07:15 IST
+    expect(at('Magnesium')[0]).toBe('2026-12-01T18:15:00.000Z')                    // 23:45 IST, same day
+    expect(at('Whey protein, night')).toEqual([])
+    expect(at('Vitamin D3 tonight')).toEqual(['2026-12-06T17:30:00.000Z'])
+    expect(checklist(V2, {}, '2026-12-06', 'rest').map(i => i.s.id)).toContain('d3')
+    expect(checklist(V2, {}, '2026-11-22', 'rest').map(i => i.s.id)).not.toContain('d3')
+    const ids = n.map(x => x.id)
+    expect(new Set(ids).size).toBe(ids.length)
+    expect(Math.min(...ids)).toBeGreaterThanOrEqual(4000)
+    expect(Math.max(...ids)).toBeLessThan(4140)
   })
 })

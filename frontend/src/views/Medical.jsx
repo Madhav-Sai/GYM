@@ -17,7 +17,7 @@ import CardHead from '../components/CardHead.jsx'
 import DateField from '../components/DateField.jsx'
 import { Button, NumberField, Row, Section, TextField } from '../components/ui.jsx'
 import { RefBar, TrendChart, WaistWeightChart, GoalBar } from '../components/MedicalCharts.jsx'
-import { useMedical, medicalCall, goalRows, RetestFlag } from '../components/MedicalHome.jsx'
+import { useMedical, medicalCall, goalRows, NextTests } from '../components/MedicalHome.jsx'
 import { confirmSheet } from '../sheets.jsx'
 import { api, apiBlob, appBase } from '../lib/api.js'
 import { MOBILE, shareExportBlob } from '../lib/mobile.js'
@@ -58,7 +58,12 @@ export default function MedicalHub() {
     <Header title={t('Medical')} sub={d?.profile ? `${d.profile.name} · ${d.profile.age} · ${d.profile.heightCm} cm` : t('Blood work, InBody and goals')} back="/home" backLabel={t('Home')} />
     <Gate m={m}>
       {d && <>
-        <RetestFlag labs={d.labs} />
+        {d.tests?.length > 0 && <div className="card">
+          <CardHead icon="calendar" tint="var(--red)" title={t('Next tests')} />
+          <NextTests tests={d.tests} onTick={async x => {
+            try { await medicalCall('/api/medical/tests/done', { id: x.id, done: x.status !== 'done' }) } catch (e) { toast(errText(e)) }
+          }} />
+        </div>}
         <Section>
           <Row icon="note" iconTint="var(--red)" title={t('Labs')} accessory="chevron" onClick={() => nav('/medical/labs')}
             subtitle={lastLab ? `${fmtDate(lastLab.date, false, true)} · ${lastLab.lab || DASH}` : t('No blood tests yet')}
@@ -71,7 +76,7 @@ export default function MedicalHub() {
           <CardHead icon="target" tint="var(--gold, var(--orange))" title={t('Goals')} action={<Button size="sm" icon="plus" onClick={() => goalSheet(null, d)}>{t('Add')}</Button>} />
           {rows.length ? rows.map(r => <div key={r.goal.id} className="tap" role="button" tabIndex={0} onClick={() => goalSheet(r.goal, d)} onKeyDown={e => { if (e.key === 'Enter') goalSheet(r.goal, d) }}>
             <GoalBar goal={r.goal} prog={r.prog} />
-            {r.cur && <div className="small dim" style={{ marginTop: -4, marginBottom: 4 }}>{t('Latest {0}', fmtDate(r.cur.date, false, true))}</div>}
+            {r.cur && <div className="small dim" style={{ marginTop: -4, marginBottom: 4 }}>{t('Latest {0}', fmtDate(r.cur.date, false, true))}{r.goal.note ? ' · ' + r.goal.note : ''}</div>}
           </div>) : <div className="dim small">{t('No goals yet.')}</div>}
         </div>
       </>}
@@ -110,6 +115,7 @@ function GoalForm({ close, goal, doc }) {
       <label className="measure-field"><span>{t('At most')}</span><span className="measure-input"><NumberField nullable value={g.hi} onChange={v => set({ hi: v })} /><i>{g.unit}</i></span></label>
     </div>
     <label className="measure-date"><span>{t('By')}</span><DateField value={g.by} onChange={v => set({ by: v })} label={t('By')} /></label>
+    <label className="measure-field"><span>{t('Note')}</span><TextField value={g.note || ''} maxLength={200} onChange={e => set({ note: e.target.value })} /></label>
     <div style={{ height: 14 }} />
     <Button variant="primary" onClick={save} disabled={g.lo == null && g.hi == null}>{t('Save')}</Button>
     {goal && <><div style={{ height: 8 }} /><Button icon="trash" className="danger" onClick={del}>{t('Delete')}</Button></>}
@@ -130,6 +136,7 @@ function MarkerCard({ m, labs }) {
     <div className="med-num">{m.value != null ? fmtVal(m.value) : (m.text || DASH)}<small>{m.unit !== 'ratio' ? m.unit : ''}</small></div>
     <RefBar m={m} ink={ink} />
     <div className="med-ref">{t('Ref {0}', m.ref?.text || DASH)}</div>
+    {m.note && <div className="med-note">{m.note}</div>}
     {pts.length > 1 && <TrendChart points={pts} band={m.ref} color={ink} h={56} unit={m.unit} label={m.name} />}
   </div>
 }
@@ -147,7 +154,7 @@ function Panel({ p }) {
     {open && <div className="med-panel-b">{p.markers.map(m => {
       const f = markerFlag(m)
       return <div className="med-mrow" key={m.key}>
-        <span>{m.name}<div className="med-ref">{t('Ref {0}', m.ref?.text || DASH)}{m.ref?.std ? ' · ' + t('standard range') : ''}</div></span>
+        <span>{m.name}<div className="med-ref">{t('Ref {0}', m.ref?.text || DASH)}{m.ref?.std ? ' · ' + t('standard range') : ''}</div>{m.note && <div className="med-note">{m.note}</div>}</span>
         <span className="med-mrow-v" style={f && f !== 'normal' ? { color: FLAG_INK[f] } : undefined}>{m.value != null ? fmtVal(m.value) : (m.text || DASH)}<small>{m.unit !== 'ratio' ? m.unit : ''}</small></span>
       </div>
     })}</div>}
@@ -227,13 +234,14 @@ export function MedicalLabs() {
       action={d && <button className="iconbtn" onClick={() => labSheet(null, d)} aria-label={t('Add lab result')}><Icon name="plus" /></button>} />
     <Gate m={m}>
       {d && <>
-        <RetestFlag labs={d.labs} />
+        <NextTests tests={d.tests} compact />
+        {o.newest?.note && <div className="med-note">{o.newest.note}</div>}
         {o.cards.length > 0 && <><h4 className="sec">{t('Tracked')}</h4><div className="med-cards">{o.cards.map(c => <MarkerCard key={c.key} m={c} labs={d.labs} />)}</div></>}
         {o.panels.length > 0 && <><h4 className="sec">{t('Everything else')}</h4><div className="card">{o.panels.map(p => <Panel key={p.panel} p={p} />)}</div></>}
         <h4 className="sec">{t('Tests')}</h4>
         <div className="card">
           {d.labs.length ? [...d.labs].reverse().map(l => <div className="med-hist" key={l.id}>
-            <div><b>{fmtDate(l.date, false, true)}</b><div className="small dim">{l.lab || DASH} · {t('{0} markers', l.markers.length)}</div><LabReport lab={l} /></div>
+            <div><b>{fmtDate(l.date, false, true)}</b><div className="small dim">{l.lab || DASH} · {t('{0} markers', l.markers.length)}{l.note ? ' · ' + l.note : ''}</div><LabReport lab={l} /></div>
             <div className="row" style={{ gap: 6 }}>
               <button className="iconbtn" onClick={() => labSheet(l, d)} aria-label={t('Edit')}><Icon name="pencil" /></button>
               <button className="iconbtn" onClick={() => confirmSheet({
@@ -253,6 +261,7 @@ export function MedicalLabs() {
 function LabForm({ close, lab, doc }) {
   const [date, setDate] = useState(lab?.date || todayISO())
   const [name, setName] = useState(lab?.lab ?? (doc.labs.at(-1)?.lab || ''))
+  const [note, setNote] = useState(lab?.note || '')
   // A new test starts from every marker used before, empty; an edit from its own markers.
   const [rows, setRows] = useState(() => lab ? lab.markers.map(x => ({ ...x }))
     : markerTemplate(doc.labs).map(x => ({ ...x, value: null, flag: null })))
@@ -268,7 +277,7 @@ function LabForm({ close, lab, doc }) {
   const filled = rows.filter(r => r.value != null || r.text)
   const save = async () => {
     try {
-      await medicalCall('/api/medical/labs/save', { id: lab?.id, date, lab: name, markers: filled })
+      await medicalCall('/api/medical/labs/save', { id: lab?.id, date, lab: name, note, markers: filled })
       close(); toast(t('Lab result saved'))
     } catch (e) { toast(errText(e)) }
   }
@@ -280,6 +289,7 @@ function LabForm({ close, lab, doc }) {
     <div className="muted small" style={{ marginBottom: 10 }}>{t('Fill only what was tested. Empty markers stay out of the result.')}</div>
     <label className="measure-date"><span>{t('Date')}</span><DateField value={date} max={todayISO()} onChange={setDate} label={t('Date')} /></label>
     <label className="measure-field"><span>{t('Lab')}</span><TextField value={name} onChange={e => setName(e.target.value)} placeholder="Orange Health Labs" /></label>
+    <label className="measure-field"><span>{t('Note')}</span><TextField value={note} maxLength={200} onChange={e => setNote(e.target.value)} placeholder={t('For example: fasted 12 hours')} /></label>
     {ordered.map(r => {
       const head = tracked.has(r.key) ? t('Tracked') : r.panel
       const show = head !== lastPanel; lastPanel = head
@@ -320,6 +330,7 @@ const IB_FIELDS = [
   ['skeletalMuscle', 'Skeletal muscle', 'kg'], ['leanMass', 'Lean body mass', 'kg'], ['visceralFat', 'Visceral fat level', ''],
   ['whr', 'Waist-hip ratio', ''], ['bmr', 'BMR', 'kcal'], ['bmi', 'BMI', ''], ['score', 'InBody score', ''],
   ['tbw', 'Total body water', 'L'], ['protein', 'Protein', 'kg'], ['mineral', 'Mineral', 'kg'],
+  ['smi', 'Skeletal muscle index', ''], ['intake', 'Recommended intake', 'kcal'],
 ]
 const SEGS = [['la', 'Left arm'], ['ra', 'Right arm'], ['trunk', 'Trunk'], ['ll', 'Left leg'], ['rl', 'Right leg']]
 const SEG_SHORT = { la: 'LA', ra: 'RA', trunk: 'Trunk', ll: 'LL', rl: 'RL' }
@@ -337,7 +348,7 @@ export function MedicalInbody() {
   const waist = isOn(S, 'body') ? waistPoints(S.measurements) : []
   const cmp = waistVsWeight(waist, weight)
   return <div className="narrow">
-    <Header title={t('InBody')} sub={last ? fmtDate(last.date, false, true) : t('Body composition')}
+    <Header title={t('InBody')} sub={last ? [fmtDate(last.date, false, true), last.time, last.device].filter(Boolean).join(' · ') : t('Body composition')}
       action={d && <button className="iconbtn" onClick={() => inbodySheet(null)} aria-label={t('Add InBody scan')}><Icon name="plus" /></button>} />
     <Gate m={m}>
       {d && <>
@@ -345,16 +356,20 @@ export function MedicalInbody() {
           <div className="med-grid">
             {IB_FIELDS.map(([k, label, unit]) => <div key={k}><div className="med-lbl">{t(label)}</div><div className="med-num">{fmtVal(last[k])}<small>{unit}</small></div></div>)}
           </div>
-          <div className="med-form-sec">{t('Segmental lean mass')}</div>
-          <div className="med-seg">
-            {SEGS.map(([k]) => { const s = last.segmental?.[k] || {}; return <div key={k}>
-              <div className="med-lbl">{SEG_SHORT[k]}</div><div className="med-num">{fmtVal(s.kg)}</div>
-              {s.flag && <span className={'med-tag ' + s.flag}>{t(SEG_FLAG[s.flag])}</span>}
-            </div> })}
-          </div>
+          {[['segmental', 'Segmental lean mass'], ['segmentalFat', 'Segmental fat mass']].filter(([f]) => f === 'segmental' || SEGS.some(([k]) => last[f]?.[k]?.kg != null)).map(([f, title]) => <div key={f}>
+            <div className="med-form-sec">{t(title)}</div>
+            <div className="med-seg">
+              {SEGS.map(([k]) => { const s = last[f]?.[k] || {}; return <div key={k}>
+                <div className="med-lbl">{SEG_SHORT[k]}</div><div className="med-num">{s.approx && s.kg != null ? '≈' : ''}{fmtVal(s.kg)}</div>
+                {s.flag && <span className={'med-tag ' + s.flag}>{t(SEG_FLAG[s.flag])}</span>}
+              </div> })}
+            </div>
+          </div>)}
+          {last.note && <div className="med-note">{last.note}</div>}
           {last.targets && <><div className="med-form-sec">{t('Targets')}</div>
             <div className="med-grid">
               <div><div className="med-lbl">{t('Target weight')}</div><div className="med-num">{fmtVal(last.targets.weight)}<small>kg</small></div></div>
+              {last.targets.weightControl != null && <div><div className="med-lbl">{t('Weight control')}</div><div className="med-num">{signed(last.targets.weightControl)}<small>kg</small></div></div>}
               <div><div className="med-lbl">{t('Fat control')}</div><div className="med-num">{signed(last.targets.fatControl)}<small>kg</small></div></div>
               <div><div className="med-lbl">{t('Muscle control')}</div><div className="med-num">{signed(last.targets.muscleControl)}<small>kg</small></div></div>
             </div></>}
@@ -397,10 +412,11 @@ export function MedicalInbody() {
 
 function InbodyForm({ close, scan }) {
   const [v, setV] = useState(() => scan ? structuredClone(scan) : {
-    date: todayISO(), segmental: Object.fromEntries(SEGS.map(([k]) => [k, { kg: null, flag: null }])), targets: { weight: null, fatControl: null, muscleControl: null },
+    date: todayISO(), segmental: Object.fromEntries(SEGS.map(([k]) => [k, { kg: null, flag: null }])),
+    segmentalFat: Object.fromEntries(SEGS.map(([k]) => [k, { kg: null, flag: null }])), targets: { weight: null, weightControl: null, fatControl: null, muscleControl: null },
   })
   const set = patch => setV(x => ({ ...x, ...patch }))
-  const setSeg = (k, patch) => setV(x => ({ ...x, segmental: { ...x.segmental, [k]: { ...x.segmental?.[k], ...patch } } }))
+  const setSeg = (k, patch, f = 'segmental') => setV(x => ({ ...x, [f]: { ...x[f], [k]: { ...x[f]?.[k], ...patch } } }))
   const setTg = (k, val) => setV(x => ({ ...x, targets: { ...x.targets, [k]: val } }))
   const save = async () => {
     try { await medicalCall('/api/medical/inbody/save', v); close(); toast(t('InBody scan saved')) } catch (e) { toast(errText(e)) }
@@ -422,15 +438,19 @@ function InbodyForm({ close, scan }) {
       {IB_FIELDS.map(([k, label, unit]) => <label className="measure-field" key={k}><span>{t(label)}</span>
         <span className="measure-input"><NumberField nullable value={v[k] ?? null} onChange={n => set({ [k]: n })} /><i>{unit}</i></span></label>)}
     </div>
-    <div className="med-form-sec">{t('Segmental lean mass')}</div>
-    {SEGS.map(([k, label]) => { const s = v.segmental?.[k] || {}; return <div className="med-form-row" key={k}>
-      <span className="small">{t(label)}</span>
-      <NumberField nullable value={s.kg ?? null} onChange={n => setSeg(k, { kg: n })} aria-label={t(label)} />
-      <button type="button" className={'chip' + (s.flag ? ' on' : '')} onClick={() => setSeg(k, { flag: cycle(s.flag) })}>{s.flag ? t(SEG_FLAG[s.flag]) : DASH}</button>
-    </div> })}
+    {[['segmental', 'Segmental lean mass'], ['segmentalFat', 'Segmental fat mass']].map(([f, title]) => <div key={f}>
+      <div className="med-form-sec">{t(title)}</div>
+      {SEGS.map(([k, label]) => { const s = v[f]?.[k] || {}; return <div className="med-form-row" key={k}>
+        <span className="small">{t(label)}</span>
+        <NumberField nullable value={s.kg ?? null} onChange={n => setSeg(k, { kg: n }, f)} aria-label={t(title) + ': ' + t(label)} />
+        <button type="button" className={'chip' + (s.flag ? ' on' : '')} onClick={() => setSeg(k, { flag: cycle(s.flag) }, f)}>{s.flag ? t(SEG_FLAG[s.flag]) : DASH}</button>
+      </div> })}
+    </div>)}
+    <label className="measure-field"><span>{t('Note')}</span><TextField value={v.note || ''} maxLength={200} onChange={e => set({ note: e.target.value })} /></label>
     <div className="med-form-sec">{t('Targets')}</div>
     <div className="measure-form">
       <label className="measure-field"><span>{t('Target weight')}</span><span className="measure-input"><NumberField nullable value={v.targets?.weight ?? null} onChange={n => setTg('weight', n)} /><i>kg</i></span></label>
+      <div className="measure-field"><span>{t('Weight control')}</span>{SignedField({ k: 'weightControl' })}</div>
       <div className="measure-field"><span>{t('Fat control')}</span>{SignedField({ k: 'fatControl' })}</div>
       <div className="measure-field"><span>{t('Muscle control')}</span>{SignedField({ k: 'muscleControl' })}</div>
     </div>

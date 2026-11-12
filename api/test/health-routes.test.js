@@ -7,7 +7,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { healthRoutes } from '../health/routes.js';
 import { createHealthStore } from '../health/store.js';
-import { seedSupplements, saveSupplement, markSupplement } from '../health/supplements.js';
+import { seedSupplements, seedSupplementsV1, migrateSupplementsV2, saveSupplement, markSupplement } from '../health/supplements.js';
 
 const NOW = Date.parse('2026-11-08T06:00:00Z');
 function setup() {
@@ -65,7 +65,7 @@ test('a bad day or a bad entry is a 400, never a 500', async () => {
 test('supplements: seeded, marked, edited and deactivated', async () => {
   const { call } = setup();
   let r = await call('GET /api/health/supplements');
-  assert.deepEqual(r.body.list.map(s => s.id), ['d3', 'omega3', 'isabgol', 'whey', 'magnesium']);
+  assert.deepEqual(r.body.list.map(s => s.id), ['d3', 'omega3', 'omega3-lunch', 'omega3-dinner', 'isabgol', 'whey', 'whey-night', 'magnesium']);
   r = await call('POST /api/health/supplements/mark', { body: { day: '2026-11-08', id: 'omega3', status: 'taken' } });
   assert.equal(r.body.log['2026-11-08'].omega3.status, 'taken');
   r = await call('POST /api/health/supplements/mark', { body: { day: '2026-11-08', id: 'isabgol', status: 'skipped', reason: 'Antibiotic tonight' } });
@@ -75,23 +75,56 @@ test('supplements: seeded, marked, edited and deactivated', async () => {
   r = await call('POST /api/health/supplements/save', { body: { supplement: { id: 'magnesium', active: false } } });
   assert.equal(r.body.list.find(s => s.id === 'magnesium').active, false);
   r = await call('POST /api/health/supplements/save', { body: { supplement: { name: 'Creatine', dose: '5 g', schedule: { kind: 'daily' } } } });
-  assert.equal(r.body.list.length, 6);
+  assert.equal(r.body.list.length, 9);
   assert.equal(r.body.supplement.createdDay, '2026-11-08');
 });
 
 test('the seed is what the owner takes', () => {
-  const [d3, omega] = seedSupplements('2026-11-08');
-  assert.deepEqual(d3.schedule, { kind: 'phase', start: '2026-09-06', weeklyDoses: 8, everyDays: 28, dow: 0 });
+  const list = seedSupplements('2026-11-08');
+  const [d3, omega] = list;
+  assert.deepEqual(d3.schedule, { kind: 'phase', start: '2026-09-06', weeklyDoses: 8, everyDays: 28, dow: 0, monthly: 'firstSunday', monthlyFrom: '2026-11-11' });
   assert.equal(d3.requiresFat, true);
+  assert.equal(d3.remind, '23:00');
   assert.match(d3.warning, /double-dose/);
-  assert.match(omega.warning, /Milk alone/);
+  assert.match(omega.warning, /empty stomach/);
+  assert.equal(omega.note, undefined);
+  const by = id => list.find(x => x.id === id);
+  assert.deepEqual(['omega3', 'omega3-lunch', 'omega3-dinner'].map(id => by(id).remind), ['07:30', '13:15', '23:00']);
+  assert.equal(by('whey').remind, '07:15');
+  assert.equal(by('whey').doseByDayType, undefined);
+  assert.match(by('whey-night').note, /maltodextrin/);
+  assert.equal(by('isabgol').remind, '23:45');
+  assert.equal(by('magnesium').remind, '23:45');
+});
+
+test('round 2 reaches a stored round-1 list once, keeping ids, log and own items', () => {
+  const dir = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'gym-supp-')), 'health');
+  fs.mkdirSync(dir, { recursive: true });
+  const v1 = seedSupplementsV1('2026-11-08');
+  v1.push({ id: 'screat', name: 'Creatine', dose: '5 g', schedule: { kind: 'daily' }, active: true, createdDay: '2026-11-09' });
+  const log = { '2026-11-09': { omega3: { status: 'taken', at: 1 } } };
+  fs.writeFileSync(path.join(dir, 'u-u1.json'), JSON.stringify({ v: 1, supplements: { list: v1, log } }));
+  const now = () => Date.parse('2026-11-11T06:00:00Z');
+  const list = createHealthStore({ dir, now }).get('u1').supplements.list;
+  assert.deepEqual(list.map(s => s.id), ['d3', 'omega3', 'omega3-lunch', 'omega3-dinner', 'isabgol', 'whey', 'whey-night', 'magnesium', 'screat']);
+  assert.equal(list.find(s => s.id === 'omega3').createdDay, '2026-11-08');
+  assert.equal(list.find(s => s.id === 'omega3-lunch').createdDay, '2026-11-11');
+  assert.equal(list[0].schedule.monthly, 'firstSunday');
+  const raw = JSON.parse(fs.readFileSync(path.join(dir, 'u-u1.json'), 'utf8'));
+  assert.equal(raw.suppV, 2, 'saved at once');
+  assert.deepEqual(raw.supplements.log['2026-11-09'], log['2026-11-09']);
+  // A fresh process, and the person deleting nothing: still one of each.
+  const again = createHealthStore({ dir, now }).get('u1').supplements.list;
+  assert.equal(again.length, 9);
+  // Running round 2 twice changes nothing.
+  assert.deepEqual(migrateSupplementsV2(structuredClone(again), '2026-11-12'), again);
 });
 
 test('saving keeps what an edit did not send, and refuses a bad schedule', () => {
   const doc = { supplements: { list: seedSupplements('2026-11-08'), log: {} } };
   const s = saveSupplement(doc, { id: 'd3', dose: '1 capsule' }, '2026-11-09');
   assert.equal(s.schedule.kind, 'phase');
-  assert.equal(s.remind, '20:30');
+  assert.equal(s.remind, '23:00');
   assert.equal(s.createdDay, '2026-11-08');
   assert.throws(() => saveSupplement(doc, { name: 'X', schedule: { kind: 'hourly' } }, '2026-11-09'));
   markSupplement(doc, { day: '2026-11-08', id: 'd3', status: 'taken' }, 't');

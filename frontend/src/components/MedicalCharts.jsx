@@ -90,7 +90,7 @@ export function GoalBar({ goal, prog, compact = false }) {
     </div>
     <div className="med-goal-meta small dim">
       <span>{t('From {0}', fmtVal(goal.start))}</span>
-      <span>{prog.met ? t('Reached') : prog.daysLeft == null ? DASH : prog.overdue ? t('{0} days over', -prog.daysLeft) : t('{0} days left', prog.daysLeft)}</span>
+      <span>{goal.achieved?.date ? t('Achieved {0}', fmtDate(goal.achieved.date, false, true)) : prog.met ? t('Reached') : prog.daysLeft == null ? DASH : prog.overdue ? t('{0} days over', -prog.daysLeft) : t('{0} days left', prog.daysLeft)}</span>
     </div>
   </div>
 }
