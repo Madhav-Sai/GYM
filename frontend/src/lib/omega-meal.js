@@ -1,11 +1,14 @@
-// Omega-3 with what (our addition): the plan's three main meals (07:30 breakfast, 13:15 lunch, 23:00
-// dinner) each carry one fish-oil capsule. It needs fat in the same meal to be absorbed, so each of
-// those meals says which of its own items carry that fat, and how much fat the meal has. The owner
+// Omega-3 with what (our addition): one fish-oil capsule a day since 12 Nov 2026, with the 07:30
+// breakfast, the meal with the most fat (it was one with each main meal; api/health/supplements.js
+// round 3). CAPSULE_SLOTS goes back to all of OMEGA_SLOTS if the fasting retest still shows TG above 200.
+// It needs fat in the same meal to be absorbed, so that meal says which of its own items carry that fat, and how much fat the meal has. The owner
 // takes fish oil on both tracks (his choice); the veg track only gets an optional algal note
 // (diet-track.js ALGAL_NOTE).
 import { foodById, macrosFor } from './diet-foods.js'
 
+// The main meals that can carry a capsule (the plan's pill slots), and the ones that do now.
 export const OMEGA_SLOTS = ['post', 'lunch', 'dinner']
+export const CAPSULE_SLOTS = ['post']
 export const CAPSULE_TEXT = 'Omega-3 (fish oil): take 1 capsule with this meal'
 export const LOW_FAT_ADD = 'add 10 almonds or 1 tsp peanut butter'
 // Under this the meal is too lean to carry the capsule.
@@ -28,10 +31,10 @@ const r0 = v => Math.round(v)
 /**
  * The omega-3 line of one meal: { slot, fat (g, whole), carriers: [names, most fat first], low }.
  * `items` are the meal's plan items ({ foodId, qty }) or logged entries (with their own `fat`).
- * Null for a slot that does not carry the capsule.
+ * Null for a slot that does not carry the capsule (`slots`, by default the ones that do now).
  */
-export function omegaForMeal(slot, items) {
-  if (!OMEGA_SLOTS.includes(slot)) return null
+export function omegaForMeal(slot, items, slots = CAPSULE_SLOTS) {
+  if (!slots.includes(slot)) return null
   const rows = []
   for (const x of items || []) {
     const food = foodById(x.foodId)
@@ -47,8 +50,8 @@ export function omegaForMeal(slot, items) {
 }
 
 /** The omega-3 lines of a day's plan ({ slot: items }), by slot. */
-export function omegaForPlan(plan) {
-  return Object.fromEntries(OMEGA_SLOTS.map(s => [s, omegaForMeal(s, plan?.[s] || [])]))
+export function omegaForPlan(plan, slots = CAPSULE_SLOTS) {
+  return Object.fromEntries(slots.map(s => [s, omegaForMeal(s, plan?.[s] || [], slots)]))
 }
 
 /** "a", "a and b", "a, b and c". `and` is the joining word (translated by the caller). */

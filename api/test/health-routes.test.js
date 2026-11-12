@@ -7,7 +7,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { healthRoutes } from '../health/routes.js';
 import { createHealthStore } from '../health/store.js';
-import { seedSupplements, seedSupplementsV1, migrateSupplementsV2, saveSupplement, markSupplement } from '../health/supplements.js';
+import { seedSupplements, seedSupplementsV1, migrateSupplementsV2, migrateSupplementsV3, saveSupplement, markSupplement } from '../health/supplements.js';
 
 const NOW = Date.parse('2026-11-08T06:00:00Z');
 function setup() {
@@ -87,9 +87,13 @@ test('the seed is what the owner takes', () => {
   assert.equal(d3.remind, '23:00');
   assert.match(d3.warning, /double-dose/);
   assert.match(omega.warning, /empty stomach/);
+  assert.match(omega.warning, /Back to 1 a day/);
   assert.equal(omega.note, undefined);
   const by = id => list.find(x => x.id === id);
   assert.deepEqual(['omega3', 'omega3-lunch', 'omega3-dinner'].map(id => by(id).remind), ['07:30', '13:15', '23:00']);
+  // round 3: 1 capsule a day, with breakfast; the other two kept, switched off
+  assert.deepEqual(['omega3', 'omega3-lunch', 'omega3-dinner'].map(id => by(id).active), [true, false, false]);
+  assert.match(by('omega3').warning, /fasting retest is still above 200/);
   assert.equal(by('whey').remind, '07:15');
   assert.equal(by('whey').doseByDayType, undefined);
   assert.match(by('whey-night').note, /maltodextrin/);
@@ -111,13 +115,13 @@ test('round 2 reaches a stored round-1 list once, keeping ids, log and own items
   assert.equal(list.find(s => s.id === 'omega3-lunch').createdDay, '2026-11-11');
   assert.equal(list[0].schedule.monthly, 'firstSunday');
   const raw = JSON.parse(fs.readFileSync(path.join(dir, 'u-u1.json'), 'utf8'));
-  assert.equal(raw.suppV, 2, 'saved at once');
+  assert.equal(raw.suppV, 3, 'saved at once');
   assert.deepEqual(raw.supplements.log['2026-11-09'], log['2026-11-09']);
   // A fresh process, and the person deleting nothing: still one of each.
   const again = createHealthStore({ dir, now }).get('u1').supplements.list;
   assert.equal(again.length, 9);
-  // Running round 2 twice changes nothing.
-  assert.deepEqual(migrateSupplementsV2(structuredClone(again), '2026-11-12'), again);
+  // Running rounds 2 and 3 again changes nothing.
+  assert.deepEqual(migrateSupplementsV3(migrateSupplementsV2(structuredClone(again), '2026-11-12')), again);
 });
 
 test('saving keeps what an edit did not send, and refuses a bad schedule', () => {
@@ -130,4 +134,24 @@ test('saving keeps what an edit did not send, and refuses a bad schedule', () =>
   markSupplement(doc, { day: '2026-11-08', id: 'd3', status: 'taken' }, 't');
   markSupplement(doc, { day: '2026-11-08', id: 'd3', status: null }, 't');
   assert.deepEqual(doc.supplements.log, {});
+});
+
+test('round 3 reaches a stored round-2 list once: 1 omega-3 a day, the lunch and dinner ones off', () => {
+  const dir = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'gym-supp-')), 'health');
+  fs.mkdirSync(dir, { recursive: true });
+  const v2 = migrateSupplementsV2(seedSupplementsV1('2026-11-08'), '2026-11-11');
+  v2.find(s => s.id === 'whey').remind = '07:20';   // an own edit from round 2 stays
+  const log = { '2026-11-11': { 'omega3-lunch': { status: 'taken', at: 1 } } };
+  fs.writeFileSync(path.join(dir, 'u-u1.json'), JSON.stringify({ v: 1, suppV: 2, supplements: { list: v2, log } }));
+  const store = createHealthStore({ dir, now: () => Date.parse('2026-11-12T06:00:00Z') });
+  const list = store.get('u1').supplements.list;
+  const by = id => list.find(x => x.id === id);
+  assert.equal(by('omega3').active, true);
+  assert.equal(by('omega3').remind, '07:30');
+  assert.equal(by('omega3-lunch').active, false);
+  assert.equal(by('omega3-dinner').active, false);
+  assert.equal(by('whey').remind, '07:20');
+  const raw = JSON.parse(fs.readFileSync(path.join(dir, 'u-u1.json'), 'utf8'));
+  assert.equal(raw.suppV, 3);
+  assert.deepEqual(raw.supplements.log, log);
 });

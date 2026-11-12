@@ -6,7 +6,7 @@ import { ALGAL_NOTE, B12_NOTE } from './diet-track.js'
 
 export const RULES = [
   { title: 'Carbs under 130 g.', text: 'The triglyceride lever. Not fat, not cholesterol. Carbs.' },
-  { title: 'Omega-3 at 3 capsules.', text: 'One with each main meal. Never on an empty stomach.' },
+  { title: 'Omega-3: 1 capsule a day.', text: 'With breakfast, the meal with the most fat. Back to 3 only if the fasting retest still shows triglycerides above 200.' },
   { title: 'Zero alcohol.', text: 'It can double triglycerides alone. Six weeks minimum.' },
   { title: 'Zero added sugar.', text: 'No sweets, jaggery, juice, honey, sweetened anything.' },
 ]

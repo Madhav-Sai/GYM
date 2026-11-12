@@ -8,7 +8,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { atomicWrite } from '../durable.js';
-import { seedSupplements, migrateSupplementsV2, SUPP_SEED_VERSION } from './supplements.js';
+import { seedSupplements, migrateSupplementsV2, migrateSupplementsV3, SUPP_SEED_VERSION } from './supplements.js';
 
 export const KEEP_DAYS = 400;
 const DAY = 86400_000;
@@ -41,7 +41,9 @@ export function createHealthStore({ dir, now = Date.now }) {
       d.supplements.list = seedSupplements(today);
       d.suppV = SUPP_SEED_VERSION;
     } else if ((Number.isInteger(d.suppV) ? d.suppV : 1) < SUPP_SEED_VERSION) {
-      migrateSupplementsV2(d.supplements.list, today);
+      const from = Number.isInteger(d.suppV) ? d.suppV : 1;
+      if (from < 2) migrateSupplementsV2(d.supplements.list, today);
+      if (from < 3) migrateSupplementsV3(d.supplements.list);
       d.suppV = SUPP_SEED_VERSION;
       save(uid, d);
     }

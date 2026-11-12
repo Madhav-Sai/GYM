@@ -5,7 +5,7 @@ const memory = () => { const m = new Map(); return { getItem: k => (m.has(k) ? m
 
 describe('the plan\'s rules', () => {
   test('four rules, the never list with a reason each, both tracks of if-hungry and office boxes', () => {
-    expect(RULES.map(r => r.title)).toEqual(['Carbs under 130 g.', 'Omega-3 at 3 capsules.', 'Zero alcohol.', 'Zero added sugar.'])
+    expect(RULES.map(r => r.title)).toEqual(['Carbs under 130 g.', 'Omega-3: 1 capsule a day.', 'Zero alcohol.', 'Zero added sugar.'])
     expect(NEVER).toHaveLength(10)
     for (const n of NEVER) expect(n.why.length).toBeGreaterThan(0)
     expect(NEVER.at(-1)).toEqual({ food: 'Potato', why: 'Treat it as rice' })

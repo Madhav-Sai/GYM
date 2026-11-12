@@ -132,12 +132,12 @@ describe('Diet screen: the triglyceride plan', () => {
     expect(host.textContent).toContain('Pure veg for 40 days: B12 retest in 3 months (it was 403). Below 250: B12 1500 mcg weekly.')
     expect(host.querySelector('[aria-label="Veg for this meal"]')).toBe(null)
   })
-  test('each main meal says what in it carries the omega-3 fat, with the grams', () => {
+  test('breakfast, the one omega-3 meal, says what in it carries the fat, with the grams', () => {
     today = { ...diet, prefs: { track: 'veg' } }
     const host = render(<Diet />)
-    // Sunday, veg: breakfast nuts and seeds, lunch the paneer, dinner the oil
+    // Sunday, veg: breakfast nuts and seeds; lunch and dinner carry no capsule since 12 Nov 2026
     expect(host.textContent).toContain('With the almonds, walnuts and pumpkin seeds (about 25 g fat).')
-    expect(host.textContent).toContain('With the paneer, cooking oil and curd (about 35 g fat).')
+    expect(host.textContent).not.toContain('With the paneer, cooking oil and curd (about 35 g fat).')
   })
   test('the track switch and the 40-day pure veg run', () => {
     let host = render(<Diet />)

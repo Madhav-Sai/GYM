@@ -36,7 +36,7 @@ export function seedSupplementsV1(today) {
    main meal; D3 monthly on the first Sunday from now on (vitamin D is 52.9, weekly would push it too
    high); whey 1 scoop right after the gym (07:15) and 1 at night; isabgol and magnesium at 23:45. Applied once to
    the stored list (store.js `suppV`), keeping ids, so the log and the phone reminders carry on. */
-export const SUPP_SEED_VERSION = 2;
+export const SUPP_SEED_VERSION = 3;
 export const D3_MONTHLY_FROM = '2026-11-11';
 const OMEGA_WARNING = 'Never on an empty stomach. 3 capsules = 2,880 mg EPA+DHA, the main lever for triglycerides';
 const WHEY_NOTE = 'Check the label: maltodextrin or added sugar can add 10-15 g carbs a scoop';
@@ -90,7 +90,25 @@ export function migrateSupplementsV2(list, today) {
 }
 
 /** The owner's supplements as they are now (round 2). */
-export const seedSupplements = today => migrateSupplementsV2(seedSupplementsV1(today), today);
+/* Round 3 (2026-11-12): back to 1 omega-3 capsule a day, with breakfast (07:30, the meal with the
+   most fat). The 3 a day rested on triglycerides of 215, which were probably not a fasting result.
+   The lunch and dinner capsules are switched off, not removed: their history stays, and if the
+   fasting retest still shows triglycerides above 200 they are switched back on in Supplements. */
+export const OMEGA_ONE_WARNING = 'Back to 1 a day: the 215 triglycerides were probably not a fasting result. If the fasting retest is still above 200, switch the lunch and dinner capsules back on (3 a day). Never on an empty stomach.';
+export function migrateSupplementsV3(list) {
+  const o = list.find(x => x.id === 'omega3');
+  if (o) Object.assign(o, {
+    name: 'Omega-3 fish oil, breakfast', dose: '1 capsule (960 mg EPA+DHA)', timing: 'With breakfast, 07:30',
+    schedule: { kind: 'daily' }, requiresFat: true, remind: '07:30', warning: OMEGA_ONE_WARNING, active: true,
+  });
+  for (const id of ['omega3-lunch', 'omega3-dinner']) {
+    const x = list.find(y => y.id === id);
+    if (x) Object.assign(x, { active: false, warning: 'Off since 12 Nov 2026: 1 capsule a day for now. Switch back on only if the fasting retest still shows triglycerides above 200.' });
+  }
+  return list;
+}
+
+export const seedSupplements = today => migrateSupplementsV3(migrateSupplementsV2(seedSupplementsV1(today), today));
 
 /** A supplement as the app sent it, checked. `prev` is the one it edits, if any. */
 export function sanitiseSupplement(s, prev, today) {
