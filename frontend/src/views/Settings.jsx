@@ -48,7 +48,8 @@ import { getChannel, gymReminderBuilt } from '../lib/channel.js'
 import { forgetCoach } from '../lib/coach-api.js'
 import { coachAvailable, coachHidden } from '../lib/coach.js'
 import { REST_MAX, REST_PAUSE_MIN, REST_PAUSE_MAX, fmtRest, fmtDuration } from '../lib/duration.js'
-import { loadMyPlan } from '../components/MyPlan.jsx'
+import { loadMyPlan, updateMyPlan } from '../components/MyPlan.jsx'
+import { myPlanOutdated } from '../lib/my-plan.js'
 import { starterPlanSheet, confirmSheet, importFromApp, importFromHevy, equipmentProfileSheet, plateInventorySheet, dumbbellInventorySheet, barDefaultsSheet, menuSheet } from '../sheets.jsx'
 import Icon from '../components/Icon.jsx'
 import { durationSheet } from '../components/DurationWheel.jsx'
@@ -855,6 +856,7 @@ export default function Settings({ page = null, find = null, via = null, entryKe
         <Row icon="slider" iconTint="var(--teal)" title={t('Weekly sets per muscle')} subtitle={t('The range each muscle aims for')} accessory="chevron" onClick={muscleTargetsSheet} />
         {/* The owner's plan (our addition, lib/my-plan.js): safe to tap again, it never duplicates. */}
         <Row icon="clipboard" iconTint="var(--orange)" title={t('Load my plan')} accessory="chevron" onClick={loadMyPlan} />
+        {myPlanOutdated(S) && <Row icon="clipboard" iconTint="var(--orange)" title={t('Update my plan to the 6 am version')} subtitle={t('Adds the new core work. Your current weights stay as they are.')} accessory="chevron" onClick={updateMyPlan} />}
         <Row icon="clipboard" iconTint="var(--green)" title={t('Load starter plan')} accessory="chevron" onClick={starterPlanSheet} />
       </Section>
       {/* This fork: the day hour by hour (views/Schedule.jsx) and the how-to guide (views/Guide.jsx). */}

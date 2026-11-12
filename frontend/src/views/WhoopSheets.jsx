@@ -19,6 +19,7 @@ import { WhoopHomeDash, WhoopDashboard, WhoopSkeleton, WhoopFirstSync } from './
 import { dayParam } from '../lib/whoop-view.js'
 import { planWhoopImport, applyWhoopImport, whoopImportOn } from '../lib/whoop-import.js'
 import { smartDayOn } from '../lib/smart-day.js'
+import { HrvWatchCard, HrvHomeFlag } from '../components/HrvWatch.jsx'
 import './whoop.css'
 
 /* Whoop (our addition): the sign-in, the manage sheet and the Home card. The numbers come from our
@@ -213,6 +214,7 @@ export function WhoopHomeCard() {
       open={{ onClick: () => nav('/settings/whoop') }}
       action={<span className="wh-dim">{s.syncedAt ? fmtAgo(s.syncedAt) : ''} <Icon name="chevronRight" className="chev" /></span>} />
     {s.today ? <WhoopHomeDash s={s} onOpen={() => nav('/settings/whoop')} onDay={d => nav('/settings/whoop?day=' + d)} /> : <p className="wh-dim">{t('Your first sync is running. Your numbers appear here in a minute.')}</p>}
+    <HrvHomeFlag days={s.days} />
     {s.status === 'attention' && <div className="wh-flag">{t('Whoop needs to be connected again.')}</div>}
   </div>
 }
@@ -261,6 +263,7 @@ export function WhoopSettingsPage() {
     {s.status === 'attention' && <><div className="whd-card whd-alarm"><div className="whd-alarm-h"><Icon name="warning" /> {t('Whoop needs to be connected again.')}</div></div>
       <div style={{ height: 8 }} /><Button variant="primary" icon="plug" onClick={() => connectWhoop(toast)}>{t('Connect again')}</Button><div style={{ height: 12 }} /></>}
     {s.today ? <WhoopDashboard s={s} initialDay={initialDay} onRefresh={sync} /> : <WhoopFirstSync syncedAt={s.syncedAt} onRefresh={sync} />}
+    {s.today && <HrvWatchCard days={s.days} />}
     <WhoopImportSwitch s={s} />
     <SmartDaySwitch />
     <Section>
