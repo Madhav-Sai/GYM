@@ -4364,14 +4364,34 @@ main.api-main .lead { color: var(--fg-2); max-width: 58ch; margin: 14px 0 0; fon
     <span class="ep-sum">Set the diet preferences</span>
   </summary>
   <div class="ep-body">
-<p><code>veg</code> true swaps every non-veg plan item for its protein-matched veg alternative. <code>proteinPerKg</code> (1.6 to 2.6) sets the protein target as grams per kg of the latest body weight; <code>kcalTarget</code> (1000 to 6000) replaces the plan's calories. <code>null</code> puts either back to its default (2.2 g/kg, the plan's kcal).</p>
+<p><code>track</code> picks the plan: <code>veg</code> (pure veg: no eggs, fish or chicken anywhere) or <code>nonveg</code>. <code>vegChallenge</code> <code>{ start: 'YYYY-MM-DD', days }</code> (days 1 to 365, default 40) is the 40-day pure veg run; <code>null</code> ends it. The old <code>veg</code> boolean is still taken as the track (true is <code>veg</code>) and is read back as <code>track</code>. <code>proteinPerKg</code> (1.6 to 2.6) sets the protein target as grams per kg of the latest body weight; <code>kcalTarget</code> (1000 to 6000) replaces the plan's calories. <code>null</code> puts either back to its default (2.2 g/kg, the plan's kcal).</p>
     <p class="ep-auth"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span>Requires a session: the cookie set at sign-in, or <code>Authorization: Bearer &lt;token&gt;</code> from mobile-app pairing.</span></p>
 
 <p class="ep-h">Request body <span class="p-hint">(JSON)</span></p><div class="ptab">
   <div class="prow">
+    <span class="p-name">track</span>
+    <span class="p-type">&quot;veg&quot; | &quot;nonveg&quot;</span>
+    <span class="p-desc"></span>
+  </div>
+  <div class="prow">
+    <span class="p-name">vegChallenge</span>
+    <span class="p-type">object</span>
+    <span class="p-desc"></span>
+  </div>
+  <div class="prow">
+    <span class="p-name">vegChallenge.start</span>
+    <span class="p-type">string <span class="p-hint">(date)</span></span>
+    <span class="p-desc"></span>
+  </div>
+  <div class="prow">
+    <span class="p-name">vegChallenge.days</span>
+    <span class="p-type">integer <span class="p-hint">(1&ndash;365)</span></span>
+    <span class="p-desc"></span>
+  </div>
+  <div class="prow">
     <span class="p-name">veg</span>
     <span class="p-type">boolean</span>
-    <span class="p-desc"></span>
+    <span class="p-desc">The old switch: true sets the track to veg.</span>
   </div>
   <div class="prow">
     <span class="p-name">proteinPerKg</span>

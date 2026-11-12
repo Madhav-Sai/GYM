@@ -9,7 +9,9 @@ import { scanCode, webScanner } from '../lib/scan.js'
 import { useStore } from '../store/useStore.js'
 import CameraScan from '../components/CameraScan.jsx'
 import { SLOTS, TARGETS, planFor, dayTypeOf, nonNegotiables, slotsFor, dayNotes } from '../lib/diet-plan.js'
-import { RULES, NEVER, OIL_RULE, IF_HUNGRY, OFFICE_BOXES, VEG_WARNINGS, NO_SUGAR_LINE, shoppingFor, toggleTick, clearTicks, readTicks, writeTicks } from '../lib/diet-rules.js'
+import { RULES, NEVER, OIL_RULE, NO_SUGAR_LINE, rulesFor, shoppingFor, toggleTick, clearTicks, readTicks, writeTicks } from '../lib/diet-rules.js'
+import { trackOf, challengeOf, challengeLine, startChallengeBody, stayVegBody, trackBody, B12_NOTE } from '../lib/diet-track.js'
+import { omegaForMeal, joinNames, CAPSULE_TEXT } from '../lib/omega-meal.js'
 import { proteinBasis, G_PER_KG_MIN, G_PER_KG_MAX, G_PER_KG_STEP, KCAL_MIN, KCAL_MAX } from '../lib/diet-targets.js'
 import { altsFor, proteinSwap, signed } from '../lib/diet-swap.js'
 import { healthDay, addDays } from '../lib/ist.js'
@@ -18,7 +20,7 @@ import { useDietDay, useHealthOn, useDietTargets, useFoods, applyFoods, useMeals
 import Icon from '../components/Icon.jsx'
 import CardHead from '../components/CardHead.jsx'
 import { Section, Row, Button, Switch, Segmented, NumberField, TextField, SearchField, Stepper } from '../components/ui.jsx'
-import { DASH, n0, n1, litres, Totals, Flags } from '../components/HealthParts.jsx'
+import { DASH, n0, n1, litres, Totals, Flags, ChallengeLine } from '../components/HealthParts.jsx'
 import { SmartDayBanner } from '../components/SmartDay.jsx'
 import './health.css'
 
@@ -61,6 +63,19 @@ function PlanItem({ item, logged, onToggle }) {
   </button>
 }
 
+/** The omega-3 line of a main meal (lib/omega-meal.js): the capsule, and what in the meal carries its fat. */
+function OmegaLine({ slot, items }) {
+  const o = omegaForMeal(slot, items)
+  if (!o) return null
+  return <div className="hl-check" role="note">
+    <Icon name="pill" />
+    <span><b>{t(CAPSULE_TEXT)}</b>{' '}
+      {o.low || !o.carriers.length
+        ? t('This meal has about {0} g fat: add 10 almonds or 1 tsp peanut butter.', o.fat)
+        : t('With the {0} (about {1} g fat).', joinNames(o.carriers.map(n => t(n)), t('and')), o.fat)}</span>
+  </div>
+}
+
 function Meal({ slot, items, entries, veg, vegTrack, onVeg, onToggle, onRemove, onAdd, onSaveMeal, copyCount = 0, onCopy }) {
   const planKeys = new Set(items.map(i => i.key))
   const extra = entries.filter(e => e.slot === slot.id && !planKeys.has(e.planKey))
@@ -70,9 +85,10 @@ function Meal({ slot, items, entries, veg, vegTrack, onVeg, onToggle, onRemove, 
     <div className="hl-meal-h">
       <span className="hl-time">{slot.time}</span>
       <span className="hl-meal-t"><b>{t(slot.title)}</b>{slot.note && <span className="hl-dim">{t(slot.note)}</span>}</span>
-      {slot.pill && <span className="hl-badge veg"><Icon name="pill" />{vegTrack ? t('1 algal omega-3') : t('1 omega-3')}</span>}
+      {slot.pill && <span className="hl-badge veg"><Icon name="pill" />{t('1 omega-3')}</span>}
       {hasNonVeg && <label className="hl-veg"><Icon name="leaf" />{t('Veg')}<Switch checked={veg} onChange={onVeg} aria-label={t('Veg for this meal')} /></label>}
     </div>
+    {slot.pill && <OmegaLine slot={slot.id} items={[...items, ...extra]} />}
     {items.map(i => <PlanItem key={i.key} item={i} logged={entries.find(e => e.planKey === i.key)} onToggle={() => onToggle(i)} />)}
     {extra.map(e => <button key={e.id} type="button" className="hl-item on" onClick={() => onRemove(e)} aria-label={t('Remove {0}', e.name)}>
       <span className="hl-ck"><Icon name="check" /></span>
@@ -347,6 +363,7 @@ function List({ items }) {
   return <ul className="hl-list">{items.map(x => <li key={x}>{t(x)}</li>)}</ul>
 }
 function RulesCard({ veg }) {
+  const r = rulesFor(veg ? 'veg' : 'nonveg')
   return <details className="card hl-fold">
     <summary><Icon name="info" /> <b>{t('Rules')}</b><span className="hl-dim">{t('The four rules, the never list, if hungry')}</span></summary>
     <ol className="hl-list">{RULES.map(r => <li key={r.title}><b>{t(r.title)}</b> {t(r.text)}</li>)}</ol>
@@ -354,13 +371,14 @@ function RulesCard({ veg }) {
     <ul className="hl-list">{NEVER.map(n => <li key={n.food}><b>{t(n.food)}</b>: {t(n.why)}</li>)}</ul>
     <div className="hl-dim" style={{ marginTop: 6 }}>{t(OIL_RULE)}</div>
     <div className="hl-l" style={{ marginTop: 10 }}>{t('If hungry')}</div>
-    <List items={[...IF_HUNGRY.both, ...(veg ? IF_HUNGRY.veg : IF_HUNGRY.nonveg)]} />
-    <div className="hl-dim">{t(IF_HUNGRY.dont)}</div>
+    <List items={r.ifHungry} />
+    <div className="hl-dim">{t('Do not add: rice, chapati, fruit, anything sweet.')}</div>
     <div className="hl-l" style={{ marginTop: 10 }}>{t('Office boxes: pack before 2 pm')}</div>
-    <List items={[...(veg ? OFFICE_BOXES.veg : OFFICE_BOXES.nonveg), ...OFFICE_BOXES.both]} />
+    <List items={r.officeBoxes} />
     {veg && <>
       <div className="hl-l" style={{ marginTop: 10 }}>{t('Veg track: watch these')}</div>
-      <ul className="hl-list">{VEG_WARNINGS.map(w => <li key={w.title}><b>{t(w.title)}</b>. {t(w.text)}</li>)}</ul>
+      <ul className="hl-list">{r.warnings.map(w => <li key={w.title}><b>{t(w.title)}</b>. {t(w.text)}</li>)}</ul>
+      {r.optional.map(x => <div key={x} className="hl-dim">{t(x)}</div>)}
     </>}
   </details>
 }
@@ -369,7 +387,7 @@ function RulesCard({ veg }) {
 function ShoppingCard({ veg }) {
   const [ticks, setTicks] = useState(() => readTicks())
   const save = next => { setTicks(next); writeTicks(next) }
-  const lists = shoppingFor(veg)
+  const lists = shoppingFor(veg ? 'veg' : 'nonveg')
   const all = lists.flatMap(l => l.items)
   const done = all.filter(x => ticks[x.id]).length
   return <details className="card hl-fold">
@@ -384,6 +402,20 @@ function ShoppingCard({ veg }) {
       </div>
     </div>)}
   </details>
+}
+
+/* ---------- the track: pure veg or non-veg, and the 40-day pure veg run (lib/diet-track.js) ---------- */
+function TrackCard({ prefs, day, onPrefs }) {
+  const track = trackOf(prefs)
+  const ch = challengeOf(prefs, day)
+  return <div className="card">
+    <Segmented options={[{ value: 'veg', label: t('Pure veg') }, { value: 'nonveg', label: t('Non-veg') }]} value={track}
+      onChange={v => onPrefs(trackBody(v))} />
+    <div className="hl-dim" style={{ marginTop: 6 }}>{track === 'veg' ? t('No eggs, fish or chicken anywhere in the plan.') : t('The non-veg plan. Each meal can still switch to veg.')}</div>
+    <ChallengeLine prefs={prefs} day={day} onPrefs={onPrefs} />
+    {!ch && <div style={{ marginTop: 8 }}><Button size="sm" variant="tinted" icon="leaf" onClick={() => onPrefs(startChallengeBody(day))}>{t('Start 40-day pure veg')}</Button></div>}
+    {track === 'veg' && <div className="hl-warn" style={{ marginTop: 6 }}>{t(B12_NOTE)}</div>}
+  </div>
 }
 
 function Shell({ nav, children, sub }) {
@@ -411,8 +443,9 @@ export default function Diet() {
   // Only its post: the list itself is read where it is shown (the Log food sheet's My meals).
   const meals = useMeals(false)
   const type = dayTypeOf(day, data?.dayType)
-  const veg = !!data?.prefs?.veg
-  const plan = useMemo(() => planFor(type, { veg, vegMeals: data?.vegMeals || {}, day }), [type, veg, data?.vegMeals, day])
+  const track = trackOf(data?.prefs)
+  const veg = track === 'veg'
+  const plan = useMemo(() => planFor(type, { track, vegMeals: data?.vegMeals || {}, day }), [type, track, data?.vegMeals, day])
   const entries = data?.entries || []
   const targets = useDietTargets(data?.prefs, type)
   useFoods(on)
@@ -437,6 +470,7 @@ export default function Diet() {
   return <Shell nav={nav} sub={`${t(DAY_TYPE_LABEL[type])} · ${new Date(day + 'T12:00:00Z').toLocaleDateString(dateLocale(), { weekday: 'long', day: 'numeric', month: 'short' })}`}>
     {/* Smart day (lib/smart-day.js): only for today, and the switch goes through this screen's own post. */}
     {day === healthDay() && <SmartDayBanner dayType={type} onDietDay={v => post('day', { dayType: v === auto ? null : v })} />}
+    <TrackCard prefs={data.prefs} day={day} onPrefs={body => d.post('/api/health/diet/prefs', body)} />
     <div className="card">
       <div className="row between" style={{ alignItems: 'flex-end' }}>
         <div>
@@ -466,9 +500,6 @@ export default function Diet() {
           onChange={v => post('day', { dayType: v === auto ? null : v })} />
         <div className="hl-dim" style={{ marginTop: 6 }}>{t('By weekday this is a {0} day.', t(DAY_TYPE_LABEL[auto]).toLowerCase())}</div>
       </div>
-      <Row icon="leaf" iconTint="var(--green)" title={t('Vegetarian today')} subtitle={veg ? t('Track B, pure veg: no eggs, fish or chicken') : t('Track A, non-veg. Switch on for the pure veg plan.')}>
-        <Switch checked={veg} onChange={v => d.post('/api/health/diet/prefs', { veg: v })} aria-label={t('Vegetarian today')} />
-      </Row>
     </Section>
 
     <TargetsSection targets={targets} prefs={data.prefs} onPrefs={body => d.post('/api/health/diet/prefs', body)} />

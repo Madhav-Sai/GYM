@@ -35,6 +35,7 @@ import { speedUnitOf } from './speed.js'
 import { isOn } from './modules.js'
 import { viewTarget, exUnitOf, shownWeight } from './ex-unit.js'
 import { TARGETS, DAY_TARGETS, dayTypeOf } from './diet-plan.js'
+import { trackOf, challengeOf } from './diet-track.js'
 import { checklist } from './supplements.js'
 import { healthDay, healthMinutes } from './ist.js'
 import { DEMO } from './demo.js'
@@ -344,6 +345,9 @@ export function dietWidgetBlock (v) {
     carbs: num(tt.carbs), carbsMax: (DAY_TARGETS[typeof v.day === 'string' ? dayTypeOf(v.day, v.dayType) : 'training'] || DAY_TARGETS.training).carbs,
     water: num(v.water), waterTarget: TARGETS.waterMin, waterMax: TARGETS.waterMax,
     entries: Array.isArray(v.entries) ? v.entries.length : null,
+    // the diet track (lib/diet-track.js), and the day of a running 40-day pure veg challenge
+    track: trackOf(v.prefs),
+    vegDay: (() => { const c = typeof v.day === 'string' ? challengeOf(v.prefs, v.day) : null; return c ? { day: c.day, of: c.days, done: c.done } : null })(),
   }
 }
 

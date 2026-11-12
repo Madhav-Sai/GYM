@@ -41,20 +41,40 @@ const WEEK = ['2026-11-09', '2026-11-10', '2026-11-11', '2026-11-12', '2026-11-1
 const NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 const all = plan => Object.values(plan).flat()
 
-// The real totals of the plan's own meals (Diet-Plan-7-Days on the 6 am day of Daily-Plan-6am), with
-// the portions stated at the top of diet-plan.js. They do NOT meet the plan's 2000 kcal or its 130 g
-// carb ceiling on any day, and we do not invent food to make them: this table records them, and a
-// change to the foods or portions has to update it on purpose. [kcal, protein, carbs, fat, fibre]
+
+// The real totals of every weekday and track with the trimmed portions of diet-plan.js (Nov 2026).
+// A change to the foods or portions has to update this table on purpose.
+//
+//   track   day   kcal    protein  carbs  fat   fibre  sat fat
+//   nonveg  Mon   1926.0  189.1    126.6  77.5  31.5   19.2
+//   nonveg  Tue   1910.5  182.0    127.9  79.2  33.6   18.9
+//   nonveg  Wed   1915.0  191.0    120.6  79.4  32.1   19.4
+//   nonveg  Thu   1946.5  194.0    123.5  79.0  38.0   17.5
+//   nonveg  Fri   1932.0  188.8    128.1  77.7  31.8   19.2
+//   nonveg  Sat   1923.6  186.4    127.4  78.8  34.7   18.7
+//   nonveg  Sun   1935.0  193.0    125.0  78.4  36.9   19.5
+//   veg     Mon   1801.2  165.6    129.0  75.7  31.7   25.3
+//   veg     Tue   1783.9  165.0    126.1  77.6  30.8   20.7
+//   veg     Wed   1843.4  173.6    126.0  79.3  31.6   25.7
+//   veg     Thu   1786.9  166.7    125.7  77.7  33.2   20.7
+//   veg     Fri   1797.4  161.8    128.9  76.3  31.7   27.8
+//   veg     Sat   1788.4  166.3    123.6  78.7  30.9   20.9
+//   veg     Sun   1848.2  172.5    128.8  79.0  35.8   25.9
+//
+// Non-veg meets every bound. Veg meets protein (at least 160 g), carbs, fat and fibre, but NOT the
+// 1900 kcal floor: with carbs at their 130 g ceiling and fat at 80 g there is no veg protein food left
+// that adds energy without carbs (Greek yogurt, soya, tofu and dal all carry them), so veg lands on
+// 1784 to 1848 kcal. [kcal, protein, carbs, fat, fibre, satFat]
 const REAL = {
   nonveg: {
-    Mon: [2959.7, 247.3, 218.7, 128.3, 50], Tue: [3126.7, 218.8, 225, 160.7, 55.6], Wed: [2956.7, 251.2, 210.7, 133.4, 56.6],
-    Thu: [3072.7, 232.5, 212.6, 151.4, 64], Fri: [2965.7, 247, 220.2, 128.5, 50.3], Sat: [3223.7, 220.1, 232.5, 167, 60.7],
-    Sun: [2976.7, 256.3, 215.1, 129.6, 62.9],
+    Mon: [1926, 189.1, 126.6, 77.5, 31.5, 19.2], Tue: [1910.5, 182, 127.9, 79.2, 33.6, 18.9], Wed: [1915, 191, 120.6, 79.4, 32.1, 19.4],
+    Thu: [1946.5, 194, 123.5, 79, 38, 17.5], Fri: [1932, 188.8, 128.1, 77.7, 31.8, 19.2], Sat: [1923.6, 186.4, 127.4, 78.8, 34.7, 18.7],
+    Sun: [1935, 193, 125, 78.4, 36.9, 19.5],
   },
   veg: {
-    Mon: [3370.7, 239.7, 240.9, 170.2, 57.8], Tue: [3457.2, 237, 230.8, 188.8, 56.1], Wed: [3367.7, 243.6, 232.9, 175.3, 64.4],
-    Thu: [3427.2, 235.7, 224.4, 188.7, 61.5], Fri: [3376.7, 239.4, 242.4, 170.4, 58.1], Sat: [3554.2, 238.3, 238.3, 195.1, 61.2],
-    Sun: [3520.2, 257.7, 237.9, 182, 70.7],
+    Mon: [1801.2, 165.6, 129, 75.7, 31.7, 25.3], Tue: [1783.9, 165, 126.1, 77.6, 30.8, 20.7], Wed: [1843.4, 173.6, 126, 79.3, 31.6, 25.7],
+    Thu: [1786.9, 166.7, 125.7, 77.7, 33.2, 20.7], Fri: [1797.4, 161.8, 128.9, 76.3, 31.7, 27.8], Sat: [1788.4, 166.3, 123.6, 78.7, 30.9, 20.9],
+    Sun: [1848.2, 172.5, 128.8, 79, 35.8, 25.9],
   },
 }
 
@@ -67,17 +87,23 @@ describe('the default plan: targets', () => {
 
 describe('the default plan: real totals per weekday and track', () => {
   for (const track of TRACKS) {
-    test.each(WEEK.map((d, i) => [NAMES[i], d]))(`${track} %s: the recorded totals; protein and fibre on target`, (name, day) => {
-      const type = dayTypeOf(day)
-      const t = planTotals(planFor(type, { veg: track === 'veg', day }))
-      const [kcal, protein, carbs, fat, fiber] = REAL[track][name]
-      expect([t.kcal, t.protein, t.carbs, t.fat, t.fiber]).toEqual([kcal, protein, carbs, fat, fiber])
-      // what the plan does meet
-      expect(t.protein).toBeGreaterThanOrEqual(150)
+    test.each(WEEK.map((d, i) => [NAMES[i], d]))(`${track} %s: the recorded totals, inside the bounds`, (name, day) => {
+      const t = planTotals(planFor(dayTypeOf(day), { track, day }))
+      expect([t.kcal, t.protein, t.carbs, t.fat, t.fiber, t.satFat]).toEqual(REAL[track][name])
+      expect(t.carbs).toBeLessThanOrEqual(130)
+      expect(t.fat).toBeLessThanOrEqual(80)
       expect(t.fiber).toBeGreaterThanOrEqual(30)
-      // what it does not: recorded honestly, more than 10 % over 2000 kcal and over 140 g carbs
-      expect(Math.abs(t.kcal - TARGETS.kcal) <= TARGETS.kcal * 0.1).toBe(false)
-      expect(t.carbs).toBeGreaterThan(140)
+      expect(t.kcal).toBeLessThanOrEqual(2100)
+      if (track === 'nonveg') {
+        expect(t.kcal).toBeGreaterThanOrEqual(1900)
+        expect(t.protein).toBeGreaterThanOrEqual(160)
+        expect(t.satFat).toBeLessThanOrEqual(TARGETS.satFatMax)
+      } else {
+        // veg: protein reaches 160 g every day; the 1900 kcal floor is out of reach (see the table)
+        expect(t.protein).toBeGreaterThanOrEqual(160)
+        expect(t.kcal).toBeGreaterThanOrEqual(1780)
+        expect(t.kcal).toBeLessThan(1900)
+      }
     })
   }
 })
@@ -93,8 +119,8 @@ describe('the default plan: meals and rotations', () => {
   })
 
   test.each(['training', 'cardio', 'rest'])('%s: black coffee only before the gym, whey after it and at bedtime (2 scoops)', type => {
-    for (const veg of [false, true]) {
-      const p = planFor(type, { veg })
+    for (const track of TRACKS) {
+      const p = planFor(type, { track })
       expect(p.pre.map(x => x.foodId)).toEqual(['black-coffee'])
       expect(p.post[0]).toMatchObject({ foodId: 'whey', qty: 1, note: 'post-gym' })
       expect(p.bed.map(x => x.foodId)).toEqual(['isabgol', 'whey'])
@@ -103,50 +129,62 @@ describe('the default plan: meals and rotations', () => {
     }
   })
 
-  test('track A: fish on Tue, Thu, Sat, chicken on the other days, at lunch and dinner; 5 eggs', () => {
-    const meat = WEEK.map(day => planFor(dayTypeOf(day), { day }).lunch[2].foodId)
-    expect(meat).toEqual(['chicken', 'mackerel', 'chicken', 'sardine', 'chicken', 'mackerel', 'chicken'])
-    for (const day of WEEK) {
-      const p = planFor(dayTypeOf(day), { day })
-      expect(p.dinner[1].foodId).toBe(p.lunch[2].foodId)
-      expect(all(p).filter(x => x.foodId === 'egg').reduce((n, x) => n + x.qty, 0)).toBe(250)
+  test('track A: fish at lunch on Tue, Thu, Sat, chicken the other days; chicken at dinner; eggs 4 a day, 2 on fish days', () => {
+    const lunch = WEEK.map(day => [planFor(dayTypeOf(day), { day }).lunch[2].foodId, planFor(dayTypeOf(day), { day }).lunch[2].qty])
+    expect(lunch).toEqual([['chicken', 100], ['mackerel', 100], ['chicken', 100], ['sardine', 125], ['chicken', 100], ['mackerel', 75], ['chicken', 100]])
+    expect(WEEK.map(day => planFor(dayTypeOf(day), { day }).dinner[1])).toEqual(
+      [150, 200, 150, 200, 150, 225, 150].map(qty => ({ foodId: 'chicken', qty, key: 'dinner:1' })))
+    expect(WEEK.map(day => all(planFor(dayTypeOf(day), { day })).filter(x => x.foodId === 'egg').reduce((n, x) => n + x.qty, 0)))
+      .toEqual([200, 100, 200, 100, 200, 100, 200])
+  })
+
+  test('the dal rotation, one bowl a day at lunch: Mon toor, Tue rajma, Wed chana, Thu moong, Fri toor, Sat kabuli, Sun masoor', () => {
+    expect(WEEK.map(day => planFor(dayTypeOf(day), { day }).lunch[1].foodId)).toEqual(['toor', 'rajma', 'chana-dal', 'moong', 'toor', 'kabuli', 'masoor'])
+    expect(DAL_ROTATION).toHaveLength(7)
+    for (const track of TRACKS) for (const day of WEEK) {
+      expect(all(planFor(dayTypeOf(day), { track, day })).filter(x => foodById(x.foodId).cat === 'dal')).toHaveLength(1)
     }
   })
 
-  test('the dal rotation: Mon toor, Tue rajma, Wed chana, Thu moong, Fri toor, Sat kabuli, Sun masoor', () => {
-    expect(WEEK.map(day => planFor(dayTypeOf(day), { day }).dinner[2].foodId)).toEqual(['toor', 'rajma', 'chana-dal', 'moong', 'toor', 'kabuli', 'masoor'])
-    expect(DAL_ROTATION).toHaveLength(7)
-  })
-
-  test('track B: no egg, fish or chicken; the veg protein rotation at lunch and dinner', () => {
-    const rot = WEEK.map(day => { const p = planFor(dayTypeOf(day), { veg: true, day }); return [p.lunch[2].foodId, p.lunch[2].note, p.dinner[1].foodId, p.dinner[1].note] })
+  test('track B: no egg, fish or chicken, not even in a note; the veg protein rotation; paneer at most 150 g, soya at most once a day', () => {
+    const rot = WEEK.map(day => { const p = planFor(dayTypeOf(day), { track: 'veg', day }); return [p.lunch[2].foodId, p.lunch[2].qty, p.dinner[1].foodId, p.dinner[1].qty] })
     expect(rot).toEqual([
-      ['soya', 'Soya chunks', 'paneer', 'Paneer bhurji'],
-      ['paneer', 'Paneer curry', 'tofu', 'Tofu stir fry'],
-      ['soya', 'Soya chunks', 'paneer', 'Paneer tikka'],
-      ['paneer', 'Rajma + paneer', 'tofu', 'Tofu bhurji'],
-      ['soya', 'Soya chunks', 'paneer', 'Paneer curry'],
-      ['paneer', 'Chana + paneer', 'tofu', 'Tofu curry'],
-      ['paneer', 'Paneer', 'soya', 'Soya chunks'],
+      ['soya', 25, 'paneer', 125], ['paneer', 75, 'tofu', 150], ['soya', 30, 'paneer', 125], ['paneer', 75, 'tofu', 150],
+      ['soya', 25, 'paneer', 150], ['paneer', 75, 'tofu', 150], ['paneer', 125, 'soya', 25],
     ])
-    for (const day of WEEK) for (const x of all(planFor(dayTypeOf(day), { veg: true, day }))) expect(foodById(x.foodId).veg, x.foodId).toBe(true)
-    // Thursday's "rajma + paneer": the lunch dal is rajma, dinner keeps the day's moong
-    const thu = planFor('training', { veg: true, day: '2026-11-12' })
-    expect([thu.lunch[1].foodId, thu.dinner[2].foodId]).toEqual(['rajma', 'moong'])
-    expect(planFor('training', { veg: true }).lunch[2]).toMatchObject({ foodId: 'soya', qty: 60 })
+    for (const day of WEEK) {
+      const items = all(planFor(dayTypeOf(day), { track: 'veg', day }))
+      for (const x of items) {
+        expect(foodById(x.foodId).veg, x.foodId).toBe(true)
+        expect(x.note || '', x.note).not.toMatch(/egg|fish|chicken|mackerel|sardine/i)
+      }
+      expect(items.filter(x => x.foodId === 'paneer').reduce((n, x) => n + x.qty, 0)).toBeLessThanOrEqual(150)
+      expect(items.filter(x => x.foodId === 'soya').length).toBeLessThanOrEqual(1)
+      expect(items.filter(x => x.foodId === 'curd').length).toBeLessThanOrEqual(2)
+    }
+    // Thursday's "rajma + paneer": the lunch dal is rajma
+    expect(planFor('training', { track: 'veg', day: '2026-11-12' }).lunch[1].foodId).toBe('rajma')
+    // the old veg flag still picks track B
+    expect(planFor('training', { veg: true, day: '2026-11-12' })).toEqual(planFor('training', { track: 'veg', day: '2026-11-12' }))
   })
 
-  test('portions: 60 g rice, 150 g dal, curd and chicken, 2 x 100 g vegetables, 150 g fruit (never banana), 32 g nuts twice', () => {
-    const p = planFor('training', { day: '2026-11-09' })
-    expect(p.lunch.slice(0, 2).map(x => x.qty)).toEqual([60, 150])
-    expect(p.lunch.filter(x => foodById(x.foodId).cat === 'veg').map(x => x.qty)).toEqual([100, 100])
-    expect(p.dinner.filter(x => ['cucumber', 'lettuce'].includes(x.foodId)).map(x => x.qty)).toEqual([50, 50])
-    expect(p.snack1[0]).toMatchObject({ qty: 150 })
-    for (const day of WEEK) expect(['guava', 'apple']).toContain(planFor(dayTypeOf(day), { day }).snack1[0].foodId)
-    expect(all(p).some(x => x.foodId === 'banana')).toBe(false)
-    expect(all(p).filter(x => x.foodId === 'almonds' || x.foodId === 'walnuts').reduce((n, x) => n + x.qty, 0)).toBe(64)
+  test('portions: rice small, 2 x 100 g vegetables, 100 g fruit (never banana), nuts once at breakfast, 10 g pumpkin seeds, 1 tsp oil a meal', () => {
+    for (const track of TRACKS) for (const day of WEEK) {
+      const p = planFor(dayTypeOf(day), { track, day })
+      expect(p.lunch[0]).toMatchObject({ foodId: 'rice', qty: track === 'veg' ? 30 : 50 })
+      expect(p.lunch.filter(x => foodById(x.foodId).cat === 'veg').map(x => x.qty)).toEqual([100, 100])
+      expect(p.dinner.filter(x => ['cucumber', 'lettuce'].includes(x.foodId)).map(x => x.qty)).toEqual([50, 50])
+      expect(p.snack1[0]).toMatchObject({ qty: 100 })
+      expect(['guava', 'apple']).toContain(p.snack1[0].foodId)
+      expect(all(p).some(x => x.foodId === 'banana')).toBe(false)
+      const nuts = all(p).filter(x => x.foodId === 'almonds' || x.foodId === 'walnuts')
+      expect(nuts.map(x => [x.key.split(':')[0], x.qty])).toEqual([['post', 20], ['post', 12]])
+      expect(all(p).filter(x => x.foodId === 'pumpkin-seeds').map(x => x.qty)).toEqual([10])
+      expect(all(p).filter(x => x.foodId === 'mustard-oil').map(x => [x.key.split(':')[0], x.qty])).toEqual([['lunch', 4.5], ['dinner', 4.5]])
+      expect(all(p).filter(x => x.foodId === 'curd').length).toBeLessThanOrEqual(2)
+      expect(p.dinner[0]).toMatchObject({ foodId: 'chapati', qty: 1 })
+    }
   })
-
   test('the rest day notes: weigh-in and the monthly D3', () => {
     expect(dayNotes('rest')).toEqual(['Weigh in and measure waist this morning', 'D3 with dinner on the first Sunday of the month'])
     expect(dayNotes('training')).toEqual([])
@@ -164,7 +202,7 @@ describe('the default plan: meals and rotations', () => {
   test('track A per-meal veg swap still works; track B ignores it', () => {
     const lunchOnly = planFor('training', { vegMeals: { lunch: true } })
     expect(lunchOnly.lunch.some(x => x.foodId === 'chicken')).toBe(false)
-    expect(lunchOnly.lunch[2].swappedFrom).toEqual({ foodId: 'chicken', qty: 150 })
+    expect(lunchOnly.lunch[2].swappedFrom).toEqual({ foodId: 'chicken', qty: 100 })
     expect(lunchOnly.post.some(x => x.foodId === 'egg')).toBe(true)
     const b = planFor('training', { veg: true, vegMeals: { lunch: true } })
     expect(b.lunch.some(x => x.swappedFrom)).toBe(false)

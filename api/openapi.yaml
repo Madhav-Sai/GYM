@@ -3295,7 +3295,9 @@ paths:
       operationId: healthDietPrefs
       summary: Set the diet preferences
       description: |
-        `veg` true swaps every non-veg plan item for its protein-matched veg alternative. `proteinPerKg` (1.6 to 2.6)
+        `track` picks the plan: `veg` (pure veg: no eggs, fish or chicken anywhere) or `nonveg`. `vegChallenge`
+        `{ start: 'YYYY-MM-DD', days }` (days 1 to 365, default 40) is the 40-day pure veg run; `null` ends it. The old
+        `veg` boolean is still taken as the track (true is `veg`) and is read back as `track`. `proteinPerKg` (1.6 to 2.6)
         sets the protein target as grams per kg of the latest body weight; `kcalTarget` (1000 to 6000) replaces the
         plan's calories. `null` puts either back to its default (2.2 g/kg, the plan's kcal).
       requestBody:
@@ -3305,7 +3307,14 @@ paths:
             schema:
               type: object
               properties:
-                veg: { type: boolean }
+                track: { type: string, enum: [veg, nonveg] }
+                vegChallenge:
+                  type: object
+                  nullable: true
+                  properties:
+                    start: { type: string, format: date }
+                    days: { type: integer, minimum: 1, maximum: 365 }
+                veg: { type: boolean, deprecated: true, description: 'The old switch: true sets the track to veg.' }
                 proteinPerKg: { type: number, nullable: true, minimum: 1.6, maximum: 2.6 }
                 kcalTarget: { type: integer, nullable: true, minimum: 1000, maximum: 6000 }
       responses:
