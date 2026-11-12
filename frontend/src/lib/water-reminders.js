@@ -26,8 +26,8 @@ import { TARGETS } from './diet-plan.js'
 export const WATER_ID_BASE = 7000
 export const WATER_ID_COUNT = 200
 export const WATER_ID_LAST = WATER_ID_BASE + WATER_ID_COUNT - 1
-export const WATER_DAYS = 3
-export const WATER_MAX_PENDING = 24
+export const WATER_DAYS = 2
+export const WATER_MAX_PENDING = 16
 export const WATER_EVERY = [60, 90, 120]
 export const WATER_EVERY_DEFAULT = 90
 export const WATER_TARGET_ML = TARGETS.waterMax

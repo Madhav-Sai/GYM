@@ -9,7 +9,8 @@ import { addDays, atIST, minutesOf, DAY_ROLLOVER_MIN } from './ist.js'
 import { planFor, sortRows, MAX_ROWS, KINDS } from './day-schedule.js'
 
 export const SCHED_ID_BASE = 5000
-export const SCHED_WINDOW_DAYS = 7
+// Two days ahead: iOS keeps only 64 pending notifications per app (water and supplements share them).
+export const SCHED_WINDOW_DAYS = 2
 const PER_DAY = MAX_ROWS
 export const SCHED_ID_LAST = SCHED_ID_BASE + SCHED_WINDOW_DAYS * PER_DAY - 1
 

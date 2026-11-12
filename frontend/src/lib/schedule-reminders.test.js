@@ -9,11 +9,11 @@ describe('timing plan reminders', () => {
   it('nothing while the switch is off', () => {
     expect(buildScheduleNotifications(defaultSchedule(), '2026-11-10', atIST('2026-11-10', '05:00'))).toEqual([])
   })
-  it('a week of rows, India time, after-midnight rows on the next clock day, past ones skipped', () => {
+  it('two days of rows, India time, after-midnight rows on the next clock day, past ones skipped', () => {
     const n = buildScheduleNotifications(on, '2026-11-10', atIST('2026-11-10', '11:30'))
-    // Tuesday keeps the 8 rows after 11:30 (13:15 onwards, 00:30 included), then Wed to Mon:
-    // five gym or cardio days of 14 rows and the Sunday rest plan of 12
-    expect(n).toHaveLength(8 + 5 * 14 + 12)
+    // Two days ahead: Tuesday keeps the 8 rows after 11:30 (13:15 onwards, 00:30 included),
+    // then Wednesday's cardio plan of 14 rows
+    expect(n).toHaveLength(8 + 14)
     expect(n[0]).toMatchObject({ title: 'Lunch and omega-3' })
     expect(+n[0].schedule.at).toBe(+atIST('2026-11-10', '13:15'))
     const sleep = n.find(x => x.title === 'Sleep block 1')

@@ -106,7 +106,8 @@ describe('supplement reminders', () => {
     expect(at('Omega 3')[0]).toBe('2026-11-08T04:45:00.000Z')   // 10:15 IST
     expect(at('Omega 3')).not.toContain('2026-11-09T04:45:00.000Z')
     expect(at('Magnesium')[0]).toBe('2026-11-08T19:15:00.000Z')  // 00:45 IST on the 9th
-    expect(n.filter(x => x.title === 'Vitamin D3 tonight')).toEqual([])
+    // not due this week, but its next Sunday is queued ahead even though the daily window is two days
+    expect(at('Vitamin D3 tonight')).toEqual(['2026-11-22T15:00:00.000Z'])
     expect(n.some(x => x.title === 'Whey')).toBe(false)   // no reminder time
     const sunday = buildSupplementNotifications(LIST, {}, '2026-11-22', new Date('2026-11-22T04:00:00Z'))
     const d3 = sunday.find(x => x.title === 'Vitamin D3 tonight')

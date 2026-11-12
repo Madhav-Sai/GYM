@@ -51,11 +51,10 @@ describe('what is due', () => {
 describe('the phone notification', () => {
   it('the 1st of each month at 10:30 India time, on ids 6000 up', () => {
     const n = buildBodyReminderNotifications(new Date('2026-11-11T00:00:00Z'))
-    expect(n).toHaveLength(12)
+    expect(n).toHaveLength(2)
     expect(n[0].schedule.at.toISOString()).toBe('2026-12-01T05:00:00.000Z')
     expect(n[1].schedule.at.toISOString()).toBe('2027-01-01T05:00:00.000Z')
-    expect(n[11].schedule.at.toISOString()).toBe('2027-11-01T05:00:00.000Z')
-    expect(n.map(x => x.id)).toEqual(Array.from({ length: 12 }, (_, k) => BODY_ID_BASE + k))
+    expect(n.map(x => x.id)).toEqual(Array.from({ length: 2 }, (_, k) => BODY_ID_BASE + k))
     expect(n.every(x => x.id >= 6000 && x.id < 6000 + BODY_ID_COUNT)).toBe(true)
     expect(n[0].body).toContain('Waist + weight')
   })

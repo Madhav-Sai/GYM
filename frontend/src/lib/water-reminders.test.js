@@ -85,7 +85,7 @@ describe('the notifications', () => {
     // the next days have no total yet: they say what to aim for
     expect(n.at(-1).body).toMatch(/^Water: aim for/)
     expect(n.length).toBeLessThanOrEqual(WATER_MAX_PENDING)
-    expect(WATER_DAYS).toBe(3)
+    expect(WATER_DAYS).toBe(2)
     expect(+n.at(-1).schedule.at).toBeLessThan(+atIST('2026-11-13', '04:00'))
   })
   it('a reminder never asks for water already drunk: on pace means no reminder yet', () => {
@@ -194,5 +194,16 @@ describe('syncWaterReminders on the phone', () => {
     ln.checkPermissions.mockImplementationOnce(() => Promise.resolve({ display: 'prompt' }))
     expect(await mod.syncWaterReminders(S(), 0, { now: atIST(TUE, '13:00'), interactive: true })).toBe(true)
     expect(ln.requestPermissions).toHaveBeenCalled()
+  })
+})
+
+import { SUPP_WINDOW_DAYS } from './supp-reminders.js'
+import { SCHED_WINDOW_DAYS } from './schedule-reminders.js'
+import { BODY_MONTHS_AHEAD } from './body-reminders.js'
+describe('all reminder kinds fit iOS\'s 64 pending notifications', () => {
+  it('stays under 64 at the most each kind can queue', () => {
+    // supplements: at most ~8 daily doses a day plus 2 weekly or monthly ones; the timing plan: at most ~14 rows a day
+    const worst = SUPP_WINDOW_DAYS * 8 + 2 + SCHED_WINDOW_DAYS * 14 + WATER_MAX_PENDING + BODY_MONTHS_AHEAD
+    expect(worst).toBeLessThanOrEqual(64)
   })
 })

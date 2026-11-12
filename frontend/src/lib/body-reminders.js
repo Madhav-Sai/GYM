@@ -15,7 +15,7 @@ export const INBODY_DAYS = 30
 export const WAIST_DAYS = 14
 export const BODY_ID_BASE = 6000
 export const BODY_ID_COUNT = 100
-export const BODY_MONTHS_AHEAD = 12
+export const BODY_MONTHS_AHEAD = 2
 export const BODY_REMIND_AT = '10:30'
 export const WAIST_NOTE = 'Waist + weight is how the app tells fat loss from muscle gain'
 
