@@ -4564,4 +4564,11 @@ export default {
   "While you are awake, from your daily timing plan. Each one says how much to drink to stay on pace, and they stop once you reach the target.": "While you are awake, from your daily timing plan. Each one says how much to drink to stay on pace, and they stop once you reach the target.",
   "Works in the iPhone app": "Works in the iPhone app",
   "{0} L a day": "{0} L a day",
+  "Switched to the 6 am timetable": "Switched to the 6 am timetable",
+  "The gym, cardio and rest plans go back to the 6 am times. Plans you made yourself stay.": "The gym, cardio and rest plans go back to the 6 am times. Plans you made yourself stay.",
+  "Use the 6 am timetable": "Use the 6 am timetable",
+  "Use the 6 am timetable?": "Use the 6 am timetable?",
+  "Wake 05:15, gym 06:00, two sleep blocks, shift 14:00 to 22:00": "Wake 05:15, gym 06:00, two sleep blocks, shift 14:00 to 22:00",
+  "Your timetable is the old 11 am one.": "Your timetable is the old 11 am one.",
+  "Your timetable is the old 11 am one. Switch to the 6 am plan?": "Your timetable is the old 11 am one. Switch to the 6 am plan?",
 }

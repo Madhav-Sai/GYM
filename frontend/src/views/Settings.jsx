@@ -59,6 +59,8 @@ import AppIconRow from '../components/AppIconRow.jsx'
 import WidgetsDiagRow from '../components/WidgetsDiagRow.jsx'
 import BodyCheckReminderRow from '../components/BodyCheckReminderRow.jsx'
 import { WaterReminderSettings } from '../components/WaterReminders.jsx'
+import { switchToSixAm } from '../components/SixAmTimetable.jsx'
+import { isOldTimetable } from '../lib/day-schedule.js'
 import { altAppIcons, trimmedSettings, coachNeedsServer } from '../lib/fork-flags.js'
 import { AnimationQualityRow } from '../components/Animations.jsx'
 import { ServerSyncSection, KeptChangesRows, leaveServer, connectServer, passkeySignIn } from '../components/ServerSync.jsx'
@@ -865,6 +867,14 @@ export default function Settings({ page = null, find = null, via = null, entryKe
       {/* This fork: the day hour by hour (views/Schedule.jsx) and the how-to guide (views/Guide.jsx). */}
       <Section>
         <Row icon="clock" iconTint="var(--teal)" title={t('Daily timing plan')} subtitle={t('Wake, meals, gym, work and sleep')} accessory="chevron" onClick={() => nav('/schedule')} />
+        {/* The 6 am timetable (lib/day-schedule.js applySixAmTimetable): replaces the gym, cardio and
+            rest plans, keeps plans of your own. */}
+        <Row icon="sunrise" iconTint="var(--orange)" title={t('Use the 6 am timetable')}
+          subtitle={isOldTimetable(S) ? t('Your timetable is the old 11 am one.') : t('Wake 05:15, gym 06:00, two sleep blocks, shift 14:00 to 22:00')}
+          accessory="chevron" onClick={() => confirmSheet({
+            title: t('Use the 6 am timetable?'), message: t('The gym, cardio and rest plans go back to the 6 am times. Plans you made yourself stay.'),
+            confirmText: t('Switch'), onConfirm: () => { switchToSixAm() },
+          })} />
         <Row icon="lightbulb" iconTint="var(--yellow)" title={t('How to build a workout and a plan')} accessory="chevron" onClick={() => nav('/guide')} />
       </Section>
     </>,

@@ -13,6 +13,7 @@ import { todayISO, exCount as exCountText } from '../lib/format.js'
 import { effectiveRoutines } from '../lib/history.js'
 import { weekTally } from '../lib/queue.js'
 import { MOBILE } from '../lib/mobile.js'
+import { SixAmBanner } from './SixAmTimetable.jsx'
 import { syncScheduleReminders } from '../lib/schedule-reminders.js'
 import { scheduleOf, planDay, whereNow, fmtLeft, KIND_ICON, KIND_TINT } from '../lib/day-schedule.js'
 import { layoutOf, visibleIds, moveItem, setHidden } from '../lib/home-layout.js'
@@ -69,7 +70,7 @@ export function NowStrip() {
   const cur = w.now
   // The phone's timing-plan reminders are re-queued on each open of Home, as on the Schedule screen.
   useEffect(() => { if (MOBILE) syncScheduleReminders(scheduleOf(useStore.getState().S), planDay()).catch(() => {}) }, [S.daySchedule]) // eslint-disable-line react-hooks/exhaustive-deps
-  return <button type="button" className="card now-strip" onClick={() => nav('/schedule')} aria-label={t('Daily timing plan')}>
+  return <><SixAmBanner /><button type="button" className="card now-strip" onClick={() => nav('/schedule')} aria-label={t('Daily timing plan')}>
     <span className="now-dot" style={{ background: cur ? KIND_TINT[cur.kind] : 'var(--label-3)' }}><Icon name={cur ? KIND_ICON[cur.kind] : 'moon'} /></span>
     <span className="now-main">
       <span className="now-eyebrow">{t('Now')} · {w.plan?.name}</span>
@@ -77,7 +78,7 @@ export function NowStrip() {
       {w.next && <span className="now-next">{t('Next')}: {w.next.label} {t('at {0}', w.next.time)}{w.tomorrow ? ' (' + t('tomorrow') + ')' : ''}</span>}
     </span>
     {w.next && <span className="now-left"><b>{fmtLeft(w.minutesLeft)}</b><small>{t('left')}</small></span>}
-  </button>
+  </button></>
 }
 
 function Tile({ id, icon, tint, label, value, sub, onOpen }) {

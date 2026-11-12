@@ -163,6 +163,7 @@ export const SEARCH = [
   { page: 'plan', title: 'Week starts on', icon: 'calendar', tint: 'var(--orange)', kw: 'monday sunday first day week', opts: ['Monday', 'Sunday'], tkw: () => t('week start') },
   { page: 'plan', title: 'Weekly sets per muscle', icon: 'slider', tint: 'var(--teal)', kw: 'volume sets per week muscle target range mev mrv hypertrophy landmarks' },
   { page: 'plan', title: 'Load starter plan', icon: 'clipboard', tint: 'var(--green)', kw: 'starter template beginner program routine' },
+  { page: 'plan', title: 'Use the 6 am timetable', icon: 'sunrise', tint: 'var(--orange)', kw: 'timetable daily timing plan 6 am six morning 11 am old schedule wake sleep shift' },
   { page: 'plan', title: 'Load my plan', icon: 'clipboard', tint: 'var(--orange)', kw: 'my plan owner upper lower cardio load routines week' },
   // Units & language
   { page: 'units', title: 'Language', icon: 'globe', tint: 'var(--blue)', kw: 'language translation idioma sprache langue lingua', when: () => !englishOnly() },

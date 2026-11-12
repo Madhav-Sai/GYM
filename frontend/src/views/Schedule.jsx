@@ -15,6 +15,7 @@ import {
 } from '../lib/day-schedule.js'
 import { syncScheduleReminders } from '../lib/schedule-reminders.js'
 import { confirmSheet } from '../sheets.jsx'
+import { SixAmBanner } from '../components/SixAmTimetable.jsx'
 import Icon from '../components/Icon.jsx'
 import { Button, Switch } from '../components/ui.jsx'
 import '../components/hub.css'
@@ -142,6 +143,8 @@ export default function Schedule() {
         <div className="sub">{where.next ? t('Next: {0} at {1}, in {2}', where.next.label, where.next.time, fmtLeft(where.minutesLeft)) : t('Your day, hour by hour')}</div>
       </div>
     </div>
+
+    <SixAmBanner />
 
     {schedule.plans.length > 1 && <div className="chips sched-plans" role="tablist" aria-label={t('Plans')}>
       {schedule.plans.map(p => <button key={p.id} type="button" role="tab" aria-selected={p.id === plan.id} className={'chip nocap' + (p.id === plan.id ? ' on' : '')} onClick={() => setSel(p.id)}>

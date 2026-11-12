@@ -247,3 +247,45 @@ export function removePlan(schedule, planId) {
 
 /** The weekdays no plan lists (they fall back to the first plan). */
 export const uncoveredDays = schedule => ALL_DAYS.filter(d => !(schedule?.plans || []).some(p => p.days.includes(d)))
+
+/* ---------- the old 11 am timetable ---------- */
+
+// Until November 2026 the default was one "Shift 2pm-11pm" plan on every day: wake 10:00, gym
+// 11:00, sleep 01:30. A profile that edited it then stored that plan, so the 6 am default never
+// reached it. A plan still on it: a gym row at 11:00 or a wake row at 10:00, and no 05:15 wake.
+// The banner's "Not now" is S.sixAmDismissed, a plain synced setting.
+const DEFAULT_IDS = DEFAULT_PLANS.map(p => p.id)
+
+/** Whether one plan is still on the old 11 am timetable. */
+export function isOldPlan(plan) {
+  const rows = plan?.rows || []
+  const has = (kind, time) => rows.some(r => r && r.kind === kind && r.time === time)
+  return (has('gym', '11:00') || has('wake', '10:00')) && !has('wake', '05:15')
+}
+
+/** Whether the stored timing plan (not the default shown before any edit) is still the old 11 am one. */
+export function isOldTimetable(S) {
+  const raw = S?.daySchedule
+  if (!isMap(raw) || !Array.isArray(raw.plans)) return false
+  return scheduleOf(S).plans.some(isOldPlan)
+}
+
+/** Whether to offer the switch: an old timetable, and "Not now" not tapped. */
+export const offerSixAm = S => isOldTimetable(S) && S?.sixAmDismissed !== true
+
+/**
+ * The stored schedule moved to the current 6 am default (gym days Mon Tue Thu Fri, cardio Wed Sat,
+ * Sunday rest). Old 11 am plans and plans on the default ids ('shift', 'cardio', 'rest') are
+ * replaced by fresh default plans; any other plan the user made is kept after them, on its own
+ * weekdays (taken off the default plans). The reminder switch is kept. Applying it again to its own
+ * result gives the same schedule.
+ */
+export function applySixAmTimetable(S) {
+  const cur = scheduleOf(S)
+  const stored = isMap(S?.daySchedule) && Array.isArray(S.daySchedule.plans)
+  const extras = stored ? cur.plans.filter(p => !isOldPlan(p) && !DEFAULT_IDS.includes(p.id)) : []
+  const taken = new Set(extras.flatMap(p => p.days))
+  const defaults = defaultSchedule().plans.map(p => ({ ...p, days: p.days.filter(d => !taken.has(d)) }))
+  const kept = extras.map(p => ({ ...p, days: [...p.days], rows: p.rows.map(r => ({ ...r })) }))
+  return { plans: [...defaults, ...kept].slice(0, MAX_PLANS), remind: cur.remind }
+}
