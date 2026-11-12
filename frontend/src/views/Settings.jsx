@@ -58,6 +58,7 @@ import BackupFolderRow, { useBackupFolder, autoBackupSubtitle } from '../compone
 import AppIconRow from '../components/AppIconRow.jsx'
 import WidgetsDiagRow from '../components/WidgetsDiagRow.jsx'
 import BodyCheckReminderRow from '../components/BodyCheckReminderRow.jsx'
+import { WaterReminderSettings } from '../components/WaterReminders.jsx'
 import { altAppIcons, trimmedSettings, coachNeedsServer } from '../lib/fork-flags.js'
 import { AnimationQualityRow } from '../components/Animations.jsx'
 import { ServerSyncSection, KeptChangesRows, leaveServer, connectServer, passkeySignIn } from '../components/ServerSync.jsx'
@@ -468,7 +469,7 @@ export default function Settings({ page = null, find = null, via = null, entryKe
     sound: !!S.sound, playOnSilent: playOnSilentSupported(), canVibrate, vibrate: S.vibrate !== false,
     profiles: (S.equipProfiles || []).length > 0, nameLang: EXERCISE_NAME_LANGS.includes(baseLang(lang)),
     pushOK: !MOBILE && pushSupported(), reminderOn: !!S.reminder?.on, nudge: !!S.reminder?.nudge,
-    nfc: nfcOK, gymReminder,
+    nfc: nfcOK, gymReminder, waterOn: S.waterReminders?.on === true,
     autoBackup: !!S.autoBackup, synced: !!sync, installTip: !MOBILE && !standalone(), androidWeb: IS_ANDROID, desktopWeb: !IS_ANDROID && !APPLE_UA,
     integrations: config?.integrations?.providers || [],
     rotation: scheduleModeOf(S) === 'rotation' && !externalQ,
@@ -818,6 +819,8 @@ export default function Settings({ page = null, find = null, via = null, entryKe
       {MOBILE && <Section footer={t('A progress photo, an InBody scan and your waist, on the 1st of each month at 10:30 India time.')}>
         <BodyCheckReminderRow title="Monthly body check" subtitle="Remind me on the 1st" iconTint="var(--teal)" />
       </Section>}
+      {/* Water reminders (components/WaterReminders.jsx): the phone's; the website says where they work. */}
+      <WaterReminderSettings />
       {MOBILE && gymReminder && <Section footer={t('A nudge when you walk into your gym.')}>
         <Row icon="mapPin" iconTint="var(--green)" title={t('Gym reminder')} value={gymOn ? t('On') : t('Off')} accessory="chevron" onClick={() => nav('/settings/gym')} />
       </Section>}

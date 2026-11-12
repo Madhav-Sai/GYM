@@ -7,6 +7,7 @@ import { TARGETS, dayTypeOf } from '../lib/diet-plan.js'
 import { checklist, pendingCount, phaseOf } from '../lib/supplements.js'
 import { syncSupplementReminders } from '../lib/supp-reminders.js'
 import { useDietDay, useSupplements, useHealthOn, useDietTargets } from './health-data.js'
+import { useWaterReminderSync } from '../components/WaterReminders.jsx'
 import { Totals, Flags, litres, D3Card, ChallengeLine } from '../components/HealthParts.jsx'
 import Icon from '../components/Icon.jsx'
 import CardHead from '../components/CardHead.jsx'
@@ -20,6 +21,8 @@ function DietHomeCard({ day }) {
   const d = useDietDay(day)
   // Protein from body weight, the same helper as the Diet screen (lib/diet-targets.js).
   const targets = useDietTargets(d.data?.prefs, dayTypeOf(day, d.data?.dayType))
+  // Home on open: today's water reminders re-planned from the total (lib/water-reminders.js).
+  useWaterReminderSync(d.data?.water, d.data?.day || day)
   if (!d.data) return null
   const s = d.data
   return <div className="card tap-host">

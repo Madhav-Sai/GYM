@@ -22,6 +22,7 @@ import CardHead from '../components/CardHead.jsx'
 import { Section, Row, Button, Switch, Segmented, NumberField, TextField, SearchField, Stepper } from '../components/ui.jsx'
 import { DASH, n0, n1, litres, Totals, Flags, ChallengeLine } from '../components/HealthParts.jsx'
 import { SmartDayBanner } from '../components/SmartDay.jsx'
+import { WaterReminderSwitch, useWaterReminderSync } from '../components/WaterReminders.jsx'
 import './health.css'
 
 /* Diet (our addition): today's plan by meal, tap an item when it is eaten, log anything else by
@@ -44,6 +45,8 @@ function Water({ ml, onAdd }) {
       <Button size="sm" icon="minus" disabled={!ml} onClick={() => onAdd(-250)}>250 ml</Button>
       <Button size="sm" variant="tinted" icon="plus" onClick={() => onAdd(250)}>250 ml</Button>
     </div>
+    {/* The phone's water reminders (components/WaterReminders.jsx), the same setting as Settings → Reminders. */}
+    <WaterReminderSwitch />
   </div>
 }
 
@@ -449,6 +452,8 @@ export default function Diet() {
   const entries = data?.entries || []
   const targets = useDietTargets(data?.prefs, type)
   useFoods(on)
+  // Each new total re-plans the phone's water reminders, so none asks for a glass already drunk.
+  useWaterReminderSync(data?.water, data?.day || day)
 
   if (!on) return <Shell nav={nav}><div className="empty">{t('Sign in to your server to keep a diet log.')}</div></Shell>
   if (!data) return <Shell nav={nav}>{d.error ? <div className="empty" role="alert">{t('Could not reach your server')}</div> : <div className="empty">{t('Loading…')}</div>}</Shell>

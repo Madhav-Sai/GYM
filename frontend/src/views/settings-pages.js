@@ -151,6 +151,10 @@ export const SEARCH = [
   { page: 'reminders', title: 'Nudge tone', icon: 'chat', tint: 'var(--blue)', kw: 'nudge tone friendly guilt drill sergeant', opts: ['Friendly', 'Guilt trip', 'Drill sergeant'], when: c => remind(c) && c.reminderOn && c.nudge, via: PUSH },
   // The phone's monthly body check reminder (components/BodyCheckReminderRow.jsx): the phone only, like the switch.
   { page: 'reminders', title: 'Monthly body check', icon: 'bell', tint: 'var(--teal)', kw: 'body check monthly inbody progress photo waist reminder 1st first', when: c => !!c.mobile },
+  // Water reminders (components/WaterReminders.jsx): the phone's notifications; the web shows the row and where it works.
+  { page: 'reminders', title: 'Water reminders', icon: 'drop', tint: 'var(--blue)', kw: 'water drink hydration glass litre liter remind notification', when: c => !!c.mobile || !!c.user },
+  { page: 'reminders', title: 'Remind every', icon: 'timer', tint: 'var(--purple)', kw: 'water drink interval minutes hour how often', when: c => !!c.mobile && !!c.waterOn },
+  { page: 'reminders', title: 'Quiet during the gym', icon: 'dumbbell', tint: 'var(--acc)', kw: 'water drink gym training silent quiet', when: c => !!c.mobile && !!c.waterOn },
   { page: 'reminders', title: 'Gym reminder', icon: 'mapPin', tint: 'var(--green)', kw: 'gym location arrive arrival geofence place map nearby', when: c => !!c.mobile && c.gymReminder !== false },
   { page: 'reminders', title: 'Send test notification', icon: 'bell', tint: 'var(--red)', kw: 'test push notification try', when: c => !c.mobile && c.pushOK, via: PUSH },
   // Plan & schedule

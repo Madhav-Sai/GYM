@@ -487,6 +487,11 @@ export async function startWidgetSync ({ useStore }) {
     const day = healthDay()
     const [d, s] = await Promise.allSettled([api('/api/health/diet?day=' + encodeURIComponent(day)), api('/api/health/supplements')])
     let changed = false
+    // The day's total (after the widget's +250 ml taps were sent) re-plans the water reminders, on
+    // every open and return of the app (lib/water-reminders.js).
+    if (d.status === 'fulfilled' && typeof d.value?.water === 'number') {
+      import('./water-reminders.js').then(m => m.syncWaterReminders(useStore.getState().S, d.value.water)).catch(() => {})
+    }
     if (d.status === 'fulfilled') { const next = dietWidgetBlock(d.value); if (JSON.stringify(next) !== JSON.stringify(diet)) { diet = next; changed = true } }
     if (s.status === 'fulfilled') { const next = supplementsWidgetBlock(s.value, { day }); if (JSON.stringify(next) !== JSON.stringify(supps)) { supps = next; changed = true } }
     return changed

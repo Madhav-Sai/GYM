@@ -13,6 +13,7 @@ import { setPlayOnSilent, setVibrate, setAlarmBuzzer, setNativeBuzzer } from './
 import { buzzAsAlarm } from './lib/rest-alert.js'
 import { setNav, notePath, keyBefore, navToWorkout, nav } from './lib/nav.js'
 import { onGymReminderOpen } from './lib/gym-reminder.js'
+import { onWaterReminderOpen } from './lib/water-reminders.js'
 import { autoGymHere } from './lib/gym-auto.js'
 import { workoutVolume } from './lib/history.js'
 import { setSystemBarsLight } from './lib/system-bars.js'
@@ -532,6 +533,11 @@ export default function App() {
       if (!String(window.location.hash || '').startsWith('#/workout')) navToWorkout()
       autoGymHere()
     })
+  }, [])
+  // Phone app: a tap on a water reminder (lib/water-reminders.js) opens Diet, where the glass is logged.
+  useEffect(() => {
+    if (!MOBILE) return
+    return onWaterReminderOpen(() => nav('/diet'))
   }, [])
   return <HashRouter><Shell /></HashRouter>
 }
