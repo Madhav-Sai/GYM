@@ -30,7 +30,7 @@ import { WrappedHomeCard } from '../components/WrappedEntry.jsx'
 import RecoveryHint from '../components/RecoveryHint.jsx'
 import { WhoopHomeCard } from './WhoopSheets.jsx'
 import { MedicalHomeCard } from '../components/MedicalHome.jsx'
-import { LoadMyPlanButton, TodayCardioCard } from '../components/MyPlan.jsx'
+import { LoadMyPlanButton, TodayCardioCard, UpdateMyPlanCard, SundayChecklistCard } from '../components/MyPlan.jsx'
 import { HealthHomeCards } from './HealthCards.jsx'
 import { CheckInCard } from '../components/GymVisit.jsx'
 import { BodyRemindersCard } from '../components/BodyReminders.jsx'
@@ -228,6 +228,9 @@ export default function Home() {
     cardio: () => <>
         {/* The owner's plan (our addition, lib/cardio-plans.js): today's treadmill table, on a day of the plan. */}
         {!S.active && <TodayCardioCard routines={todayRoutines} />}
+        {/* The 6 am version of the plan, while this profile still has the older one; and Sunday's checklist. */}
+        <UpdateMyPlanCard />
+        {!S.active && <SundayChecklistCard routines={todayRoutines} />}
         </>,
     health: () => <>
         {/* Diet and supplements (our addition): today's macros and water, what is left to take. */}

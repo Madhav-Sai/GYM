@@ -23,14 +23,18 @@ const STEADY = [
   seg(33, 35, 4.0, 0, { max: 120 }, 'cool')
 ]
 
-// After every lifting day: an easy 20 minutes.
+// The same session on the elliptical: one level for the main block, a harder one for the push.
+export const ELLIPTICAL = Object.freeze({ level: 6, pushLevel: 8, pushFrom: 25, pushTo: 30 })
+
+// After every lifting day (the 6 am plan): an easy 15 minutes at HR 120-140.
 const POST_LIFT = [
-  seg(0, 2, 4.0, 0, null, 'warm'),
-  seg(2, 17, 5.5, 5, { lo: 120, hi: 140 }),
-  seg(17, 20, 4.0, 0, null, 'cool')
+  seg(0, 1, 4.0, 0, null, 'warm'),
+  seg(1, 14, 5.5, 5, { lo: 120, hi: 140 }),
+  seg(14, 15, 4.0, 0, null, 'cool')
 ]
 
-// Saturday: hard rounds of 3 minutes on 12 %, 3 minutes easy in between, then 10 minutes down.
+// Saturday: hard rounds of 3 minutes on 12 %, 3 minutes easy in between, then 10 minutes down:
+// 5 at 4 km/h around 130 bpm, then 5 at 3.5 km/h until the heart rate is under 120.
 // Three rounds to start; a fourth is added (another recovery and hard block before the cool-down)
 // from week 3 of the plan, so the cool-down is never cut short.
 export const INTERVAL_ROUNDS = 3
@@ -49,7 +53,8 @@ export function intervalSegments(rounds = INTERVAL_ROUNDS) {
     out.push(seg(at, at + 3, 6.0, 12, { lo: 165, hi: HR_CEILING }, 'hard'))
     at += 3
   }
-  out.push(seg(at, at + 10, 4.0, 0, null, 'cool', 3.5))
+  out.push(seg(at, at + 5, 4.0, 0, { at: 130 }, 'cool'))
+  out.push(seg(at + 5, at + 10, 3.5, 0, { max: 120 }, 'cool'))
   return out
 }
 
@@ -68,8 +73,8 @@ export const CARDIO_KEYS = ['steady', 'intervals', 'postLift']
 
 /** One session's table: { key, min, rounds?, segments }, or null for an unknown key. */
 export function cardioPlan(key, { week = null } = {}) {
-  if (key === 'steady') return { key, min: 35, segments: STEADY }
-  if (key === 'postLift') return { key, min: 20, segments: POST_LIFT }
+  if (key === 'steady') return { key, min: 35, segments: STEADY, elliptical: ELLIPTICAL }
+  if (key === 'postLift') return { key, min: 15, segments: POST_LIFT }
   if (key === 'intervals') {
     const rounds = intervalRounds(week)
     const segments = intervalSegments(rounds)

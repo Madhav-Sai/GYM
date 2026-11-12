@@ -116,6 +116,9 @@ export const DEF = {
   smartDay: true,
   smartDayKept: {},
   weeklyReviewSeen: null,
+  // The Sunday checklist on Home (this fork, lib/sunday-checklist.js): the rows ticked each Sunday,
+  // { [iso]: [id…] }, a plain setting stamped whole.
+  sundayChecks: {},
   // Body measurements (#82, #699): one check-in per day; canonical cm, kg or % according to
   // the field's unit (lib/measurements.js); merged like weigh-ins (lib/sync-merge.js).
   measurements: [], measurementEnabled: null, customMeasurements: [],

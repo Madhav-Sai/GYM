@@ -20,27 +20,36 @@ describe('the segment tables', () => {
     expect(p.segments[5]).toMatchObject({ from: 33, to: 35, speed: 4, incline: 0, hr: { max: 120 } })
   })
 
-  it('the walk after lifting is 20 minutes with 15 at 5.5 km/h on 5 %', () => {
+  it('Wednesday carries the elliptical alternative: level 6, level 8 for minutes 25 to 30', () => {
+    expect(cardioPlan('steady').elliptical).toEqual({ level: 6, pushLevel: 8, pushFrom: 25, pushTo: 30 })
+    const push = cardioPlan('steady').segments.find(s => s.from === 25)
+    expect(push.to).toBe(30)
+    expect(cardioPlan('postLift').elliptical).toBeUndefined()
+  })
+
+  it('the walk after lifting is 15 minutes with 13 at 5.5 km/h on 5 %, HR 120-140', () => {
     const p = cardioPlan('postLift')
-    expect(p.segments.map(s => [s.from, s.to, s.speed, s.incline])).toEqual([[0, 2, 4, 0], [2, 17, 5.5, 5], [17, 20, 4, 0]])
+    expect(p.min).toBe(15)
+    expect(p.segments.map(s => [s.from, s.to, s.speed, s.incline])).toEqual([[0, 1, 4, 0], [1, 14, 5.5, 5], [14, 15, 4, 0]])
     expect(p.segments[1].hr).toEqual({ lo: 120, hi: 140 })
   })
 
-  it('Saturday is three hard rounds and a 10 minute cool-down from 4.0 to 3.5 km/h', () => {
+  it('Saturday is three hard rounds and a 10 minute cool-down: 4.0 km/h at 130, then 3.5 under 120', () => {
     const segs = intervalSegments(3)
     expect(segs.map(s => [s.from, s.to, s.kind])).toEqual([
       [0, 3, 'warm'], [3, 5, null], [5, 8, 'hard'], [8, 11, 'recover'], [11, 14, 'hard'],
-      [14, 17, 'recover'], [17, 20, 'hard'], [20, 30, 'cool']
+      [14, 17, 'recover'], [17, 20, 'hard'], [20, 25, 'cool'], [25, 30, 'cool']
     ])
     expect(segs[2]).toMatchObject({ speed: 6, incline: 12, hr: { lo: 165, hi: 175 } })
     expect(segs[3].hr).toEqual({ max: 135 })
-    expect(segs[7]).toMatchObject({ speed: 4, speedTo: 3.5, incline: 0 })
+    expect(segs[7]).toEqual({ from: 20, to: 25, speed: 4, incline: 0, hr: { at: 130 }, kind: 'cool' })
+    expect(segs[8]).toEqual({ from: 25, to: 30, speed: 3.5, incline: 0, hr: { max: 120 }, kind: 'cool' })
   })
 
   it('a fourth round goes in before the cool-down, which stays 10 minutes', () => {
     const segs = intervalSegments(4)
     expect(segs.filter(s => s.kind === 'hard')).toHaveLength(4)
-    expect(segs.slice(-3).map(s => [s.from, s.to, s.kind])).toEqual([[20, 23, 'recover'], [23, 26, 'hard'], [26, 36, 'cool']])
+    expect(segs.slice(-4).map(s => [s.from, s.to, s.kind])).toEqual([[20, 23, 'recover'], [23, 26, 'hard'], [26, 31, 'cool'], [31, 36, 'cool']])
   })
 })
 

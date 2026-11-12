@@ -9,8 +9,10 @@ import { isOn } from '../lib/modules.js'
 import { fmtNum, todayISO } from '../lib/format.js'
 import { fmtSpeed, speedUnitOf } from '../lib/speed.js'
 import { BAND_INK } from '../lib/whoop.js'
-import { applyMyPlan, hasMyPlan, myPlanLoadedOn } from '../lib/my-plan.js'
+import { useNavigate } from 'react-router-dom'
+import { applyMyPlan, hasMyPlan, myPlanLoadedOn, myPlanOutdated, upgradeMyPlan, isPlanLiftDay } from '../lib/my-plan.js'
 import { cardioPlan, cardioForRoutine, planWeek, HR_CEILING, FOURTH_ROUND_WEEK, INTERVAL_ROUNDS_MAX } from '../lib/cardio-plans.js'
+import { sundayChecklist, showSundayChecklist, toggleSundayCheck } from '../lib/sunday-checklist.js'
 import { matchWhoopWorkout, whoopMatchView } from '../lib/whoop-match.js'
 import { useWhoopSummary } from '../views/WhoopSheets.jsx'
 import Icon from './Icon.jsx'
@@ -23,6 +25,12 @@ const ui = () => useUI.getState()
 export function loadMyPlan() {
   useStore.getState().update(s => { applyMyPlan(s, todayISO()) })
   ui().toast(t('{0} loaded', t('My plan')))
+}
+
+/** Brings a plan loaded before the 6 am version up to it (lib/my-plan.js upgradeMyPlan): adds, never changes a weight. */
+export function updateMyPlan() {
+  useStore.getState().update(s => { upgradeMyPlan(s) })
+  ui().toast(t('Plan updated to the 6 am version'))
 }
 
 /** Whether this profile can ask our server for its Whoop numbers (signed in, the server offers Whoop, Integrations on). */
@@ -90,6 +98,9 @@ function CardioPlanSheet({ planKey }) {
       {plan.rounds >= INTERVAL_ROUNDS_MAX ? t('Round {0}', INTERVAL_ROUNDS_MAX) + ' ✓' : t('Round 4 unlocks in week {0}.', FOURTH_ROUND_WEEK)}
       {week != null && <> · {t('Week {0}', week)}</>}
     </div>}
+    {plan.elliptical && <div className="small dim" style={{ marginBottom: 8 }}>
+      {t('Elliptical alternative: level {0} main block, level {1} for the {2} push.', plan.elliptical.level, plan.elliptical.pushLevel, plan.elliptical.pushFrom + '-' + plan.elliptical.pushTo)}
+    </div>}
     <div className="list">
       {plan.segments.map(s => {
         const hard = s.kind === 'hard'
@@ -113,6 +124,61 @@ export function TreadmillPlanButton({ routines, size = 'sm', style }) {
   if (!key) return null
   const b = <Button size={size} variant="tinted" icon="figureRun" onClick={() => cardioPlanSheet(key)}>{t('Treadmill plan')}</Button>
   return style ? <div style={style}>{b}</div> : b
+}
+
+/** The top of a lifting day of the plan: the 10 minute warm-up the plan asks for before the first set. */
+export function WarmupNote({ routines, style }) {
+  if (!(routines || []).some(isPlanLiftDay)) return null
+  return <div className="card" data-testid="plan-warmup" style={{ padding: '10px 12px', ...style }}>
+    <div className="row" style={{ gap: 8, fontWeight: 600, marginBottom: 4 }}><Icon name="flame" style={{ color: 'var(--orange)' }} />{t('Warm-up, 10 min')}</div>
+    <div className="small">{t('5 min treadmill walk, 5 km/h, 3% incline')}</div>
+    <div className="small">{t('2 min arm circles, leg swings, bodyweight squats')}</div>
+    <div className="small">{t('3 min first exercise at 50% of working weight, 10 reps')}</div>
+  </div>
+}
+
+/** Home and Settings: the one-tap move to the 6 am version, only while the plan is out of date. */
+export function UpdateMyPlanCard() {
+  const S = useStore(s => s.S)
+  if (!myPlanOutdated(S)) return null
+  return <div className="card" data-testid="plan-update">
+    <CardHead icon="clipboard" tint="var(--orange)" eyebrow={t('My plan')} title={t('A new version of your plan is ready')}
+      sub={t('Core work on Tuesday and Friday, a 45 s plank and a 15 minute walk after lifting. Your current weights stay as they are.')} />
+    <div style={{ height: 10 }} />
+    <Button variant="primary" icon="clipboard" onClick={updateMyPlan}>{t('Update my plan to the 6 am version')}</Button>
+  </div>
+}
+
+const SUNDAY_LABEL = {
+  weigh: () => t('Weigh yourself, empty stomach'),
+  waist: () => t('Measure waist at the belly button'),
+  d3: () => t('D3 capsule with dinner (first Sunday of the month)'),
+  plan: () => t("Plan next week's weights"),
+}
+
+/** Home on a Sunday with nothing to train: the rest day's checklist, ticks synced per Sunday. */
+export function SundayChecklistCard({ routines }) {
+  const S = useStore(s => s.S)
+  const update = useStore(s => s.update)
+  const nav = useNavigate()
+  const today = todayISO()
+  if (!hasMyPlan(S) || !showSundayChecklist(today, (routines || []).length)) return null
+  const rows = sundayChecklist(S, today)
+  return <div className="card" data-testid="sunday-checklist">
+    <CardHead icon="moon" tint="var(--indigo)" eyebrow={t('Rest day')} title={t('Sunday checklist')}
+      sub={t('{0} of {1} done', rows.filter(r => r.done).length, rows.length)} />
+    <div className="list" style={{ marginTop: 8 }}>
+      {rows.map(r => <div key={r.id} className="item">
+        <button type="button" className="row grow" role="checkbox" aria-checked={r.done} disabled={r.auto}
+          style={{ gap: 10, background: 'none', border: 0, padding: 0, color: 'inherit', font: 'inherit', textAlign: 'start', cursor: r.auto ? 'default' : 'pointer' }}
+          onClick={() => update(s => { toggleSundayCheck(s, today, r.id) })}>
+          <Icon name={r.done ? 'checkCircle' : 'dot'} style={{ color: r.done ? 'var(--green)' : 'var(--label-3)', flex: 'none' }} />
+          <span className="tt" style={r.done ? { textDecoration: 'line-through', opacity: 0.7 } : undefined}>{SUNDAY_LABEL[r.id]()}</span>
+        </button>
+        {r.id === 'plan' && <Button size="sm" variant="tinted" onClick={() => nav('/plan')}>{t('Plan')}</Button>}
+      </div>)}
+    </div>
+  </div>
 }
 
 /** Home: today's treadmill session, when today is a day of the plan. */

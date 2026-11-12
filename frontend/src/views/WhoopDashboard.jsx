@@ -8,6 +8,8 @@ import {
   dayView, dayStrip, dayParts, shiftDay, fmtDay, seriesOf, windowTo, statsOf, trendArrow, METRICS, metricDetail,
   contributors, stageParts, bedTrack, zoneContrib, chartScale, indexAt, xOf,
 } from '../lib/whoop-view.js'
+import { useStore } from '../store/useStore.js'
+import { hasMyPlan } from '../lib/my-plan.js'
 import Icon from '../components/Icon.jsx'
 import './whoop.css'
 
@@ -422,6 +424,7 @@ const STAGE_FMT = m => fmtSleep(m)
 /** The full dashboard on the Whoop page. `initialDay` (YYYY-MM-DD) opens on that day; `onRefresh`
  *  syncs and reloads (the refresh button spins until it settles). */
 export function WhoopDashboard({ s, initialDay = null, onRefresh }) {
+  const splitSleep = useStore(st => hasMyPlan(st.S))
   const [day, setDay] = useState(initialDay)
   const [range, setRange] = useState(30)
   const [sheet, setSheet] = useState(null)
@@ -552,6 +555,8 @@ export function WhoopDashboard({ s, initialDay = null, onRefresh }) {
         <div className="whd-kv"><span>{t('Sleep debt')}</span><b>{fmtSleep(sl.debtMin)}</b></div>
         <div className="whd-kv"><span>{t('Disturbances')}</span><b>{numOrDash(sl.disturbances)}</b></div>
       </div>
+      {/* The 6 am plan sleeps in two blocks (lib/my-plan.js, lib/hrv-watch.js). */}
+      {splitSleep && <div className="whd-note" data-testid="split-sleep-note">{t("Two sleep blocks: Whoop's sleep consistency will read low. Watch HRV and RHR instead.")}</div>}
       {isToday && (s.naps || []).length > 0 && <div className="whd-dim">{t('Last nap: {0}', fmtSleep(s.naps[0].asleepMin))}</div>}
 
       {sleep14.days.length > 1 && <>
