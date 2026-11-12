@@ -100,16 +100,51 @@ export function totals(entries) {
 
 export function dayView(doc, dayKey) {
   const day = { ...blankDay(), ...(doc.diet.days[dayKey] || {}) };
-  return { day: dayKey, ...day, totals: totals(day.entries), prefs: doc.diet.prefs };
+  return { day: dayKey, ...day, totals: totals(day.entries), prefs: migratePrefs({ ...doc.diet.prefs }) };
 }
+
+// The diet track: 'veg' (pure veg, no eggs, fish or chicken) or 'nonveg', with an optional veg
+// challenge { start: 'YYYY-MM-DD', days } (the 40-day pure veg run). The old `veg` true / false
+// switch is read as the track and dropped on the next write (frontend/src/lib/diet-track.js).
+export const TRACKS = ['veg', 'nonveg'];
+export const CHALLENGE_DAYS = { min: 1, max: 365 };
+
+/** prefs with the old `veg` boolean turned into `track` (in place; returns prefs). */
+export function migratePrefs(prefs) {
+  if (!TRACKS.includes(prefs.track)) prefs.track = prefs.veg === true ? 'veg' : 'nonveg';
+  delete prefs.veg;
+  return prefs;
+}
+
+const isDay = d => {
+  if (typeof d !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(d)) return false;
+  const t = Date.parse(d + 'T00:00:00Z');
+  return Number.isFinite(t) && new Date(t).toISOString().slice(0, 10) === d;
+};
 
 // The protein target is grams per kg of the latest body weight (frontend/src/lib/diet-targets.js);
 // the kcal target is the plan's own unless one is set here. null puts either back to the default.
 export const PROTEIN_PER_KG = { min: 1.6, max: 2.6 };
 export const KCAL_TARGET = { min: 1000, max: 6000 };
 
-export function setPrefs(doc, { veg, proteinPerKg, kcalTarget } = {}) {
-  if (veg !== undefined) doc.diet.prefs.veg = !!veg;
+export function setPrefs(doc, { veg, track, vegChallenge, proteinPerKg, kcalTarget } = {}) {
+  migratePrefs(doc.diet.prefs);
+  // `veg` is the old switch, still taken from an app that has not updated: true is the veg track.
+  if (track === undefined && veg !== undefined) track = veg ? 'veg' : 'nonveg';
+  if (track !== undefined) {
+    if (!TRACKS.includes(track)) throw bad('track must be veg or nonveg');
+    doc.diet.prefs.track = track;
+  }
+  if (vegChallenge !== undefined) {
+    if (vegChallenge === null) delete doc.diet.prefs.vegChallenge;
+    else {
+      const c = vegChallenge && typeof vegChallenge === 'object' ? vegChallenge : {};
+      const days = c.days === undefined ? 40 : c.days;
+      if (!isDay(c.start)) throw bad('vegChallenge.start must be a YYYY-MM-DD day');
+      if (!Number.isInteger(days) || days < CHALLENGE_DAYS.min || days > CHALLENGE_DAYS.max) throw bad(`vegChallenge.days must be ${CHALLENGE_DAYS.min} to ${CHALLENGE_DAYS.max}`);
+      doc.diet.prefs.vegChallenge = { start: c.start, days };
+    }
+  }
   if (proteinPerKg !== undefined) {
     if (proteinPerKg === null) delete doc.diet.prefs.proteinPerKg;
     else {

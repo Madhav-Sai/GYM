@@ -44,6 +44,7 @@ vi.mock('../lib/ist.js', async orig => ({ ...(await orig()), healthDay: () => '2
 import Diet from './Diet.jsx'
 import { useUI } from '../store/useUI.js'
 import Supplements from './Supplements.jsx'
+import { HealthHomeCards } from './HealthCards.jsx'
 
 const mounted = []
 function render(el) {
@@ -99,7 +100,7 @@ describe('Diet screen', () => {
     const host = render(<Diet />)
     act(() => buttonWith(host, 'Chicken breast cooked')[0].click())
     expect(posts[0][0]).toBe('/api/health/diet/log')
-    expect(posts[0][1].entry).toMatchObject({ foodId: 'chicken', qty: 150, slot: 'lunch', planKey: 'lunch:2', protein: 46.5 })
+    expect(posts[0][1].entry).toMatchObject({ foodId: 'chicken', qty: 100, slot: 'lunch', planKey: 'lunch:2', protein: 31 })
     act(() => buttonWith(host, '250 ml')[1].click())
     expect(posts[1]).toEqual(['/api/health/diet/water', { day: '2026-11-08', ml: 250 }])
   })
@@ -120,25 +121,69 @@ describe('Diet screen: the triglyceride plan', () => {
     const host = render(<Diet />)
     expect(host.textContent).toContain('Carbs over 130 g: the triglyceride lever.')
   })
-  test('the veg switch shows Track B: paneer, no chicken, no per-meal swaps, algal omega-3', () => {
+  test('the veg track (the old veg switch migrates): no egg, fish or chicken anywhere, no per-meal swaps, fish oil, B12', () => {
     today = { ...diet, prefs: { veg: true } }
     const host = render(<Diet />)
-    expect(host.textContent).toContain('Track B, pure veg')
-    expect(host.textContent).not.toContain('Chicken breast cooked')
+    expect(host.textContent).toContain('No eggs, fish or chicken anywhere in the plan.')
+    expect(host.textContent).not.toMatch(/chicken breast|egg whole|mackerel|sardine|boiled egg|3 eggs/i)
     expect(host.textContent).toContain('Paneer')
-    expect(host.textContent).toContain('1 algal omega-3')
+    expect(host.textContent).toContain('Omega-3 (fish oil): take 1 capsule with this meal')
+    expect(host.textContent).not.toContain('algal omega-3 (fish oil is not vegetarian)')
+    expect(host.textContent).toContain('Pure veg for 40 days: B12 retest in 3 months (it was 403). Below 250: B12 1500 mcg weekly.')
     expect(host.querySelector('[aria-label="Veg for this meal"]')).toBe(null)
+  })
+  test('each main meal says what in it carries the omega-3 fat, with the grams', () => {
+    today = { ...diet, prefs: { track: 'veg' } }
+    const host = render(<Diet />)
+    // Sunday, veg: breakfast nuts and seeds, lunch the paneer, dinner the oil
+    expect(host.textContent).toContain('With the almonds, walnuts and pumpkin seeds (about 25 g fat).')
+    expect(host.textContent).toContain('With the paneer, cooking oil and curd (about 35 g fat).')
+  })
+  test('the track switch and the 40-day pure veg run', () => {
+    let host = render(<Diet />)
+    act(() => buttonWith(host, 'Start 40-day pure veg')[0].click())
+    expect(posts.at(-1)).toEqual(['/api/health/diet/prefs', { track: 'veg', vegChallenge: { start: '2026-11-08', days: 40 } }])
+    act(() => buttonWith(host, 'Pure veg')[0].click())
+    expect(posts.at(-1)).toEqual(['/api/health/diet/prefs', { track: 'veg' }])
+    today = { ...diet, prefs: { track: 'veg', vegChallenge: { start: '2026-11-01', days: 40 } } }
+    host = render(<Diet />)
+    expect(host.textContent).toContain('Pure veg: day 8 of 40')
+    expect(buttonWith(host, 'Start 40-day pure veg')).toHaveLength(0)
+    today = { ...diet, prefs: { track: 'veg', vegChallenge: { start: '2026-09-29', days: 40 } } }
+    host = render(<Diet />)
+    expect(host.textContent).toContain('40 days done: stay veg or switch back?')
+    act(() => buttonWith(host, 'Stay veg')[0].click())
+    expect(posts.at(-1)).toEqual(['/api/health/diet/prefs', { track: 'veg', vegChallenge: null }])
+    act(() => buttonWith(host, 'Switch back to non-veg')[0].click())
+    expect(posts.at(-1)).toEqual(['/api/health/diet/prefs', { track: 'nonveg', vegChallenge: null }])
   })
   test('the Rules and Shopping sections; a tick is kept in this browser', () => {
     const host = render(<Diet />)
     expect(host.textContent).toContain('Carbs under 130 g.')
     expect(host.textContent).toContain('Treat it as rice')
-    expect(host.textContent).toContain('Eggs, 3 dozen')
-    const item = buttonWith(host, 'Almonds, 500 g')[0]
+    expect(host.textContent).toContain('Eggs, 2 dozen')
+    expect(host.textContent).toContain('Omega-3 (fish oil)')
+    const item = buttonWith(host, 'Almonds, 600 g')[0]
     act(() => item.click())
     expect(item.getAttribute('aria-pressed')).toBe('true')
     expect(JSON.parse(localStorage.getItem('mygym_shop_ticks_v1'))).toEqual({ 'm-1': true })
     localStorage.removeItem('mygym_shop_ticks_v1')
+  })
+})
+
+describe('Home diet card: the 40-day pure veg run', () => {
+  test('day N of 40 while it runs; on day 41 the question with both answers', () => {
+    today = { ...diet, prefs: { track: 'veg', vegChallenge: { start: '2026-11-01', days: 40 } } }
+    let host = render(<HealthHomeCards />)
+    expect(host.textContent).toContain('Pure veg: day 8 of 40')
+    today = { ...diet, prefs: { track: 'veg', vegChallenge: { start: '2026-09-29', days: 40 } } }
+    host = render(<HealthHomeCards />)
+    expect(host.textContent).toContain('40 days done: stay veg or switch back?')
+    act(() => buttonWith(host, 'Switch back to non-veg')[0].click())
+    expect(posts.at(-1)).toEqual(['/api/health/diet/prefs', { track: 'nonveg', vegChallenge: null }])
+    today = diet
+    host = render(<HealthHomeCards />)
+    expect(host.textContent).not.toContain('Pure veg: day')
   })
 })
 

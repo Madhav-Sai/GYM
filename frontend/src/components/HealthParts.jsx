@@ -2,7 +2,9 @@ import { t, dateLocale } from '../lib/i18n.js'
 import { TARGETS } from '../lib/diet-plan.js'
 import { dietFlags } from '../lib/diet-flags.js'
 import { healthMinutes } from '../lib/ist.js'
+import { challengeOf, challengeLine, stayVegBody, trackBody } from '../lib/diet-track.js'
 import Icon from './Icon.jsx'
+import { Button } from './ui.jsx'
 import CardHead from './CardHead.jsx'
 import '../views/health.css'
 
@@ -41,6 +43,20 @@ export function Totals({ totals, compact = false, targets = TARGETS }) {
       <MacroBar label={t('Fat (mostly unsaturated)')} value={tt.fat} target={T.fat} />
       <MacroBar label={tt.unknown?.satFat ? t('Saturated fat (partial)') : t('Saturated fat')} value={tt.satFat} target={T.satFatMax} max digits={1} />
     </>}
+  </div>
+}
+
+/** "Pure veg: day N of 40", and once the days are done the question with both answers. */
+export function ChallengeLine({ prefs, day, onPrefs }) {
+  const ch = challengeOf(prefs, day)
+  const line = challengeLine(ch)
+  if (!line) return null
+  return <div style={{ marginTop: 8 }}>
+    <div className="hl-l"><Icon name="leaf" /> {t(...line)}</div>
+    {ch.done && onPrefs && <div className="hl-row2">
+      <Button size="sm" variant="tinted" onClick={() => onPrefs(stayVegBody())}>{t('Stay veg')}</Button>
+      <Button size="sm" onClick={() => onPrefs(trackBody('nonveg'))}>{t('Switch back to non-veg')}</Button>
+    </div>}
   </div>
 }
 

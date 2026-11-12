@@ -2,6 +2,7 @@
 // November 2026 (Diet-Plan-7-Days, with the office boxes of Daily-Plan-6am). Plain data for the
 // Diet screen's Rules and Shopping sections; every text is an English i18n key.
 // Shopping ticks live in this browser only (localStorage): a per-viewer convenience, not synced.
+import { ALGAL_NOTE, B12_NOTE } from './diet-track.js'
 
 export const RULES = [
   { title: 'Carbs under 130 g.', text: 'The triglyceride lever. Not fat, not cholesterol. Carbs.' },
@@ -26,77 +27,91 @@ export const NEVER = [
   { food: 'Potato', why: 'Treat it as rice' },
 ]
 
-export const OIL_RULE = 'Cooking oil: mustard, groundnut or olive only. 2 tsp per meal.'
+export const OIL_RULE = 'Cooking oil: mustard, groundnut or olive only. 1 tsp per meal.'
 
+// Each track's list holds only its own foods: the veg one has no eggs, fish or chicken.
 export const IF_HUNGRY = {
   both: ['Water first', 'More vegetables', '1 bowl plain curd', 'Green tea or black coffee (before 4 pm only)'],
   nonveg: ['2 boiled eggs'],
-  veg: ['100 g paneer or 150 g Greek yogurt'],
+  veg: ['100 g tofu or 150 g Greek yogurt'],
   dont: 'Do not add: rice, chapati, fruit, anything sweet.',
 }
 
 // The 6 am day: dinner is cooked at 13:00 and eaten at home, so two boxes go to the office.
 export const OFFICE_BOXES = {
-  nonveg: ['Box 1: fruit + roasted chana', 'Box 2: curd + 2 boiled eggs + 32 g nuts'],
-  veg: ['Box 1: fruit + roasted chana + Greek yogurt', 'Box 2: curd + 100 g paneer + 32 g nuts'],
+  nonveg: ['Box 1: 100 g fruit + 20 g roasted chana', 'Box 2: 100 g curd + 2 boiled eggs (curd only on fish days)'],
+  veg: ['Box 1: 100 g fruit + 10 g roasted chana + 100 g Greek yogurt', 'Box 2: 200 g Greek yogurt + tofu (100 to 200 g, by the day)'],
   both: ['1 omega-3 capsule in your pocket', 'Water bottle at your desk: 3 litres a day', 'Cook dinner at 1 pm with lunch and leave it ready.'],
 }
 
 export const VEG_WARNINGS = [
-  { title: 'Paneer has saturated fat', text: '100 g paneer is 21 g fat, much of it saturated. Use low-fat paneer where you can, or split it with tofu. Tofu is the better choice when you have it.' },
-  { title: 'Soya chunks are carb-heavy', text: '60 g dry is 31 g protein but 20 g carbs, inside your 130 g budget. Keep soya to one meal a day, paneer or tofu for the other.' },
-  { title: 'Fish oil is not vegetarian', text: 'On the veg track take algal omega-3, for the same 2 to 3 g EPA + DHA. Flax and chia are not a substitute.' },
-  { title: 'B12', text: 'It was 403 on a mixed diet and will fall on pure veg. Retest in 3 months; under 250, add 1500 mcg B12 weekly.' },
+  { title: 'Paneer has saturated fat', text: '100 g paneer is 21 g fat, 13 g of it saturated. The plan keeps it to 150 g a day at most; tofu and Greek yogurt carry the rest. Use low-fat paneer where you can.' },
+  { title: 'Soya chunks are carb-heavy', text: '25 to 30 g dry is 13 to 16 g protein and 8 to 10 g carbs. Once a day only, paneer or tofu for the other meal.' },
+  { title: 'B12', text: B12_NOTE },
 ]
+// The owner takes fish oil on both tracks (his choice); this is the one optional line about it.
+export const VEG_OPTIONAL = [ALGAL_NOTE]
 
 const items = (prefix, list) => list.map((text, i) => ({ id: `${prefix}-${i + 1}`, text }))
 
 export const SHOPPING = {
   weekly: {
+    // A week of the plan: 22 eggs, 1.6 kg chicken, 300 g fish, 1.4 kg curd.
     nonveg: items('wn', [
-      'Eggs, 3 dozen',
-      'Chicken, 1.5 kg',
-      'Fish, 750 g (mackerel or sardine)',
-      "Sid's Farm HP toned milk, daily",
-      "Sid's Farm HP curd, 5 tubs",
-      'Fruit: guava, apple, orange',
+      'Eggs, 2 dozen',
+      'Chicken, 1.7 kg',
+      'Fish, 300 g (mackerel or sardine)',
+      'Curd, 1.5 kg',
+      'Fruit: guava, apple',
       'Vegetables (a wide mix)',
     ]),
+    // A week of the plan: 750 g paneer, 1.45 kg tofu, 3.15 kg Greek yogurt, 700 g curd.
     veg: items('wv', [
-      'Paneer, 1.5 kg (low-fat if available)',
-      'Tofu, 750 g',
-      'Greek yogurt, 1.5 kg',
-      "Sid's Farm HP curd, 5 tubs",
-      "Sid's Farm HP toned milk, daily",
-      'Fruit: guava, apple, orange',
+      'Paneer, 750 g (low-fat if available)',
+      'Tofu, 1.5 kg',
+      'Greek yogurt, 3.2 kg',
+      'Curd, 750 g',
+      'Fruit: guava, apple',
       'Vegetables (a wide mix)',
     ]),
   },
   monthly: items('m', [
-    'Almonds, 500 g',
-    'Walnuts, 250 g',
-    'Pumpkin seeds, 500 g',
+    'Almonds, 600 g',
+    'Walnuts, 400 g',
+    'Pumpkin seeds, 300 g',
     'Toor, moong, chana and masoor dal',
     'Rajma, kabuli chana',
-    'Soya chunks (veg track: 2 kg)',
+    'Soya chunks (veg track: 750 g)',
     'Methi seeds',
     'Mustard or groundnut oil',
     'Roasted chana',
     'Isabgol',
-    'Omega-3 (fish oil, or algal on the veg track)',
+    'Omega-3 (fish oil)',
     'Magnesium glycinate',
   ]),
 }
 
-/** The shopping lists of a track: weekly for that track, then the monthly one. */
-export function shoppingFor(veg) {
+/** The shopping lists of a track ('veg' / 'nonveg', or true for veg): weekly for it, then monthly. */
+export function shoppingFor(track) {
+  const veg = track === true || track === 'veg'
   return [
     { id: 'weekly', title: veg ? 'Weekly, pure veg' : 'Weekly, non-veg', items: SHOPPING.weekly[veg ? 'veg' : 'nonveg'] },
     { id: 'monthly', title: 'Monthly, both tracks', items: SHOPPING.monthly },
   ]
 }
 
-export const TICKS_KEY = 'mygym_shop_ticks_v1'
+/** What the Rules card shows on a track: only that track's foods. */
+export function rulesFor(track) {
+  const veg = track === true || track === 'veg'
+  return {
+    ifHungry: [...IF_HUNGRY.both, ...(veg ? IF_HUNGRY.veg : IF_HUNGRY.nonveg)],
+    officeBoxes: [...(veg ? OFFICE_BOXES.veg : OFFICE_BOXES.nonveg), ...OFFICE_BOXES.both],
+    warnings: veg ? VEG_WARNINGS : [],
+    optional: veg ? VEG_OPTIONAL : [],
+  }
+}
+
+export const TICKS_KEY ='mygym_shop_ticks_v1'
 
 /** Ticks with one id flipped (a new object; ids not ticked are left out). */
 export function toggleTick(ticks, id) {
@@ -131,7 +146,7 @@ export function allRuleTexts() {
     ...RULES.flatMap(r => [r.title, r.text]), NO_SUGAR_LINE, ...NEVER.flatMap(n => [n.food, n.why]), OIL_RULE,
     ...IF_HUNGRY.both, ...IF_HUNGRY.nonveg, ...IF_HUNGRY.veg, IF_HUNGRY.dont,
     ...OFFICE_BOXES.nonveg, ...OFFICE_BOXES.veg, ...OFFICE_BOXES.both,
-    ...VEG_WARNINGS.flatMap(w => [w.title, w.text]),
+    ...VEG_WARNINGS.flatMap(w => [w.title, w.text]), ...VEG_OPTIONAL,
     ...shoppingFor(false).concat(shoppingFor(true)).flatMap(s => [s.title, ...s.items.map(i => i.text)]),
   ]
 }

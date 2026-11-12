@@ -7,7 +7,7 @@ import { TARGETS, dayTypeOf } from '../lib/diet-plan.js'
 import { checklist, pendingCount, phaseOf } from '../lib/supplements.js'
 import { syncSupplementReminders } from '../lib/supp-reminders.js'
 import { useDietDay, useSupplements, useHealthOn, useDietTargets } from './health-data.js'
-import { Totals, Flags, litres, D3Card } from '../components/HealthParts.jsx'
+import { Totals, Flags, litres, D3Card, ChallengeLine } from '../components/HealthParts.jsx'
 import Icon from '../components/Icon.jsx'
 import CardHead from '../components/CardHead.jsx'
 import './health.css'
@@ -25,6 +25,8 @@ function DietHomeCard({ day }) {
   return <div className="card tap-host">
     <CardHead icon="leaf" tint="var(--green)" eyebrow={t('Diet')} title={t('Today’s macros')} open={{ onClick: () => nav('/diet') }}
       action={<Icon name="chevronRight" className="chev" />} />
+    {/* The 40-day pure veg run (lib/diet-track.js): day N of 40, then stay veg or switch back. */}
+    <ChallengeLine prefs={s.prefs} day={day} onPrefs={body => d.post('/api/health/diet/prefs', body)} />
     <Totals totals={s.totals} targets={targets} compact />
     <div className="hl-bar-h" style={{ marginTop: 10 }}>
       <span className="hl-l"><Icon name="drop" /> {t('Water')}</span>

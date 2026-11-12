@@ -14,7 +14,7 @@ export const KEEP_DAYS = 400;
 const DAY = 86400_000;
 
 const safeUid = uid => String(uid || '').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 64);
-export const blankHealth = () => ({ v: 1, diet: { prefs: { veg: false }, days: {} }, supplements: { list: null, log: {} }, meals: [] });
+export const blankHealth = () => ({ v: 1, diet: { prefs: { track: 'nonveg' }, days: {} }, supplements: { list: null, log: {} }, meals: [] });
 
 /** 'YYYY-MM-DD' that is a real calendar date, or null. */
 export function validDay(d) {
