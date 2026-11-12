@@ -407,7 +407,7 @@ struct MacrosView: View {
         Group {
             switch family {
             case .accessoryCircular:
-                Gauge(value: WH.frac(d?.protein, d?.proteinTarget ?? 160) ?? 0) {
+                Gauge(value: WH.frac(d?.protein, d?.proteinTarget ?? 165) ?? 0) {
                     Text("P")
                 } currentValueLabel: {
                     Text(WH.num(d?.proteinLeft)).font(.system(size: 15, weight: .heavy, design: .rounded)).monospacedDigit()
@@ -416,7 +416,7 @@ struct MacrosView: View {
             case .accessoryRectangular:
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Protein \(MG.of(d?.protein, d?.proteinTarget, "g"))").font(.headline).widgetAccentable().lineLimit(1).minimumScaleFactor(0.7)
-                    Gauge(value: WH.frac(d?.protein, d?.proteinTarget ?? 160) ?? 0) { EmptyView() }.gaugeStyle(.accessoryLinearCapacity)
+                    Gauge(value: WH.frac(d?.protein, d?.proteinTarget ?? 165) ?? 0) { EmptyView() }.gaugeStyle(.accessoryLinearCapacity)
                     Text("\(WH.num(d?.kcal)) kcal · fiber \(WH.num(d?.fiber)) g · \(MG.litres(d?.water))").font(.caption2).lineLimit(1).minimumScaleFactor(0.7)
                 }
             default:
@@ -432,9 +432,9 @@ struct MacrosView: View {
 
     func bars(_ d: MGDiet) -> some View {
         VStack(spacing: 7) {
-            MGBar(label: "Protein", value: MG.of(d.protein, d.proteinTarget, "g"), frac: WH.frac(d.protein, d.proteinTarget ?? 160), color: MG.protein)
-            MGBar(label: "kcal", value: MG.of(d.kcal, d.kcalTarget, ""), frac: WH.frac(d.kcal, d.kcalTarget ?? 2050), color: MG.kcal)
-            MGBar(label: "Fiber", value: MG.of(d.fiber, d.fiberTarget, "g"), frac: WH.frac(d.fiber, d.fiberTarget ?? 30), color: MG.fiber)
+            MGBar(label: "Protein", value: MG.of(d.protein, d.proteinTarget, "g"), frac: WH.frac(d.protein, d.proteinTarget ?? 165), color: MG.protein)
+            MGBar(label: "kcal", value: MG.of(d.kcal, d.kcalTarget, ""), frac: WH.frac(d.kcal, d.kcalTarget ?? 2000), color: MG.kcal)
+            MGBar(label: "Fiber", value: MG.of(d.fiber, d.fiberTarget, "g"), frac: WH.frac(d.fiber, d.fiberTarget ?? 35), color: MG.fiber)
             MGBar(label: "Water", value: "\(MG.litres(d.water)) / \(MG.litres(d.waterTarget))", frac: WH.frac(d.water, d.waterTarget ?? 2500), color: MG.water)
         }
     }
@@ -468,7 +468,7 @@ struct MacrosView: View {
             MGHeader(title: "MACROS", trailing: d.dayType?.uppercased())
             HStack(spacing: 14) {
                 VStack(spacing: 4) {
-                    WRing(frac: WH.frac(d.protein, d.proteinTarget ?? 160), color: MG.protein, value: WH.num(d.proteinLeft), unit: "g", label: "protein left", line: 9, font: 22)
+                    WRing(frac: WH.frac(d.protein, d.proteinTarget ?? 165), color: MG.protein, value: WH.num(d.proteinLeft), unit: "g", label: "protein left", line: 9, font: 22)
                     waterButton(.center)
                 }
                 .frame(width: 104)
@@ -749,10 +749,10 @@ struct MyDayView: View {
     func macroBars(_ full: Bool) -> some View {
         let d = entry.f.diet
         return VStack(spacing: 5) {
-            MGBar(label: "Protein", value: MG.of(d?.protein, d?.proteinTarget, "g"), frac: WH.frac(d?.protein, d?.proteinTarget ?? 160), color: MG.protein)
+            MGBar(label: "Protein", value: MG.of(d?.protein, d?.proteinTarget, "g"), frac: WH.frac(d?.protein, d?.proteinTarget ?? 165), color: MG.protein)
             if full {
-                MGBar(label: "kcal", value: MG.of(d?.kcal, d?.kcalTarget, ""), frac: WH.frac(d?.kcal, d?.kcalTarget ?? 2050), color: MG.kcal)
-                MGBar(label: "Fiber", value: MG.of(d?.fiber, d?.fiberTarget, "g"), frac: WH.frac(d?.fiber, d?.fiberTarget ?? 30), color: MG.fiber)
+                MGBar(label: "kcal", value: MG.of(d?.kcal, d?.kcalTarget, ""), frac: WH.frac(d?.kcal, d?.kcalTarget ?? 2000), color: MG.kcal)
+                MGBar(label: "Fiber", value: MG.of(d?.fiber, d?.fiberTarget, "g"), frac: WH.frac(d?.fiber, d?.fiberTarget ?? 35), color: MG.fiber)
             }
             MGBar(label: "Water", value: "\(MG.litres(d?.water)) / \(MG.litres(d?.waterTarget))", frac: WH.frac(d?.water, d?.waterTarget ?? 2500), color: MG.water)
         }

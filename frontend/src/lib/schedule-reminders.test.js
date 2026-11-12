@@ -11,16 +11,20 @@ describe('timing plan reminders', () => {
   })
   it('a week of rows, India time, after-midnight rows on the next clock day, past ones skipped', () => {
     const n = buildScheduleNotifications(on, '2026-11-10', atIST('2026-11-10', '11:30'))
-    // day 0 keeps the 9 rows after 11:30 (12:30 onwards, 01:30 included), then 6 full days of 12
-    expect(n).toHaveLength(9 + 6 * 12)
-    expect(n[0]).toMatchObject({ title: 'Post-gym protein' })
-    expect(+n[0].schedule.at).toBe(+atIST('2026-11-10', '12:30'))
-    const sleep = n.find(x => x.title === 'Sleep')
-    expect(+sleep.schedule.at).toBe(+atIST('2026-11-11', '01:30'))
+    // Tuesday keeps the 8 rows after 11:30 (13:15 onwards, 00:30 included), then Wed to Mon:
+    // five gym or cardio days of 14 rows and the Sunday rest plan of 12
+    expect(n).toHaveLength(8 + 5 * 14 + 12)
+    expect(n[0]).toMatchObject({ title: 'Lunch and omega-3' })
+    expect(+n[0].schedule.at).toBe(+atIST('2026-11-10', '13:15'))
+    const sleep = n.find(x => x.title === 'Sleep block 1')
+    expect(+sleep.schedule.at).toBe(+atIST('2026-11-11', '00:30'))
   })
   it('a row can opt out', () => {
-    const s = editRow(on, on.plans[0].id, 'r12', { remind: false })
-    expect(buildScheduleNotifications(s, '2026-11-10', atIST('2026-11-10', '05:00')).some(x => x.title === 'Sleep')).toBe(false)
+    const s = editRow(on, on.plans[0].id, 'r14', { remind: false })
+    const n = buildScheduleNotifications(s, '2026-11-10', atIST('2026-11-10', '05:00'))
+    // off on the gym-day plan only; the cardio and rest plans keep theirs
+    expect(n.filter(x => x.title === 'Sleep block 1' && x.schedule.at < atIST('2026-11-11', '04:00'))).toEqual([])
+    expect(n.some(x => x.title === 'Sleep block 1')).toBe(true)
   })
   it('ids stay in 5000 to 5199, clear of the supplement range', () => {
     const n = buildScheduleNotifications(on, '2026-11-10', atIST('2026-11-10', '05:00'))

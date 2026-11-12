@@ -15,6 +15,14 @@ describe('evening diet flags', () => {
     expect(dietFlags({ fiber: 10, protein: 160 }, 24 * 60 + 45).map(f => f.id)).toEqual(['fiber'])
   })
   test('no totals, no flags', () => { expect(dietFlags(null, 1300)).toEqual([]) })
+  test('carbs over the 130 g ceiling flag at any hour: the triglyceride lever', () => {
+    const f = dietFlags({ fiber: 30, protein: 160, carbs: 131 }, 9 * 60)
+    expect(f.map(x => x.id)).toEqual(['carbs'])
+    expect(f[0]).toMatchObject({ need: 130, text: 'Carbs over {0} g: the triglyceride lever.' })
+    expect(dietFlags({ fiber: 30, protein: 160, carbs: 130 }, 21 * 60)).toEqual([])
+    expect(dietFlags({ fiber: 10, protein: 160, carbs: 200 }, 21 * 60).map(x => x.id)).toEqual(['carbs', 'fiber'])
+    expect(dietFlags({ carbs: 125 }, 9 * 60, { carbs: 120 }).map(x => x.need)).toEqual([120])
+  })
 })
 
 describe('India time', () => {

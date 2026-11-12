@@ -3137,7 +3137,7 @@ paths:
       operationId: healthDietLog
       summary: Log a food
       description: |
-        `entry`: `name`, `qty`, `unit` (g, ml, piece, slice, tsp, scoop), `slot`, `kcal`, `protein`, `carbs`, `fat`, `fiber`, `satFat` (or null), `omega3` (mg, or null), optional `foodId` and `planKey`. An entry with the `planKey` of one already logged replaces it.
+        `entry`: `name`, `qty`, `unit` (g, ml, piece, slice, tsp, scoop), `slot` (wake, pre, post, lunch, snack1, snack2, dinner, bed or other; anything else is other), `kcal`, `protein`, `carbs`, `fat`, `fiber`, `satFat` (or null), `omega3` (mg, or null), optional `foodId` and `planKey`. An entry with the `planKey` of one already logged replaces it.
         Or `entries`, 1 to 30 of them at once (a saved meal, a meal copied from yesterday): all are logged, or none.
       requestBody:
         required: true

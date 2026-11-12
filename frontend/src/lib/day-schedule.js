@@ -1,7 +1,7 @@
 // The daily timing plan (this fork): when to wake, eat, train, work and sleep, as one or more named
-// plans with the weekdays each one covers. The owner works a 14:00 to 23:00 shift and goes to bed
-// after midnight, so a plan day runs 04:00 to 04:00 India time (lib/ist.js): 01:30 sleep belongs to
-// the same plan day as the 10:00 wake-up before it, and sorts after 23:45.
+// plans with the weekdays each one covers. The owner trains at 06:00, sleeps 08:30 to 13:00, works a
+// 14:00 to 22:00 shift and goes to bed after midnight, so a plan day runs 04:00 to 04:00 India time
+// (lib/ist.js): 00:30 sleep belongs to the same plan day as the 05:15 wake-up before it.
 //
 //   S.daySchedule = { plans: [{ id, name, days: [0-6], rows: [{ id, time: 'HH:MM', label, kind, note, remind }] }], remind }
 //
@@ -26,30 +26,43 @@ const isMap = v => !!v && typeof v === 'object' && !Array.isArray(v)
 const TIME = /^([01]\d|2[0-3]):[0-5]\d$/
 const pad = n => String(n).padStart(2, '0')
 
+// The default: the owner's 6 am gym day with split sleep (Daily-Plan-6am, November 2026). Three
+// plans with the same times: gym days (Mon Tue Thu Fri), cardio days (Wed Sat) and the rest day
+// (Sun, no gym). 00:30 sleep sorts last and belongs to the plan day that woke at 05:15.
 export const DEFAULT_PLAN_ID = 'shift'
-export const DEFAULT_PLAN_NAME = 'Shift 2pm-11pm'
-const DEFAULT_ROWS = [
-  ['10:00', 'Wake up', 'wake'],
-  ['10:15', 'Pre-gym meal, coffee and omega-3', 'meal'],
-  ['11:00', 'Gym', 'gym'],
-  ['12:30', 'Post-gym protein', 'meal'],
-  ['13:00', 'Lunch', 'meal'],
+export const DEFAULT_PLAN_NAME = 'Gym days (6 am)'
+export const SPLIT_SLEEP_NOTE = "Two sleep blocks: Whoop's sleep consistency will read low; watch HRV and RHR instead"
+const DEFAULT_ROWS = session => [
+  ['05:15', 'Wake, 1 tsp soaked methi seeds + water', 'wake'],
+  ['05:30', session ? 'Black coffee (no food)' : 'Black coffee', 'meal'],
+  ...(session ? [
+    ['06:00', session, 'gym', 'Until 07:15'],
+    ['07:15', 'Post-gym whey', 'meal'],
+  ] : []),
+  ['07:30', session ? 'Breakfast and omega-3' : 'Breakfast, whey and omega-3', 'meal'],
+  ['08:30', 'Sleep block 2 (main recovery)', 'sleep', 'Until 1 pm. Dark room, phone off, no alarm but the 1 pm one. ' + SPLIT_SLEEP_NOTE],
+  ['13:15', 'Lunch and omega-3', 'meal', 'Cook dinner now too and leave it ready'],
   ['14:00', 'Shift starts', 'work'],
-  ['17:00', 'Snack 1', 'meal'],
-  ['20:00', 'Dinner (packed)', 'meal'],
-  ['22:00', 'Snack 2', 'meal'],
-  ['23:00', 'Shift ends', 'work'],
-  ['23:45', 'Isabgol and protein', 'supp'],
-  ['01:30', 'Sleep', 'sleep'],
+  ['17:00', 'Snack 1 (office)', 'meal'],
+  ['19:30', 'Snack 2 (office)', 'meal'],
+  ['22:00', 'Shift ends', 'work'],
+  ['23:00', 'Home. Dinner and omega-3', 'meal'],
+  ['23:45', 'Isabgol + whey + magnesium', 'supp'],
+  ['00:30', 'Sleep block 1', 'sleep', SPLIT_SLEEP_NOTE],
+]
+const DEFAULT_PLANS = [
+  { id: DEFAULT_PLAN_ID, name: DEFAULT_PLAN_NAME, days: [1, 2, 4, 5], session: 'Gym' },
+  { id: 'cardio', name: 'Cardio days (6 am)', days: [3, 6], session: 'Cardio' },
+  { id: 'rest', name: 'Rest day', days: [0], session: null },
 ]
 
-/** The seeded schedule: one plan, "Shift 2pm-11pm", on every day. */
+/** The seeded schedule: gym, cardio and rest plans on the 6 am day. */
 export function defaultSchedule() {
   return {
-    plans: [{
-      id: DEFAULT_PLAN_ID, name: DEFAULT_PLAN_NAME, days: [...ALL_DAYS],
-      rows: DEFAULT_ROWS.map(([time, label, kind], i) => ({ id: 'r' + (i + 1), time, label, kind, note: '' })),
-    }],
+    plans: DEFAULT_PLANS.map(p => ({
+      id: p.id, name: p.name, days: [...p.days],
+      rows: DEFAULT_ROWS(p.session).map(([time, label, kind, note], i) => ({ id: 'r' + (i + 1), time, label, kind, note: note || '' })),
+    })),
     remind: false,
   }
 }

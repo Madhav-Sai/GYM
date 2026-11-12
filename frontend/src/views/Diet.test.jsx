@@ -78,16 +78,16 @@ describe('Diet screen', () => {
 
   test('the protein target comes from body weight, and says how', () => {
     const host = render(<Diet />)
-    expect(host.textContent).toContain('160 g = 2.2 g/kg x 72.9 kg')
-    expect(host.textContent).toContain('/ 160 g')
+    expect(host.textContent).toContain('170 g = 2.3 g/kg x 72.9 kg')
+    expect(host.textContent).toContain('/ 170 g')
     expect(host.textContent).toContain('Protein per kg')
     expect(host.textContent).toContain('Calorie target')
   })
 
-  test('a heavier body raises the target and the evening floor; no weight falls back to 160 g', () => {
+  test('a heavier body raises the target and the evening floor; no weight falls back to 165 g', () => {
     weight = { kg: 90, date: '2026-11-08', source: 'weigh-in' }
     let host = render(<Diet />)
-    expect(host.textContent).toContain('200 g = 2.2 g/kg x 90.0 kg')
+    expect(host.textContent).toContain('205 g = 2.3 g/kg x 90.0 kg')
     expect(host.textContent).toContain('Protein is under 170 g by 20:00')
     weight = null
     host = render(<Diet />)
@@ -102,6 +102,43 @@ describe('Diet screen', () => {
     expect(posts[0][1].entry).toMatchObject({ foodId: 'chicken', qty: 150, slot: 'lunch', planKey: 'lunch:2', protein: 46.5 })
     act(() => buttonWith(host, '250 ml')[1].click())
     expect(posts[1]).toEqual(['/api/health/diet/water', { day: '2026-11-08', ml: 250 }])
+  })
+})
+
+describe('Diet screen: the triglyceride plan', () => {
+  test('carbs show as a ceiling, the no-sugar line, the omega-3 marker and the Sunday notes', () => {
+    const host = render(<Diet />)
+    expect(host.textContent).toContain('/ under 130 g')
+    expect(host.textContent).toContain('No added sugar')
+    expect(host.textContent).toContain('1 omega-3')
+    expect(host.textContent).toContain('Weigh in and measure waist this morning')
+    expect(host.textContent).toContain('Methi seeds (soaked)')
+    expect(host.textContent).not.toContain('Carbs over')
+  })
+  test('a day over 130 g carbs is flagged', () => {
+    today = { ...diet, totals: { ...diet.totals, carbs: 160 } }
+    const host = render(<Diet />)
+    expect(host.textContent).toContain('Carbs over 130 g: the triglyceride lever.')
+  })
+  test('the veg switch shows Track B: paneer, no chicken, no per-meal swaps, algal omega-3', () => {
+    today = { ...diet, prefs: { veg: true } }
+    const host = render(<Diet />)
+    expect(host.textContent).toContain('Track B, pure veg')
+    expect(host.textContent).not.toContain('Chicken breast cooked')
+    expect(host.textContent).toContain('Paneer')
+    expect(host.textContent).toContain('1 algal omega-3')
+    expect(host.querySelector('[aria-label="Veg for this meal"]')).toBe(null)
+  })
+  test('the Rules and Shopping sections; a tick is kept in this browser', () => {
+    const host = render(<Diet />)
+    expect(host.textContent).toContain('Carbs under 130 g.')
+    expect(host.textContent).toContain('Treat it as rice')
+    expect(host.textContent).toContain('Eggs, 3 dozen')
+    const item = buttonWith(host, 'Almonds, 500 g')[0]
+    act(() => item.click())
+    expect(item.getAttribute('aria-pressed')).toBe('true')
+    expect(JSON.parse(localStorage.getItem('mygym_shop_ticks_v1'))).toEqual({ 'm-1': true })
+    localStorage.removeItem('mygym_shop_ticks_v1')
   })
 })
 
@@ -128,7 +165,7 @@ describe('Diet screen: saved meals and copying yesterday', () => {
     expect(sheet.textContent).toContain('Saves these 1 items')
     await act(async () => { buttonWith(sheet, 'Save meal')[0].click() })
     expect(posts[0][0]).toBe('/api/health/meals/save')
-    expect(posts[0][1].meal.name).toBe('Dinner')
+    expect(posts[0][1].meal.name).toBe('Dinner at home')
     expect(posts[0][1].meal.items).toEqual([expect.objectContaining({ name: 'Home dal', qty: 200, kcal: 230 })])
     expect(posts[0][1].meal.items[0]).not.toHaveProperty('slot')
   })

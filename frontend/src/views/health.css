@@ -64,3 +64,11 @@ button.hl-badge { border: 0; font: inherit; cursor: pointer; }
 .hl-fat-r { display: flex; justify-content: space-between; gap: 8px; padding: 2px 0; }
 .hl-fat-r b { font-variant-numeric: tabular-nums; color: var(--label-2); font-weight: 600; flex: none; }
 .ext-w { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 8px; font-size: var(--fs-footnote); }
+
+/* Diet: the folded Rules and Shopping list cards */
+.hl-fold > summary { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; cursor: pointer; list-style: none; }
+.hl-fold > summary::-webkit-details-marker { display: none; }
+.hl-fold > summary .hl-dim { flex-basis: 100%; }
+.hl-fold[open] > summary { margin-bottom: 8px; }
+.hl-list { margin: 4px 0 0; padding-inline-start: 20px; display: grid; gap: 4px; font-size: var(--fs-subhead, 15px); }
+button.hl-check { border: 0; background: none; font: inherit; color: inherit; text-align: start; padding: 2px 0; cursor: pointer; }

@@ -29,8 +29,8 @@ describe('dietWidgetBlock', () => {
     const b = dietWidgetBlock({ day: '2026-11-08', entries: [{}, {}], water: 1250, dayType: null, totals: totals() })
     expect(b).toMatchObject({
       day: '2026-11-08', dayType: 'rest',
-      kcal: 1200, kcalTarget: 1800, protein: 95.5, proteinTarget: 160, proteinLeft: 65,
-      fiber: 18, fiberTarget: 30, water: 1250, waterTarget: 2500, waterMax: 3000, entries: 2,
+      kcal: 1200, kcalTarget: 2000, protein: 95.5, proteinTarget: 165, proteinLeft: 70,
+      fiber: 18, fiberTarget: 35, carbs: 100, carbsMax: 130, water: 1250, waterTarget: 2500, waterMax: 3000, entries: 2,
     })
   })
 
@@ -160,7 +160,7 @@ describe('startWidgetSync health polling', () => {
     expect(h.calls).toContain('/api/health/supplements')
     expect(h.calls.some(p => p.startsWith('/api/whoop'))).toBe(false)
     const last = writes.at(-1)
-    expect(last.diet).toMatchObject({ protein: 40, proteinLeft: 120, water: 500 })
+    expect(last.diet).toMatchObject({ protein: 40, proteinLeft: 125, water: 500 })
     expect(last.supps.items[0].name).toBe('Omega 3')
     // offline: the next poll fails, the widget keeps the last numbers
     h.answers = {}

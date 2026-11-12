@@ -55,6 +55,15 @@ export const FOODS = [
   f('capsicum', 'Capsicum', 'g', 100, 31, 1, 6, 0.3, 2.1, 0, null, true, 'veg'),
   f('cucumber', 'Cucumber', 'g', 100, 15, 0.7, 3.6, 0.1, 0.5, 0, null, true, 'veg'),
   f('lettuce', 'Lettuce', 'g', 100, 15, 1.4, 2.9, 0.2, 1.3, 0, null, true, 'veg'),
+  // Added for the triglyceride plan (Nov 2026). Raw values per 100 g from USDA FoodData Central
+  // (SR Legacy): cauliflower 11135, eggplant 11209, red tomato 11529. The two gourds are the closest
+  // USDA entries ("gourd, white-flowered (calabash), raw" 11228 and "gourd, dishcloth (towelgourd),
+  // raw" 11227); Indian lauki and turai vary, so they are marked approximate.
+  f('cauliflower', 'Cauliflower', 'g', 100, 25, 1.9, 5, 0.3, 2, 0.1, null, true, 'veg'),
+  f('bottle-gourd', 'Bottle gourd (lauki)', 'g', 100, 14, 0.6, 3.4, 0, 0.5, 0, null, true, 'veg', { approx: true }),
+  f('ridge-gourd', 'Ridge gourd (turai)', 'g', 100, 20, 1.2, 4.4, 0.2, 1.1, 0, null, true, 'veg', { approx: true }),
+  f('brinjal', 'Brinjal', 'g', 100, 25, 1, 5.9, 0.2, 3, 0, null, true, 'veg'),
+  f('tomato', 'Tomato', 'g', 100, 18, 0.9, 3.9, 0.2, 1.2, 0, null, true, 'veg'),
   // fruit
   f('banana', 'Banana', 'g', 100, 89, 1.1, 23, 0.3, 2.6, 0.1, null, true, 'fruit'),
   f('apple', 'Apple', 'g', 100, 52, 0.3, 14, 0.2, 2.4, 0, null, true, 'fruit'),
@@ -62,6 +71,11 @@ export const FOODS = [
   f('orange', 'Orange', 'g', 100, 47, 0.9, 12, 0.1, 2.4, 0, null, true, 'fruit'),
   // snacks and fibre
   f('roasted-chana', 'Roasted chana', 'g', 100, 164, 9, 27, 2.6, 8, 0.3, null, true, 'snack'),
+  // Fenugreek (methi) seed, USDA FoodData Central 02019; 1 tsp is about 4 g.
+  f('methi-seeds', 'Methi seeds (soaked)', 'g', 100, 323, 23, 58.4, 6.4, 24.6, 1.5, null, true, 'fibre', { each: { g: 4, label: 'tsp' } }),
+  // Brewed black coffee (2 g in 200 ml). USDA 14209 lists about 1 kcal and 0.1 g protein per 100 ml;
+  // the plan counts it as 0, so it is marked approximate.
+  f('black-coffee', 'Black coffee', 'ml', 100, 0, 0, 0, 0, 0, 0, null, true, 'other', { approx: true }),
   f('isabgol', 'Isabgol', 'tsp', 1, 0, 0, 0, 0, 4, 0, null, true, 'fibre', { each: { g: 5, label: 'tsp' } }),
 ]
 

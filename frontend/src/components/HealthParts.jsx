@@ -15,13 +15,13 @@ export const n1 = v => (v == null ? DASH : String(Math.round(v * 10) / 10))
 export const litres = ml => (Math.round((ml || 0) / 100) / 10).toFixed(1)
 
 /** One macro against its target: label small and dim, the number big, a bar under it. */
-export function MacroBar({ label, value, target, unit = 'g', max = false, digits = 0 }) {
+export function MacroBar({ label, value, target, unit = 'g', max = false, under = false, digits = 0 }) {
   const f = value == null || !target ? 0 : Math.min(1, value / target)
   const cls = max ? (value > target ? ' over' : ' ok') : value >= target ? ' ok' : ''
   return <div>
     <div className="hl-bar-h">
       <span className="hl-l">{label}</span>
-      <span className="hl-v">{digits ? n1(value) : n0(value)}<small> / {max ? '≤ ' : ''}{target} {unit}</small></span>
+      <span className="hl-v">{digits ? n1(value) : n0(value)}<small> / {under ? t('under {0} {1}', target, unit) : `${max ? '≤ ' : ''}${target} ${unit}`}</small></span>
     </div>
     <div className="hl-track"><div className={'hl-fill' + cls} style={{ width: (f * 100).toFixed(1) + '%' }} /></div>
   </div>
@@ -35,9 +35,10 @@ export function Totals({ totals, compact = false, targets = TARGETS }) {
     <MacroBar label={t('Protein')} value={tt.protein} target={T.protein} />
     <MacroBar label={t('Calories')} value={tt.kcal} target={T.kcal} unit="kcal" />
     <MacroBar label={t('Fibre')} value={tt.fiber} target={T.fiber} digits={1} />
+    {/* Carbs are a ceiling (the triglyceride lever), so they show on the Home card too. */}
+    <MacroBar label={t('Carbs')} value={tt.carbs} target={T.carbs} max under />
     {!compact && <>
-      <MacroBar label={t('Carbs')} value={tt.carbs} target={T.carbs} />
-      <MacroBar label={t('Fat')} value={tt.fat} target={T.fat} />
+      <MacroBar label={t('Fat (mostly unsaturated)')} value={tt.fat} target={T.fat} />
       <MacroBar label={tt.unknown?.satFat ? t('Saturated fat (partial)') : t('Saturated fat')} value={tt.satFat} target={T.satFatMax} max digits={1} />
     </>}
   </div>

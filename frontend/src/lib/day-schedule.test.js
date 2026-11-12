@@ -9,14 +9,25 @@ import { atIST } from './ist.js'
 const labels = p => p.rows.map(r => r.label)
 
 describe('the default plan', () => {
-  it('is the 2pm to 11pm shift on every day, wake to sleep in plan-day order', () => {
+  it('is the 6 am gym day with split sleep: gym, cardio and rest plans, wake to sleep in plan-day order', () => {
     const s = defaultSchedule()
-    expect(s.plans).toHaveLength(1)
+    expect(s.plans.map(p => [p.id, p.days])).toEqual([['shift', [1, 2, 4, 5]], ['cardio', [3, 6]], ['rest', [0]]])
     expect(s.plans[0].name).toBe(DEFAULT_PLAN_NAME)
-    expect(s.plans[0].days).toEqual([0, 1, 2, 3, 4, 5, 6])
-    expect(s.plans[0].rows.map(r => r.time)).toEqual(['10:00', '10:15', '11:00', '12:30', '13:00', '14:00', '17:00', '20:00', '22:00', '23:00', '23:45', '01:30'])
-    expect(s.plans[0].rows.at(-1).kind).toBe('sleep')
-    expect(s.plans[0].rows.find(r => r.kind === 'gym').time).toBe('11:00')
+    expect(uncoveredDays(s)).toEqual([])
+    expect(s.plans[0].rows.map(r => r.time)).toEqual(['05:15', '05:30', '06:00', '07:15', '07:30', '08:30', '13:15', '14:00', '17:00', '19:30', '22:00', '23:00', '23:45', '00:30'])
+    expect(s.plans[0].rows.map(r => r.label).slice(0, 4)).toEqual(['Wake, 1 tsp soaked methi seeds + water', 'Black coffee (no food)', 'Gym', 'Post-gym whey'])
+    expect(s.plans[0].rows.find(r => r.kind === 'gym')).toMatchObject({ time: '06:00', note: 'Until 07:15' })
+    // two sleep blocks, both with the Whoop note
+    const sleeps = s.plans[0].rows.filter(r => r.kind === 'sleep')
+    expect(sleeps.map(r => r.time)).toEqual(['08:30', '00:30'])
+    for (const r of sleeps) expect(r.note).toContain("Whoop's sleep consistency will read low; watch HRV and RHR instead")
+    expect(s.plans[0].rows.find(r => r.time === '23:45').label).toBe('Isabgol + whey + magnesium')
+    expect(s.plans[1].rows.find(r => r.kind === 'gym').label).toBe('Cardio')
+    // the rest day: no gym, the whey with breakfast, the same meal times
+    expect(s.plans[2].rows.some(r => r.kind === 'gym')).toBe(false)
+    expect(s.plans[2].rows.find(r => r.time === '07:30').label).toBe('Breakfast, whey and omega-3')
+    expect(planFor(s, '2026-11-08').id).toBe('rest')
+    expect(planFor(s, '2026-11-11').id).toBe('cardio')
   })
   it('shows for a profile with none, or a broken one, and writes nothing', () => {
     expect(scheduleOf({})).toEqual(defaultSchedule())
@@ -54,27 +65,27 @@ describe('plan-day time', () => {
 describe('now and next', () => {
   const plan = defaultSchedule().plans[0]
   it('the row that has started and the one after it', () => {
-    expect(nowRow(plan, dayMinutes('11:30')).label).toBe('Gym')
-    expect(nextRow(plan, dayMinutes('11:30')).label).toBe('Post-gym protein')
-    expect(nowRow(plan, dayMinutes('11:00')).label).toBe('Gym')
-    expect(nowRow(plan, dayMinutes('05:00'))).toBe(null)
-    expect(nextRow(plan, dayMinutes('05:00')).label).toBe('Wake up')
-    expect(nowRow(plan, dayMinutes('00:30')).label).toBe('Isabgol and protein')
-    expect(nextRow(plan, dayMinutes('00:30')).label).toBe('Sleep')
+    expect(nowRow(plan, dayMinutes('06:30')).label).toBe('Gym')
+    expect(nextRow(plan, dayMinutes('06:30')).label).toBe('Post-gym whey')
+    expect(nowRow(plan, dayMinutes('06:00')).label).toBe('Gym')
+    expect(nowRow(plan, dayMinutes('04:30'))).toBe(null)
+    expect(nextRow(plan, dayMinutes('04:30')).label).toBe('Wake, 1 tsp soaked methi seeds + water')
+    expect(nowRow(plan, dayMinutes('00:15')).label).toBe('Isabgol + whey + magnesium')
+    expect(nextRow(plan, dayMinutes('00:15')).label).toBe('Sleep block 1')
   })
   it('whereNow reads the India clock and wraps to the next day after the last row', () => {
     const s = defaultSchedule()
     const a = whereNow(s, atIST('2026-11-10', '13:40'))
     expect(a.day).toBe('2026-11-10')
-    expect(a.now.label).toBe('Lunch')
+    expect(a.now.label).toBe('Lunch and omega-3')
     expect(a.next.label).toBe('Shift starts')
     expect(a.minutesLeft).toBe(20)
     const b = whereNow(s, atIST('2026-11-11', '02:00')) // still the 10th's plan day
     expect(b.day).toBe('2026-11-10')
-    expect(b.now.label).toBe('Sleep')
+    expect(b.now.label).toBe('Sleep block 1')
     expect(b.tomorrow).toBe(true)
-    expect(b.next.label).toBe('Wake up')
-    expect(b.minutesLeft).toBe(8 * 60)
+    expect(b.next.label).toBe('Wake, 1 tsp soaked methi seeds + water')
+    expect(b.minutesLeft).toBe(3 * 60 + 15)
   })
   it('formats the time left', () => {
     expect(fmtLeft(135)).toBe('2h 15m')
@@ -90,30 +101,32 @@ describe('editing rows', () => {
     const s = addRow(s0, P, { time: '15:30', label: 'Tea', kind: 'meal' }, 'new')
     expect(labels(s.plans[0]).indexOf('Tea')).toBe(labels(s.plans[0]).indexOf('Shift starts') + 1)
     expect(addRow(s0, P, { time: '7pm' })).toBe(s0)
-    expect(s0.plans[0].rows).toHaveLength(12) // input untouched
+    expect(s0.plans[0].rows).toHaveLength(14) // input untouched
   })
   it('edits a row, re-sorting on a new time, and keeps the old time when the new one is bad', () => {
-    const s = editRow(s0, P, 'r1', { time: '09:30', label: 'Alarm' })
-    expect(s.plans[0].rows[0]).toMatchObject({ id: 'r1', time: '09:30', label: 'Alarm', kind: 'wake' })
+    const s = editRow(s0, P, 'r1', { time: '05:00', label: 'Alarm' })
+    expect(s.plans[0].rows[0]).toMatchObject({ id: 'r1', time: '05:00', label: 'Alarm', kind: 'wake' })
     const late = editRow(s0, P, 'r1', { time: '23:50' })
-    expect(labels(late.plans[0]).at(-2)).toBe('Wake up')
-    expect(editRow(s0, P, 'r1', { time: 'x' }).plans[0].rows[0].time).toBe('10:00')
+    expect(labels(late.plans[0]).at(-2)).toBe('Wake, 1 tsp soaked methi seeds + water')
+    expect(editRow(s0, P, 'r1', { time: 'x' }).plans[0].rows[0].time).toBe('05:15')
     expect(editRow(s0, P, 'r1', { remind: false }).plans[0].rows[0].remind).toBe(false)
   })
   it('removes a row', () => {
     expect(labels(removeRow(s0, P, 'r3').plans[0])).not.toContain('Gym')
   })
   it('moves a row into the neighbouring time slot', () => {
-    const s = moveRow(s0, P, 'r5', -1) // Lunch up
+    const s = moveRow(s0, P, 'r5', -1) // Breakfast up
     const rows = s.plans[0].rows
-    expect(rows[3]).toMatchObject({ label: 'Lunch', time: '12:30' })
-    expect(rows[4]).toMatchObject({ label: 'Post-gym protein', time: '13:00' })
+    expect(rows[3]).toMatchObject({ label: 'Breakfast and omega-3', time: '07:15' })
+    expect(rows[4]).toMatchObject({ label: 'Post-gym whey', time: '07:30' })
     expect(moveRow(s0, P, 'r1', -1).plans[0].rows).toEqual(s0.plans[0].rows)
   })
 })
 
 describe('several plans and their weekdays', () => {
-  const s0 = defaultSchedule(), P = s0.plans[0].id
+  // one plan on every day, to start from
+  const base = defaultSchedule()
+  const s0 = { ...base, plans: [{ ...base.plans[0], days: [0, 1, 2, 3, 4, 5, 6] }] }, P = s0.plans[0].id
   it('duplicates a plan with no days, then gives it Sunday (taken off the first)', () => {
     const { schedule: d, id } = duplicatePlan(s0, P, 'Rest day', 'sun')
     expect(id).toBe('sun')

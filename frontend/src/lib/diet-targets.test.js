@@ -4,7 +4,8 @@ import { dietFlags } from './diet-flags.js'
 import { TARGETS } from './diet-plan.js'
 
 describe('protein from body weight', () => {
-  test('2.2 g/kg x 72.9 kg is 160 g, the floor 1.9 g/kg is 140 g', () => {
+  test('the default 2.3 g/kg x 72.1 kg is the plan\'s 165 g; the floor 1.9 g/kg is 140 g', () => {
+    expect(proteinTarget(72.1)).toBe(165)
     expect(proteinTarget(72.9, 2.2)).toBe(160)
     expect(proteinFloor(72.9)).toBe(140)
   })
@@ -14,20 +15,20 @@ describe('protein from body weight', () => {
     expect(proteinTarget(80, 2.0)).toBe(160)
     expect(proteinTarget(85, 1.6)).toBe(135)
   })
-  test('no weight: the plan\'s 160 g and the 140 g floor', () => {
-    expect(proteinTarget(null)).toBe(160)
+  test('no weight: the plan\'s 165 g and the 140 g floor', () => {
+    expect(proteinTarget(null)).toBe(165)
     expect(proteinFloor(undefined)).toBe(140)
     const t = dietTargets({ prefs: {}, weight: null })
-    expect(t.protein).toBe(160)
+    expect(t.protein).toBe(165)
     expect(t.proteinFloor).toBe(140)
     expect(proteinBasis(t)).toBe(null)
   })
-  test('g/kg: default 2.2, clamped to 1.6..2.6', () => {
-    expect(gPerKgOf({})).toBe(2.2)
+  test('g/kg: default 2.3, clamped to 1.6..2.6', () => {
+    expect(gPerKgOf({})).toBe(2.3)
     expect(gPerKgOf({ proteinPerKg: 1.8 })).toBe(1.8)
     expect(gPerKgOf({ proteinPerKg: 9 })).toBe(2.6)
     expect(gPerKgOf({ proteinPerKg: 1 })).toBe(1.6)
-    expect(gPerKgOf({ proteinPerKg: '2' })).toBe(2.2)
+    expect(gPerKgOf({ proteinPerKg: '2' })).toBe(2.3)
   })
 })
 
@@ -46,22 +47,24 @@ describe('latest weight', () => {
 })
 
 describe('dietTargets', () => {
-  const weight = { kg: 72.9, date: '2026-11-05', source: 'inbody' }
+  const weight = { kg: 72.1, date: '2026-11-05', source: 'inbody' }
   test('protein, floor and the line the Diet screen shows', () => {
     const t = dietTargets({ prefs: { veg: false }, weight })
-    expect(t.protein).toBe(160)
-    expect(t.proteinFloor).toBe(140)
+    expect(t.protein).toBe(165)
+    expect(t.proteinFloor).toBe(135) // 1.9 x 72.1 = 137, to 5 g
     expect(t.kcal).toBe(TARGETS.kcal)
     expect(t.kcalOwn).toBe(false)
     expect(t.fiber).toBe(TARGETS.fiber)
-    expect(proteinBasis(t)).toBe('160 g = 2.2 g/kg x 72.9 kg')
+    expect(proteinBasis(t)).toBe('165 g = 2.3 g/kg x 72.1 kg')
+    // the triglyceride plan: 2000 kcal and the 130 g carb ceiling on every day type
+    for (const dayType of ['training', 'cardio', 'rest']) expect(dietTargets({ prefs: {}, weight, dayType })).toMatchObject({ kcal: 2000, carbs: 130, fat: 80, fiber: 35 })
   })
   test('the user\'s own g/kg and kcal target', () => {
     const t = dietTargets({ prefs: { proteinPerKg: 2.0, kcalTarget: 2300 }, weight })
     expect(t.protein).toBe(145)
     expect(t.kcal).toBe(2300)
     expect(t.kcalOwn).toBe(true)
-    expect(proteinBasis(t)).toBe('145 g = 2.0 g/kg x 72.9 kg')
+    expect(proteinBasis(t)).toBe('145 g = 2.0 g/kg x 72.1 kg')
   })
   test('the evening flag uses the weight-based floor', () => {
     const heavy = dietTargets({ prefs: {}, weight: { kg: 90 } })

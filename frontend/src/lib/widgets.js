@@ -325,7 +325,8 @@ const healthMinOf = hhmm => {
   return v < 240 ? v + 1440 : v
 }
 
-/** myGym: the Macros widget's numbers, from GET /api/health/diet (api/health/diet.js dayView).
+/** myGym: the Macros widget's numbers, from GET /api/health/diet (api/health/diet.js dayView), against
+ *  the plan's targets (lib/diet-plan.js: 2000 kcal, 165 g protein, carbs under 130 g, 35 g fibre).
  *  null when the answer is not a day view: the widget then says "Open myGym". */
 export function dietWidgetBlock (v) {
   if (!v || typeof v !== 'object' || !v.totals || typeof v.totals !== 'object') return null
@@ -338,6 +339,8 @@ export function dietWidgetBlock (v) {
     protein, proteinTarget: TARGETS.protein,
     proteinLeft: protein == null ? null : Math.max(0, Math.round(TARGETS.protein - protein)),
     fiber: num(tt.fiber), fiberTarget: TARGETS.fiber,
+    // carbs are a ceiling in the triglyceride plan (130 g)
+    carbs: num(tt.carbs), carbsMax: (DAY_TARGETS[typeof v.day === 'string' ? dayTypeOf(v.day, v.dayType) : 'training'] || DAY_TARGETS.training).carbs,
     water: num(v.water), waterTarget: TARGETS.waterMin, waterMax: TARGETS.waterMax,
     entries: Array.isArray(v.entries) ? v.entries.length : null,
   }

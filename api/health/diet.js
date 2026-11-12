@@ -10,7 +10,7 @@ export const MACROS = ['kcal', 'protein', 'carbs', 'fat', 'fiber', 'satFat', 'om
 // Nullable: not every food in the seed has a known saturated-fat or omega-3 value, and a scanned
 // packaged food (health/barcode.js) often has no fibre on its label.
 const NULLABLE = new Set(['satFat', 'omega3', 'fiber']);
-export const SLOTS = ['pre', 'post', 'lunch', 'snack1', 'dinner', 'snack2', 'bed', 'other'];
+export const SLOTS = ['wake', 'pre', 'post', 'lunch', 'snack1', 'snack2', 'dinner', 'bed', 'other'];
 export const DAY_TYPES = ['training', 'cardio', 'rest'];
 export const UNITS = ['g', 'ml', 'piece', 'slice', 'tsp', 'scoop'];
 export const MAX_ENTRIES = 200;

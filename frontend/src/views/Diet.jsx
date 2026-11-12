@@ -8,7 +8,8 @@ import { api } from '../lib/api.js'
 import { scanCode, webScanner } from '../lib/scan.js'
 import { useStore } from '../store/useStore.js'
 import CameraScan from '../components/CameraScan.jsx'
-import { SLOTS, TARGETS, planFor, dayTypeOf, nonNegotiables, slotsFor } from '../lib/diet-plan.js'
+import { SLOTS, TARGETS, planFor, dayTypeOf, nonNegotiables, slotsFor, dayNotes } from '../lib/diet-plan.js'
+import { RULES, NEVER, OIL_RULE, IF_HUNGRY, OFFICE_BOXES, VEG_WARNINGS, NO_SUGAR_LINE, shoppingFor, toggleTick, clearTicks, readTicks, writeTicks } from '../lib/diet-rules.js'
 import { proteinBasis, G_PER_KG_MIN, G_PER_KG_MAX, G_PER_KG_STEP, KCAL_MIN, KCAL_MAX } from '../lib/diet-targets.js'
 import { altsFor, proteinSwap, signed } from '../lib/diet-swap.js'
 import { healthDay, addDays } from '../lib/ist.js'
@@ -53,21 +54,23 @@ function PlanItem({ item, logged, onToggle }) {
     <span className="hl-ck"><Icon name="check" /></span>
     <span className="hl-m">
       <span className="hl-nm">{logged?.name || food.name}</span>
-      <span className="hl-sub">{amountLabel(food, qty)}</span>
+      <span className="hl-sub">{amountLabel(food, qty)}{item.note && !logged ? ' · ' + t(item.note) : ''}</span>
       {from && !logged && <span className="hl-swap">{t('Instead of {0}: {1} kcal, {2} g protein', `${amountLabel(from, item.swappedFrom.qty)} ${from.name.toLowerCase()}`, signed(item.delta.kcal), signed(item.delta.protein))}</span>}
     </span>
     <span className="hl-r"><b>{n0(m.kcal)}</b>{n1(m.protein)} g P</span>
   </button>
 }
 
-function Meal({ slot, items, entries, veg, onVeg, onToggle, onRemove, onAdd, onSaveMeal, copyCount = 0, onCopy }) {
+function Meal({ slot, items, entries, veg, vegTrack, onVeg, onToggle, onRemove, onAdd, onSaveMeal, copyCount = 0, onCopy }) {
   const planKeys = new Set(items.map(i => i.key))
   const extra = entries.filter(e => e.slot === slot.id && !planKeys.has(e.planKey))
-  const hasNonVeg = items.some(i => i.swappedFrom || !foodById(i.foodId)?.veg)
+  // Per-meal veg swaps are for the non-veg track; the veg track is its own plan.
+  const hasNonVeg = !vegTrack && items.some(i => i.swappedFrom || !foodById(i.foodId)?.veg)
   return <div className="card">
     <div className="hl-meal-h">
       <span className="hl-time">{slot.time}</span>
       <span className="hl-meal-t"><b>{t(slot.title)}</b>{slot.note && <span className="hl-dim">{t(slot.note)}</span>}</span>
+      {slot.pill && <span className="hl-badge veg"><Icon name="pill" />{vegTrack ? t('1 algal omega-3') : t('1 omega-3')}</span>}
       {hasNonVeg && <label className="hl-veg"><Icon name="leaf" />{t('Veg')}<Switch checked={veg} onChange={onVeg} aria-label={t('Veg for this meal')} /></label>}
     </div>
     {items.map(i => <PlanItem key={i.key} item={i} logged={entries.find(e => e.planKey === i.key)} onToggle={() => onToggle(i)} />)}
@@ -335,8 +338,52 @@ function TargetsSection({ targets, prefs, onPrefs }) {
     <Row icon="scale" iconTint="var(--green)" title={t('Protein per kg')} subtitle={basis || t('{0} g a day', targets.protein)}>
       <Stepper value={g} step={G_PER_KG_STEP} min={G_PER_KG_MIN} max={G_PER_KG_MAX} onChange={step} ariaLabel={t('Protein per kg')} />
     </Row>
-    <Row icon="target" title={t('Calorie target')} subtitle={targets.kcalOwn ? t('Your own, every day') : t('Changes with the day: training 2050, cardio 1950, rest 1800')} value={`${targets.kcal} kcal`} accessory="chevron" onClick={openKcal} />
+    <Row icon="target" title={t('Calorie target')} subtitle={targets.kcalOwn ? t('Your own, every day') : t('The plan: {0} kcal every day', targets.planKcal)} value={`${targets.kcal} kcal`} accessory="chevron" onClick={openKcal} />
   </Section>
+}
+
+/* ---------- the plan's rules (lib/diet-rules.js), folded ---------- */
+function List({ items }) {
+  return <ul className="hl-list">{items.map(x => <li key={x}>{t(x)}</li>)}</ul>
+}
+function RulesCard({ veg }) {
+  return <details className="card hl-fold">
+    <summary><Icon name="info" /> <b>{t('Rules')}</b><span className="hl-dim">{t('The four rules, the never list, if hungry')}</span></summary>
+    <ol className="hl-list">{RULES.map(r => <li key={r.title}><b>{t(r.title)}</b> {t(r.text)}</li>)}</ol>
+    <div className="hl-l" style={{ marginTop: 10 }}>{t('Never, both tracks')}</div>
+    <ul className="hl-list">{NEVER.map(n => <li key={n.food}><b>{t(n.food)}</b>: {t(n.why)}</li>)}</ul>
+    <div className="hl-dim" style={{ marginTop: 6 }}>{t(OIL_RULE)}</div>
+    <div className="hl-l" style={{ marginTop: 10 }}>{t('If hungry')}</div>
+    <List items={[...IF_HUNGRY.both, ...(veg ? IF_HUNGRY.veg : IF_HUNGRY.nonveg)]} />
+    <div className="hl-dim">{t(IF_HUNGRY.dont)}</div>
+    <div className="hl-l" style={{ marginTop: 10 }}>{t('Office boxes: pack before 2 pm')}</div>
+    <List items={[...(veg ? OFFICE_BOXES.veg : OFFICE_BOXES.nonveg), ...OFFICE_BOXES.both]} />
+    {veg && <>
+      <div className="hl-l" style={{ marginTop: 10 }}>{t('Veg track: watch these')}</div>
+      <ul className="hl-list">{VEG_WARNINGS.map(w => <li key={w.title}><b>{t(w.title)}</b>. {t(w.text)}</li>)}</ul>
+    </>}
+  </details>
+}
+
+/* ---------- the shopping list; ticks stay in this browser ---------- */
+function ShoppingCard({ veg }) {
+  const [ticks, setTicks] = useState(() => readTicks())
+  const save = next => { setTicks(next); writeTicks(next) }
+  const lists = shoppingFor(veg)
+  const all = lists.flatMap(l => l.items)
+  const done = all.filter(x => ticks[x.id]).length
+  return <details className="card hl-fold">
+    <summary><Icon name="list" /> <b>{t('Shopping list')}</b><span className="hl-dim">{t('{0} of {1} done', done, all.length)}</span></summary>
+    {lists.map(l => <div key={l.id} style={{ marginTop: 8 }}>
+      <div className="row between"><span className="hl-l">{t(l.title)}</span>
+        <Button size="sm" variant="ghost" disabled={!l.items.some(x => ticks[x.id])} onClick={() => save(clearTicks(ticks, l.items))}>{t('Clear ticks')}</Button></div>
+      <div className="hl-checks">
+        {l.items.map(x => <button key={x.id} type="button" className={'hl-check' + (ticks[x.id] ? ' done' : '')} aria-pressed={!!ticks[x.id]} onClick={() => save(toggleTick(ticks, x.id))}>
+          <Icon name={ticks[x.id] ? 'checkCircle' : 'dot'} /><span>{t(x.text)}</span>
+        </button>)}
+      </div>
+    </div>)}
+  </details>
 }
 
 function Shell({ nav, children, sub }) {
@@ -365,7 +412,7 @@ export default function Diet() {
   const meals = useMeals(false)
   const type = dayTypeOf(day, data?.dayType)
   const veg = !!data?.prefs?.veg
-  const plan = useMemo(() => planFor(type, { veg, vegMeals: data?.vegMeals || {} }), [type, veg, data?.vegMeals])
+  const plan = useMemo(() => planFor(type, { veg, vegMeals: data?.vegMeals || {}, day }), [type, veg, data?.vegMeals, day])
   const entries = data?.entries || []
   const targets = useDietTargets(data?.prefs, type)
   useFoods(on)
@@ -385,7 +432,7 @@ export default function Diet() {
     entries={entries.filter(e => e.slot === s.id)} onSave={meal => meals.post('/api/health/meals/save', { meal })} />)
   const yEntries = y.data?.day === yday ? y.data.entries || [] : []
   const auto = dayTypeOf(day)
-  const checks = nonNegotiables(entries, data.water)
+  const checks = nonNegotiables(entries, data.water, { veg })
 
   return <Shell nav={nav} sub={`${t(DAY_TYPE_LABEL[type])} · ${new Date(day + 'T12:00:00Z').toLocaleDateString(dateLocale(), { weekday: 'long', day: 'numeric', month: 'short' })}`}>
     {/* Smart day (lib/smart-day.js): only for today, and the switch goes through this screen's own post. */}
@@ -404,7 +451,12 @@ export default function Diet() {
       {proteinBasis(targets) && <div className="hl-dim" style={{ marginTop: 4 }}>{proteinBasis(targets)}</div>}
       <Totals totals={data.totals} targets={targets} />
       <Flags totals={data.totals} targets={targets} />
+      <div className="hl-dim" style={{ marginTop: 6 }}>{t(NO_SUGAR_LINE)}</div>
     </div>
+
+    {dayNotes(type).length > 0 && <div className="card">
+      <div className="hl-checks">{dayNotes(type).map(n => <div key={n} className="hl-check"><Icon name="info" /><span>{t(n)}</span></div>)}</div>
+    </div>}
 
     <Water ml={data.water} onAdd={ml => post('water', { ml })} />
 
@@ -414,7 +466,7 @@ export default function Diet() {
           onChange={v => post('day', { dayType: v === auto ? null : v })} />
         <div className="hl-dim" style={{ marginTop: 6 }}>{t('By weekday this is a {0} day.', t(DAY_TYPE_LABEL[auto]).toLowerCase())}</div>
       </div>
-      <Row icon="leaf" iconTint="var(--green)" title={t('Vegetarian today')} subtitle={t('Swaps each non-veg item for the same protein')}>
+      <Row icon="leaf" iconTint="var(--green)" title={t('Vegetarian today')} subtitle={veg ? t('Track B, pure veg: no eggs, fish or chicken') : t('Track A, non-veg. Switch on for the pure veg plan.')}>
         <Switch checked={veg} onChange={v => d.post('/api/health/diet/prefs', { veg: v })} aria-label={t('Vegetarian today')} />
       </Row>
     </Section>
@@ -428,9 +480,9 @@ export default function Diet() {
       </div>
     </div>
 
-    {slotsFor(type).map(s => <Meal key={s.id} slot={s} items={plan[s.id]} entries={entries}
-      veg={data.vegMeals?.[s.id] ?? veg}
-      onVeg={v => post('day', { vegMeals: { [s.id]: v === veg ? null : v } })}
+    {slotsFor(type).filter(s => plan[s.id].length || entries.some(e => e.slot === s.id)).map(s => <Meal key={s.id} slot={s} items={plan[s.id]} entries={entries}
+      veg={!!data.vegMeals?.[s.id]} vegTrack={veg}
+      onVeg={v => post('day', { vegMeals: { [s.id]: v ? true : null } })}
       onToggle={item => toggle(s.id, item)}
       onRemove={e => post('unlog', { id: e.id })}
       onAdd={() => openLog(s.id)}
@@ -442,6 +494,9 @@ export default function Diet() {
       {entries.filter(e => e.slot === 'other').map(e => <Row key={e.id} title={e.name} subtitle={`${e.qty} ${e.unit} · ${n0(e.kcal)} kcal · ${n1(e.protein)} g P`} onClick={() => post('unlog', { id: e.id })} value={t('Remove')} />)}
     </Section>}
     <Button variant="primary" icon="plus" onClick={() => openLog('other')}>{t('Log food')}</Button>
+    <div style={{ height: 16 }} />
+    <RulesCard veg={veg} />
+    <ShoppingCard veg={veg} />
     <div style={{ height: 16 }} />
   </Shell>
 }

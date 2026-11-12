@@ -1,12 +1,12 @@
-// The day's diet targets (our addition). Protein follows body weight: grams per kg (2.2 by default,
-// 1.6 to 2.6 in the Diet screen's settings) times the latest weight, rounded to 5 g, so 72.9 kg
-// gives 160 g. The evening flag (diet-flags.js) fires under 1.9 g/kg, about 140 g at that weight.
-// With no weight known it is the plan's own 160 g and 140 g. The kcal target is the plan's unless
+// The day's diet targets (our addition). Protein follows body weight: grams per kg (2.3 by default,
+// 1.6 to 2.6 in the Diet screen's settings) times the latest weight, rounded to 5 g, so 72.1 kg
+// gives 165 g, the triglyceride plan's target. The evening flag (diet-flags.js) fires under 1.9 g/kg, about 140 g at that weight.
+// With no weight known it is the plan's own 165 g and 140 g. The kcal target is the plan's unless
 // one is set. The Diet screen and the Home card both read their numbers from dietTargets.
 import { TARGETS, DAY_TARGETS } from './diet-plan.js'
 import { weightPoints } from './medical.js'
 
-export const DEFAULT_G_PER_KG = 2.2
+export const DEFAULT_G_PER_KG = 2.3
 export const FLOOR_G_PER_KG = 1.9
 export const G_PER_KG_MIN = 1.6
 export const G_PER_KG_MAX = 2.6
@@ -39,7 +39,7 @@ export function latestWeightKg(bodyweight = [], unit = 'kg', inbody = []) {
   return { kg: r1(p.y), date: p.d, source: fromWeighIn ? 'weigh-in' : 'inbody' }
 }
 
-/** Protein in g for a weight and g/kg, to 5 g; the plan's 160 g with no weight. */
+/** Protein in g for a weight and g/kg, to 5 g; the plan's 165 g with no weight. */
 export function proteinTarget(weightKg, gPerKg = DEFAULT_G_PER_KG) {
   return isNum(weightKg) && weightKg > 0 ? round5(gPerKg * weightKg) : FALLBACK_PROTEIN
 }
@@ -74,7 +74,7 @@ export function dietTargets({ prefs, weight, dayType } = {}) {
   }
 }
 
-/** "160 g = 2.2 g/kg x 72.9 kg", or null with no weight known. */
+/** "165 g = 2.3 g/kg x 72.1 kg", or null with no weight known. */
 export function proteinBasis(targets) {
   if (!targets || !isNum(targets.weightKg)) return null
   return `${targets.protein} g = ${targets.gPerKg.toFixed(1)} g/kg x ${targets.weightKg.toFixed(1)} kg`
