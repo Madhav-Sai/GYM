@@ -15,37 +15,140 @@ import UserNotifications
  * Text only: no exercise animations or pictures (Gym visual licence).
  */
 
-/// The App Group the app, the widget extension and the asset pack downloader share.
-/// myGym: the widget snapshot also lives in a keychain item both the app and the widget extension can read
+/// myGym: the widget snapshot lives in a keychain item both the app and the widget extension can read
 /// (keychain-access-groups, team prefix + com.madhavsais.mygym.shared). A free Apple ID cannot sign App Groups,
 /// a shared keychain group needs nothing registered with Apple. The App Group file stays the first choice.
+///
+/// The team prefix is read from the keychain itself first: a probe item added without an access group
+/// lands in the process's default group (the first keychain-access-groups entry), whose first component
+/// is the prefix the binary is really signed with. Info.plist's AppIdentifierPrefix is only the fallback:
+/// it is right only when Xcode expanded $(AppIdentifierPrefix) for the same team that signed, and a
+/// re-signed build (Sideloadly, AltStore) or one built without a team carries a wrong or empty one.
 enum SharedSnapshot {
     static let service = "com.madhavsais.mygym.widget"
     static let account = "widget.json"
+    static let groupSuffix = "com.madhavsais.mygym.shared"
+    static let probeService = "com.madhavsais.mygym.probe"
+    static let probeAccount = "team-prefix"
+
+    private static let lock = NSLock()
+    private static var resolvedGroup: String?
+    // Diagnostics (WidgetBridgePlugin.status, the empty widgets' reason line).
+    /// Where the group came from: "keychain" (the probe) or "plist"; nil while there is none.
+    private(set) static var groupSource: String?
+    /// The probe's OSStatus the last time it ran (0 is errSecSuccess).
+    private(set) static var probeStatus: OSStatus?
+    /// The last write of the snapshot item, and the last read of it.
+    private(set) static var lastWriteStatus: OSStatus?
+    private(set) static var lastReadStatus: OSStatus?
+
     static var group: String? {
-        guard let prefix = Bundle.main.object(forInfoDictionaryKey: "AppIdentifierPrefix") as? String, !prefix.isEmpty, !prefix.hasPrefix("$(") else { return nil }
-        return prefix + "com.madhavsais.mygym.shared"
+        lock.lock(); defer { lock.unlock() }
+        if let g = resolvedGroup { return g }
+        if let g = probedGroup() {
+            resolvedGroup = g
+            groupSource = "keychain"
+            return g
+        }
+        // Not cached: the probe can fail before the first unlock and work later.
+        if let prefix = Bundle.main.object(forInfoDictionaryKey: "AppIdentifierPrefix") as? String,
+           !prefix.isEmpty, !prefix.hasPrefix("$(") {
+            groupSource = "plist"
+            return (prefix.hasSuffix(".") ? prefix : prefix + ".") + groupSuffix
+        }
+        groupSource = nil
+        return nil
     }
+
+    /// The shared group as the signature has it, from the probe item's own access group.
+    private static func probedGroup() -> String? {
+        let q: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: probeService,
+            kSecAttrAccount as String: probeAccount,
+            kSecReturnAttributes as String: true,
+        ]
+        var out: CFTypeRef?
+        var status = SecItemCopyMatching(q as CFDictionary, &out)
+        if status == errSecItemNotFound {
+            var add = q
+            add[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlock
+            add[kSecValueData as String] = Data("probe".utf8)
+            out = nil
+            status = SecItemAdd(add as CFDictionary, &out)
+        }
+        probeStatus = status
+        guard status == errSecSuccess,
+              let attrs = out as? [String: Any],
+              let found = attrs[kSecAttrAccessGroup as String] as? String,
+              let first = found.split(separator: ".").first, !first.isEmpty else { return nil }
+        // The default group is normally the shared one itself; if not, the shared one under its prefix.
+        if found.hasSuffix("." + groupSuffix) { return found }
+        return String(first) + "." + groupSuffix
+    }
+
     fileprivate static func base(_ acct: String) -> [String: Any]? {
         guard let g = group else { return nil }
         return [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: service,
                 kSecAttrAccount as String: acct, kSecAttrAccessGroup as String: g]
     }
     @discardableResult static func write(_ data: Data) -> Bool { write(data, account: account) }
+    /// Update in place, else add. An update that fails for another reason than "not found" (an item an
+    /// older build left with other attributes) is deleted and added again. The same service, account and
+    /// group as read(), never synchronizable.
     @discardableResult static func write(_ data: Data, account acct: String) -> Bool {
-        guard var q = base(acct) else { return false }
-        SecItemDelete(q as CFDictionary)
-        q[kSecValueData as String] = data
-        q[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlock
-        return SecItemAdd(q as CFDictionary, nil) == errSecSuccess
+        guard let q = base(acct) else {
+            if acct == account { lastWriteStatus = nil }
+            return false
+        }
+        let change: [String: Any] = [
+            kSecValueData as String: data,
+            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock,
+        ]
+        var status = SecItemUpdate(q as CFDictionary, change as CFDictionary)
+        if status != errSecSuccess {
+            if status != errSecItemNotFound { SecItemDelete(q as CFDictionary) }
+            var add = q
+            add[kSecValueData as String] = data
+            add[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlock
+            status = SecItemAdd(add as CFDictionary, nil)
+        }
+        if acct == account { lastWriteStatus = status }
+        return status == errSecSuccess
     }
     static func read() -> Data? { read(account: account) }
     static func read(account acct: String) -> Data? {
-        guard var q = base(acct) else { return nil }
+        let (data, status) = readWithStatus(account: acct)
+        if acct == account { lastReadStatus = status }
+        return data
+    }
+    /// The item and the OSStatus of reading it (errSecParam, -50, when there is no group to read from).
+    static func readWithStatus(account acct: String) -> (Data?, OSStatus) {
+        guard var q = base(acct) else { return (nil, errSecParam) }
         q[kSecReturnData as String] = true
         q[kSecMatchLimit as String] = kSecMatchLimitOne
         var out: CFTypeRef?
-        return SecItemCopyMatching(q as CFDictionary, &out) == errSecSuccess ? out as? Data : nil
+        let status = SecItemCopyMatching(q as CFDictionary, &out)
+        return (status == errSecSuccess ? out as? Data : nil, status)
+    }
+
+    /// Why load() has nothing, as a short code an empty widget shows: "no group (kc -34018)", "no data (kc -25300)".
+    static func missingReason() -> String {
+        if group == nil {
+            if let p = probeStatus { return "no group (kc \(p))" }
+            return "no group"
+        }
+        let (_, status) = readWithStatus(account: account)
+        return "no data (kc \(status))"
+    }
+
+    /// For an empty block widget: why there is no data at all, or that the data has no such block
+    /// ("no whoop block"), or that the block is there but did not decode ("whoop unreadable").
+    static func blockNote(_ key: String) -> String {
+        guard let data = load() else { return missingReason() }
+        guard let root = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else { return "bad data" }
+        guard let v = root[key], !(v is NSNull) else { return "no \(key) block" }
+        return "\(key) unreadable"
     }
     /// The App Group file if there is one, else the keychain copy.
     static func load() -> Data? {
@@ -105,6 +208,7 @@ enum WidgetActionQueue {
     }
 }
 
+/// The App Group the app, the widget extension and the asset pack downloader share (none with a free Apple ID).
 enum OpenGymGroup {
     static let id = "group.com.madhavsais.mygym"
     static var defaults: UserDefaults { UserDefaults(suiteName: id) ?? .standard }

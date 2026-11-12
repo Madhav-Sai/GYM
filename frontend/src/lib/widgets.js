@@ -40,6 +40,7 @@ import { healthDay, healthMinutes } from './ist.js'
 import { DEMO } from './demo.js'
 import { needsStepsFallback, withStepsFallback, stepsSourceOf } from './steps-source.js'
 import { flushWidgetActions, overlayPending, pendingWidgetActions } from './widget-actions.js'
+import { snapshotBlocks } from './widget-status.js'
 
 export const WIDGET_SNAPSHOT_VERSION = 2
 // What the weight goal's little curve draws: the last weigh-ins.
@@ -402,6 +403,30 @@ export function dayWidgetBlock (S, today) {
 
 const WHOOP_POLL_MS = 5 * 60_000
 
+// myGym diagnostics (Settings → Look & Home → Widgets, lib/widget-status.js): what the last write
+// sent and how it went. `at` the last successful write (ms), `blocks` which blocks it had
+// (snapshotBlocks), `error` the plugin's refusal of the last attempt, null once one succeeds.
+const diag = { at: null, bytes: 0, blocks: null, error: null }
+let refresher = null
+
+/** A copy of the diagnostics above. */
+export function widgetSyncDiag () { return { ...diag, blocks: diag.blocks ? { ...diag.blocks } : null } }
+
+/** What the native side says (WidgetBridge.status, iPhone), or null without a plugin or on a build before it. */
+export async function widgetPluginStatus () {
+  const p = await widgetPlugin()
+  if (!p) return null
+  try { return (await p.WidgetBridge.status()) || null } catch { return null }
+}
+
+/** Settings' "Refresh widgets now": pulls Whoop, Diet and Supplements, then writes the snapshot even
+ *  when it is the same as the last one. false when the widget sync is not running. */
+export async function refreshWidgetsNow () {
+  if (!refresher) return false
+  await refresher()
+  return true
+}
+
 /**
  * Started once by the app: writes the snapshot when what it shows changes (debounced, and only
  * when it differs from the last one written), and again when the app comes back, which may be on
@@ -411,20 +436,28 @@ export async function startWidgetSync ({ useStore }) {
   const p = await widgetPlugin()
   if (!p) return () => {}
   let last = null, tm = null, whoop = null, diet = null, supps = null
-  const write = async () => {
+  const write = async ({ force = false } = {}) => {
+    clearTimeout(tm)
     tm = null
     if (useStore.getState().tourSandbox) return
+    let snap, json
     try {
-      const snap = buildWidgetSnapshot(useStore.getState().S)
+      snap = buildWidgetSnapshot(useStore.getState().S)
       if (whoop) snap.whoop = whoop
       if (diet) snap.diet = diet
       if (supps) snap.supps = supps
       // The widget buttons' taps not on the server yet (lib/widget-actions.js) stay drawn in.
-      const json = JSON.stringify(overlayPending(snap, pendingWidgetActions()))
-      if (json === last) return
+      json = JSON.stringify(overlayPending(snap, pendingWidgetActions()))
+    } catch (e) { diag.error = 'build: ' + (e?.message || String(e)); return }
+    if (!force && json === last) return
+    try {
       await p.WidgetBridge.write({ json })
       last = json
-    } catch { /* not now: the next change writes it */ }
+      Object.assign(diag, { at: Date.now(), bytes: typeof TextEncoder === 'function' ? new TextEncoder().encode(json).length : json.length, blocks: snapshotBlocks(snap), error: null })
+    } catch (e) {
+      // Not now: the next change writes it. Kept for Settings → Widgets, which shows it.
+      diag.error = e?.message || String(e)
+    }
   }
   // The tour's practice workout (useStore enterTourSandbox) is left off the widgets.
   const schedule = () => { if (useStore.getState().tourSandbox) return; clearTimeout(tm); tm = setTimeout(write, WRITE_DEBOUNCE_MS) }
@@ -442,8 +475,9 @@ export async function startWidgetSync ({ useStore }) {
         sum = withStepsFallback(sum, apple, todayISO())
       }
       const next = whoopWidgetBlock(sum)
-      if (JSON.stringify(next) !== JSON.stringify(whoop)) { whoop = next; schedule() }
+      if (JSON.stringify(next) !== JSON.stringify(whoop)) { whoop = next; return true }
     } catch { /* offline: keep the last numbers */ }
+    return false
   }
   const pullHealth = async api => {
     const day = healthDay()
@@ -451,30 +485,42 @@ export async function startWidgetSync ({ useStore }) {
     let changed = false
     if (d.status === 'fulfilled') { const next = dietWidgetBlock(d.value); if (JSON.stringify(next) !== JSON.stringify(diet)) { diet = next; changed = true } }
     if (s.status === 'fulfilled') { const next = supplementsWidgetBlock(s.value, { day }); if (JSON.stringify(next) !== JSON.stringify(supps)) { supps = next; changed = true } }
-    if (changed) schedule()
+    return changed
   }
   // The widget buttons' taps (+250 ml, Taken): sent first, so the numbers fetched after include them.
   const flushActions = async api => {
     try {
       const r = await flushWidgetActions({ bridge: p.WidgetBridge, post: (path, body) => api(path, { method: 'POST', body: JSON.stringify(body) }) })
-      if (r && (r.sent || r.pending.length)) schedule()
-    } catch { /* kept for the next time */ }
+      return !!(r && (r.sent || r.pending.length))
+    } catch { return false /* kept for the next time */ }
   }
-  const pull = async () => {
+  // New numbers are written at once (the first Whoop summary after sign-in included), not after the
+  // debounce: the app may be sent to the background right after.
+  const pull = async ({ force = false } = {}) => {
     const st = useStore.getState()
-    if (!st.user || DEMO) return
+    if (!st.user || DEMO) {
+      // Signed out: the last profile's server numbers leave the widgets.
+      if (whoop || diet || supps || force) { whoop = diet = supps = null; await write({ force }) }
+      return
+    }
     if (!poll) poll = setInterval(pull, WHOOP_POLL_MS)
     let api
-    try { ({ api } = await import('./api.js')) } catch { return }
-    await flushActions(api)
-    await Promise.all([pullWhoop(st, api), pullHealth(api).catch(() => {})])
+    try { ({ api } = await import('./api.js')) } catch { if (force) await write({ force }); return }
+    const flushed = await flushActions(api)
+    const [w, hl] = await Promise.all([pullWhoop(useStore.getState(), api), pullHealth(api).catch(() => false)])
+    if (flushed || w || hl || force) await write({ force })
   }
-  const offUser = useStore.subscribe((s, prev) => { if (s.user !== prev.user || s.config !== prev.config) pull() })
+  // A sign-in (or out): written at once, then the server's numbers. The config (which says whether
+  // Whoop is offered) can arrive after the user: that pulls again.
+  const offUser = useStore.subscribe((s, prev) => {
+    if (s.user !== prev.user) { write(); pull() } else if (s.config !== prev.config) pull()
+  })
   pull()
   const onVisible = () => { if (document.visibilityState === 'visible') { schedule(); pull() } }
   document.addEventListener('visibilitychange', onVisible)
   write()
-  return () => { off(); offUser(); if (poll) clearInterval(poll); clearTimeout(tm); document.removeEventListener('visibilitychange', onVisible) }
+  refresher = () => pull({ force: true })
+  return () => { refresher = null; off(); offUser(); if (poll) clearInterval(poll); clearTimeout(tm); document.removeEventListener('visibilitychange', onVisible) }
 }
 
 // Test seams.

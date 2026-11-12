@@ -176,6 +176,11 @@ private struct Empty: View {
         VStack(spacing: 4) {
             Image(systemName: "heart.text.square").font(.title2).foregroundColor(WH.red)
             Text("Open myGym to sync Whoop").font(.caption2).multilineTextAlignment(.center).foregroundColor(WH.dim)
+            // myGym: why (SharedSnapshot.blockNote): no data at all, or no whoop block in it.
+            let note = SharedSnapshot.blockNote("whoop")
+            if !note.isEmpty {
+                Text(verbatim: note).font(.system(size: 8, design: .monospaced)).foregroundColor(WH.dim.opacity(0.7)).lineLimit(2)
+            }
         }
     }
 }

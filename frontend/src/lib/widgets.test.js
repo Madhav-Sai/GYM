@@ -183,6 +183,46 @@ describe('startWidgetSync', () => {
     h.platform = 'ios'
   })
 
+  it('a forced refresh writes the same snapshot again, and the diagnostics follow', async () => {
+    const { refreshWidgetsNow, widgetSyncDiag } = await import('./widgets.js')
+    const stop = await startWidgetSync({ useStore })
+    await vi.runAllTimersAsync()
+    expect(writes).toHaveLength(1)
+    expect(widgetSyncDiag()).toMatchObject({ error: null, blocks: { today: true, whoop: false } })
+    expect(widgetSyncDiag().bytes).toBeGreaterThan(0)
+    expect(await refreshWidgetsNow()).toBe(true)
+    expect(writes).toHaveLength(2)
+    stop()
+    expect(await refreshWidgetsNow()).toBe(false)
+  })
+
+  it('keeps the plugin refusal for Settings, and writes again on the next try', async () => {
+    const { refreshWidgetsNow, widgetSyncDiag } = await import('./widgets.js')
+    let fail = true
+    _setWidgetPluginForTest({ write: async ({ json }) => { if (fail) throw new Error('could not write the widget data (no keychain group)'); writes.push(JSON.parse(json)) } })
+    const stop = await startWidgetSync({ useStore })
+    await vi.runAllTimersAsync()
+    expect(writes).toHaveLength(0)
+    expect(widgetSyncDiag().error).toMatch(/no keychain group/)
+    fail = false
+    await refreshWidgetsNow()
+    expect(writes).toHaveLength(1)
+    expect(widgetSyncDiag().error).toBeNull()
+    stop()
+  })
+
+  it('writes at once on a sign-in, without waiting for the debounce', async () => {
+    const stop = await startWidgetSync({ useStore })
+    await vi.runAllTimersAsync()
+    const n = writes.length
+    const prev = state; state = { ...state, routines: [{ ...push, name: 'Push signed in' }, legs] }
+    subs.forEach(fn => fn({ S: state, user: { id: 'u1' } }, { S: prev, user: null }))
+    await Promise.resolve(); await Promise.resolve(); await Promise.resolve()
+    expect(writes.length).toBe(n + 1)
+    expect(writes.at(-1).days.some(d => d.name === 'Push signed in')).toBe(true)
+    stop()
+  })
+
   it('debounces a burst of changes into one write', async () => {
     const stop = await startWidgetSync({ useStore })
     await vi.runAllTimersAsync()

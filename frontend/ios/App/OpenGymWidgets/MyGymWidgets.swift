@@ -254,11 +254,20 @@ struct MGEmpty: View {
     let symbol: String
     let color: Color
     var text: String = "Open myGym"
+    /// The snapshot block this widget draws ("diet", "supps", "whoop"): its reason code shows under the
+    /// line (SharedSnapshot.blockNote), so a screenshot says whether the data or only the block is missing.
+    var block: String? = nil
     var body: some View {
         VStack(spacing: 4) {
             Image(systemName: symbol).font(.title2).foregroundColor(color)
             Text("–").font(.system(size: 20, weight: .heavy, design: .rounded)).foregroundColor(WH.dim)
             Text(text).font(.caption2).multilineTextAlignment(.center).foregroundColor(WH.dim)
+            if let block = block {
+                let note = SharedSnapshot.blockNote(block)
+                if !note.isEmpty {
+                    Text(verbatim: note).font(.system(size: 8, design: .monospaced)).foregroundColor(WH.dim.opacity(0.7)).lineLimit(2)
+                }
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -423,7 +432,7 @@ struct MacrosView: View {
                 if let d = d {
                     if family == .systemMedium { medium(d) } else { small(d) }
                 } else {
-                    MGEmpty(symbol: "fork.knife", color: MG.protein)
+                    MGEmpty(symbol: "fork.knife", color: MG.protein, block: "diet")
                 }
             }
         }
@@ -543,7 +552,7 @@ struct SupplementsView: View {
                 if let s = s {
                     if family == .systemMedium { medium(s, next) } else { small(s, next) }
                 } else {
-                    MGEmpty(symbol: "pills.fill", color: WH.yellow)
+                    MGEmpty(symbol: "pills.fill", color: WH.yellow, block: "supps")
                 }
             }
         }
@@ -714,6 +723,10 @@ struct MyDayView: View {
                 }
             } else {
                 Text(entry.f.day == nil ? "Open myGym" : "Rest day").font(.system(size: 13, weight: .heavy, design: .rounded)).foregroundColor(WH.dim)
+                if entry.f.day == nil {
+                    // myGym: why (SharedSnapshot.blockNote), so a screenshot says where it breaks.
+                    Text(verbatim: SharedSnapshot.blockNote("day")).font(.system(size: 8, design: .monospaced)).foregroundColor(WH.dim.opacity(0.7)).lineLimit(2)
+                }
             }
         }
     }
@@ -963,13 +976,13 @@ struct WhoopMetricView: View {
                         MetricColumn(v: MGValue.of(entry.second, entry.f), ringFont: 22, line: 8)
                     }
                 } else {
-                    MGEmpty(symbol: "heart.text.square", color: WH.red, text: "Open myGym to sync Whoop")
+                    MGEmpty(symbol: "heart.text.square", color: WH.red, text: "Open myGym to sync Whoop", block: "whoop")
                 }
             default:
                 if hasData {
                     MetricColumn(v: v)
                 } else {
-                    MGEmpty(symbol: "heart.text.square", color: WH.red, text: "Open myGym to sync Whoop")
+                    MGEmpty(symbol: "heart.text.square", color: WH.red, text: "Open myGym to sync Whoop", block: "whoop")
                 }
             }
         }
@@ -999,7 +1012,7 @@ struct WhoopWeekView: View {
             if let w = entry.f.whoop {
                 if family == .systemLarge { large(w) } else { medium(w) }
             } else {
-                MGEmpty(symbol: "calendar", color: WH.strain, text: "Open myGym to sync Whoop")
+                MGEmpty(symbol: "calendar", color: WH.strain, text: "Open myGym to sync Whoop", block: "whoop")
             }
         }
         .mgChrome(family, url: WH.link)
