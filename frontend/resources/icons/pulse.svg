@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 512 512">
+  <!-- myGym app icon "pulse": a barbell whose bar is a heartbeat, in Whoop green on near-black.
+       The default icon; scripts/app-icons.mjs renders it to every size (iPhone, Android, web).
+       Only rect, circle, line, polyline, polygon and one radialGradient: what the script draws.
+       A line's ends are round, so the plates are thick lines. The glow is wider, darker
+       strokes stacked under the pulse. Everything stays within 228 of the centre (Android's circle). -->
+  <defs>
+    <radialGradient id="bg" gradientUnits="userSpaceOnUse" cx="256" cy="200" r="400">
+      <stop offset="0" stop-color="#1a1f27"/>
+      <stop offset="1" stop-color="#06080a"/>
+    </radialGradient>
+  </defs>
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <polyline points="146,256 195,256 220,195 256,328 287,225 307,256 366,256" stroke="#0a1d10" stroke-width="72"/>
+  <polyline points="146,256 195,256 220,195 256,328 287,225 307,256 366,256" stroke="#0b2611" stroke-width="64"/>
+  <polyline points="146,256 195,256 220,195 256,328 287,225 307,256 366,256" stroke="#0b3112" stroke-width="56"/>
+  <polyline points="146,256 195,256 220,195 256,328 287,225 307,256 366,256" stroke="#0c3e13" stroke-width="48"/>
+  <polyline points="146,256 195,256 220,195 256,328 287,225 307,256 366,256" stroke="#0d4e15" stroke-width="41"/>
+  <polyline points="146,256 195,256 220,195 256,328 287,225 307,256 366,256" stroke="#0f6418" stroke-width="35"/>
+  <polyline points="146,256 195,256 220,195 256,328 287,225 307,256 366,256" stroke="#117f1b" stroke-width="30"/>
+  <g stroke="#16EC06">
+    <line x1="87" y1="195" x2="87" y2="317" stroke-width="42"/>
+    <line x1="425" y1="195" x2="425" y2="317" stroke-width="42"/>
+    <line x1="131" y1="220" x2="131" y2="292" stroke-width="31"/>
+    <line x1="381" y1="220" x2="381" y2="292" stroke-width="31"/>
+    <polyline points="146,256 195,256 220,195 256,328 287,225 307,256 366,256" stroke-width="24"/>
+  </g>
+</svg>

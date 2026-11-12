@@ -13,8 +13,8 @@
  *   android/app/src/main/res/mipmap-<dpi>/ic_launcher_<id>{,_round,_foreground}.png
  *   android/app/src/main/res/mipmap-anydpi-v26/ic_launcher_<id>{,_round}.xml
  *   android/app/src/main/res/values/app_icons.xml             the adaptive icons' background colours
- * The default icon keeps the files @capacitor/assets made for it (docs/MOBILE.md); only its
- * preview comes from here.
+ * The default icon (myGym's pulse barbell, resources/icons/pulse.svg) is drawn here too, onto the
+ * primary icon files: AppIcon.appiconset, the plain ic_launcher mipmaps and public/icon-180/512.
  *
  * Usage: node scripts/app-icons.mjs            write everything
  *        node scripts/app-icons.mjs --check    exit 1 when a committed file differs from a fresh draw */
@@ -261,7 +261,17 @@ export function files(rects = glyph()) {
   const colors = []
   for (const v of APP_ICON_VARIANTS) {
     out.push([`public/app-icons/${v.id}.png`, () => draw(v, PREVIEW, { rects })])
-    if (v.id === 'default') continue
+    if (v.id === 'default') {
+      out.push(['ios/App/App/Assets.xcassets/AppIcon.appiconset/AppIcon-512@2x.png', () => draw(v, IOS_SIZE, { rects })])
+      out.push(['public/icon-180.png', () => draw(v, 180, { rects })])
+      out.push(['public/icon-512.png', () => draw(v, 512, { rects })])
+      for (const [dpi, f] of Object.entries(DENSITIES)) {
+        out.push([`${RES}/mipmap-${dpi}/ic_launcher.png`, () => draw(v, Math.round(48 * f), { rects })])
+        out.push([`${RES}/mipmap-${dpi}/ic_launcher_round.png`, () => draw(v, Math.round(48 * f), { rects, round: true })])
+        out.push([`${RES}/mipmap-${dpi}/ic_launcher_foreground.png`, () => draw(v, Math.round(108 * f), { rects })])
+      }
+      continue
+    }
     if (!v.art) out.push([`resources/icons/${v.id}.svg`, () => svgOf(v, rects)])
     const set = `ios/App/App/Assets.xcassets/${v.ios}.appiconset`
     out.push([`${set}/Contents.json`, () => iosContents])
